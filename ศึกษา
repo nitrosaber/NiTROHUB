@@ -32,8 +32,8 @@ local Toggle = MainTap:CreateToggle({
    CurrentValue = false,
    Flag = "Toggle2", -- ลำดับการแสดงผล
    Callback = function(AutoSkill)
-      while _G.autoskill == true do 
-         wait(0.01111111111)
+      local AutoSkill = true
+      while do wait(0.01111111111)
          game:GetService("ReplicatedStorage").useSpell:FireServer("Q")
          game:GetService("ReplicatedStorage").useSpell:FireServer("E")
       end
@@ -45,18 +45,9 @@ local Toggle = MainTap:CreateToggle({
    CurrentValue = false,
    Flag = "Toggle1", -- ลำดับการแสดงผล
    Callback = function(AutoBolt)
-      while _G.autobolt == true do 
-         wait(0.01111111111)
+      local AutoBolt = true
+      while do wait(0.01111111111)
          game:GetService("ReplicatedStorage").Bolt:FireServer()
       end
    end,
 })
-
-
-
--- Values
-
-_G.autoskill = true
-_G.autobolt = true
-
-
