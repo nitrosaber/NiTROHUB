@@ -26,6 +26,7 @@ local Window = Rayfield:CreateWindow({
 })
 
 local MainTap = Window:CreateTab("Main", 4483362458) -- Title, Image
+local Section = Tab:CreateSection("Main Farm")
 
 local Toggle = MainTap:CreateToggle({
    Name = "Auto Skill",
