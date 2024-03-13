@@ -28,14 +28,23 @@ local Window = Rayfield:CreateWindow({
 local MainTap = Window:CreateTab("Main", 4483362458) -- Title, Image
 
 local Toggle = MainTap:CreateToggle({
-   Name = "AutoSkill",
+   Name = "Auto Skill",
    CurrentValue = false,
    Flag = "Toggle1", -- ลำดับการแสดงผล
    Callback = function(AutoSkill)
-      while true do 
+      while _G.autoskill == true do 
          wait(0.01111111111)
          game:GetService("ReplicatedStorage").useSpell:FireServer("Q")
          game:GetService("ReplicatedStorage").useSpell:FireServer("E")
       end
    end,
 })
+
+
+
+
+-- Values
+
+_G.autoskill = true/false
+
+
