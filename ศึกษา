@@ -30,7 +30,7 @@ local MainTap = Window:CreateTab("Main", 4483362458) -- Title, Image
 local Toggle = MainTap:CreateToggle({
    Name = "Auto Skill",
    CurrentValue = false,
-   Flag = "Toggle1", -- ลำดับการแสดงผล
+   Flag = "Toggle2", -- ลำดับการแสดงผล
    Callback = function(AutoSkill)
       while _G.autoskill == true do 
          wait(0.01111111111)
@@ -40,11 +40,23 @@ local Toggle = MainTap:CreateToggle({
    end,
 })
 
+local Toggle = MainTap:CreateToggle({
+   Name = "Auto Bolt",
+   CurrentValue = false,
+   Flag = "Toggle1", -- ลำดับการแสดงผล
+   Callback = function(AutoBolt)
+      while _G.autobolt == true do 
+         wait(0.01111111111)
+         game:GetService("ReplicatedStorage").Bolt:FireServer()
+      end
+   end,
+})
 
 
 
 -- Values
 
-_G.autoskill = true/false
+_G.autoskill = true
+_G.autobolt = true
 
 
