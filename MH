@@ -8,20 +8,11 @@ local value = game:GetService("Players").LocalPlayer.Rebirths
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/TheAbsolutionism/Wally-GUI-Library-V2-Remastered/main/Library%20Code", true))() --//Wally UI Lib V2 Remastered by: https://forum.robloxscripts.com/showthread.php?tid=3180
 library.options.underlinecolor = 'rainbow' --//makes the underline of each "window" rainbow
 library.options.toggledisplay = 'Fill' --//Applies to all toggles, [Fill] OFF = RED, ON = GREEN [CHECK] OFF = BLANK,ON = CHECKMARK
-local mainW = library:CreateWindow("NiTROHUB - Miner's Haven") --//Name of window
+local mainW = library:CreateWindow("NiTROHUB - MH") --//Name of window
 local Section = mainW:Section('Farm',true)
 
---//AntiAFK Credits to: https://v3rmillion.net/showthread.php?tid=772135
-local vu = game:GetService("VirtualUser")
-game:GetService("Players").LocalPlayer.Idled:connect(function()
-   vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-   task.wait(1)
-   vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-end)
-
+--//Anti AFK
 loadstring(game:HttpGet("https://raw.githubusercontent.com/batusz/main/roblox/__Anti__Afk__Script__", true))()
-
---//AntiAFK Credits to: https://v3rmillion.net/showthread.php?tid=772135
 
 --//Enables Rebirth Farming
 local reFarm = mainW:Toggle('Rebirth Farm',{flag = "rebfarm"},function()
