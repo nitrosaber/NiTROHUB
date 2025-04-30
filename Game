@@ -1,8 +1,4 @@
 local ID = game.PlaceId
-if ID == 8737899170 then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/main/Pet%20Simulator%2099/Main%20World"))()
-elseif ID == 16498369169 then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/main/Pet%20Simulator%2099/Tech%20World"))()
-elseif ID == 16510724413
-    loadstring(game:HttpGet("https://github.com/IdiotHub/Scripts/blob/main/Pet%20Catcher/Pet%20Catchers%20Main"))()
+if ID == 85896571713843 then
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/nitrosaber/NiTROHUB/refs/heads/main/BSGI"))()
 end
