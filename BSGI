@@ -92,40 +92,62 @@ local function StartMainLoop()
     end)
 end
 
+-- ตัวแปรสำหรับเก็บไข่ที่เลือกและจำนวนไข่
+local SelectedEgg = "Common Egg"
+local SelectedQuantity = 3 -- ค่าเริ่มต้นจำนวนไข่
+
 -- Auto Hatch Egg Loop
 local function StartAutoHatchEggLoop()
     if AutoHatchEggTask then return end
     AutoHatchEggTask = task.spawn(function()
-        -- รายการของชื่อไข่
-        local availableEggs = {
-            "Common Egg",
-            "Spotted Egg",
-            "Iceshard Egg",
-            "Spikey Egg",
-            "Magma Egg",
-            "Crystal Egg",
-            "Lunar Egg",
-            "Void Egg",
-            "Hell Egg",
-            "Nightmare Egg",
-            "Rainbow Egg",
-            "Infinity Egg",
-            "100M Egg"
-        }
-
         while AutoHatchEggEnabled do
-            for _, eggName in ipairs(availableEggs) do
-                if not AutoHatchEggEnabled then break end
-                pcall(function()
-                    -- เรียกใช้คำสั่ง HatchEgg
-                    RemoteEvent:FireServer("HatchEgg", eggName, 3) -- 3 คือจำนวนไข่ที่ต้องการฟัก
-                end)
-                task.wait(0.1) -- ปรับความหน่วงเวลาตามความเหมาะสม
-            end
+            pcall(function()
+                -- ใช้ไข่และจำนวนที่ผู้ใช้เลือก
+                RemoteEvent:FireServer("HatchEgg", SelectedEgg, SelectedQuantity)
+            end)
+            task.wait(0.1) -- ปรับความหน่วงเวลาให้เหมาะสม
         end
         AutoHatchEggTask = nil
     end)
 end
+
+-- เพิ่ม Dropdown สำหรับเลือกไข่ที่ต้องการเปิด
+ControlsTab:CreateDropdown({
+    Name = "Select Egg to Hatch",
+    Options = {
+        "Common Egg",
+        "Spotted Egg",
+        "Iceshard Egg",
+        "Spikey Egg",
+        "Magma Egg",
+        "Crystal Egg",
+        "Lunar Egg",
+        "Void Egg",
+        "Hell Egg",
+        "Nightmare Egg",
+        "Rainbow Egg",
+        "Infinity Egg",
+        "100M Egg"
+    },
+    CurrentOption = "Common Egg", -- ค่าเริ่มต้น
+    Flag = "EggDropdown",
+    Callback = function(Value)
+        SelectedEgg = Value -- ตั้งไข่ที่ผู้ใช้เลือก
+    end
+})
+
+-- เพิ่ม Slider สำหรับเลือกจำนวนไข่ที่ต้องการเปิด
+ControlsTab:CreateSlider({
+    Name = "Select Quantity (1-6)",
+    Range = {1, 6}, -- ช่วงค่าที่อนุญาต
+    Increment = 1, -- เพิ่มทีละ 1
+    Suffix = " Egg(s)", -- หน่วยที่แสดงผลท้ายค่า
+    CurrentValue = 3, -- ค่าเริ่มต้น
+    Flag = "EggQuantitySlider",
+    Callback = function(Value)
+        SelectedQuantity = Value -- ตั้งค่าจำนวนไข่ที่ผู้ใช้เลือก
+    end
+})
 
 -- Stop Functions
 local function StopBlowBubbleLoop()
@@ -232,7 +254,7 @@ ControlsTab:CreateToggle({
     end
 })
 
--- Toggle for Auto Hatch Egg
+-- แก้ไข Toggle ของ Auto Hatch Egg เพื่อเรียกใช้งานตามการตั้งค่าใหม่
 ControlsTab:CreateToggle({
     Name = "Fast Hatch Egg",
     CurrentValue = false,
