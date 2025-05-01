@@ -96,8 +96,8 @@ end
 local function StartAutoHatchEggLoop()
     if AutoHatchEggTask then return end
     AutoHatchEggTask = task.spawn(function()
-        local args = {
-            "HatchEgg",           
+        -- อัปเดตรายการไข่ที่ต้องการฟัก
+        local availableEggs = {
             "Common Egg",
             "Spotted Egg",
             "Iceshard Egg",
@@ -110,14 +110,18 @@ local function StartAutoHatchEggLoop()
             "Nightmare Egg",
             "Rainbow Egg",
             "Infinity Egg",
-            "100M Egg",
-            6
+            "100M Egg"
         }
+
+        -- เริ่มลูปการฟักไข่
         while AutoHatchEggEnabled do
-            pcall(function()
-                RemoteEvent:FireServer(unpack(args))
-            end)
-            task.wait(0.1) -- Adjustable delay to reduce server load
+            for _, eggName in ipairs(availableEggs) do
+                if not AutoHatchEggEnabled then break end
+                pcall(function()
+                    RemoteEvent:FireServer("HatchEgg", eggName, 6) -- `6` หมายถึงจำนวนไข่ที่ต้องการฟักพร้อมกัน
+                end)
+                task.wait(0.1) -- ตั้งค่าความหน่วงเวลาให้เหมาะสม
+            end
         end
         AutoHatchEggTask = nil
     end)
