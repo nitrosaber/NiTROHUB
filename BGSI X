@@ -1,13 +1,5 @@
 -- Load NatUI Library from ArdyBotzz
-local success, NatUI = pcall(function()
-    return loadstring(game:HttpGet('https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/Uisource.lua'))()
-end)
-
-if not success or not NatUI then
-    warn("Failed to load NatUI Library. Please check the URL or your internet connection.")
-    return
-end
-print("NatUI Library loaded successfully.")
+local NatUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/Uisource.lua"))()
 
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
