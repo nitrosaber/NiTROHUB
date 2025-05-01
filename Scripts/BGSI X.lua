@@ -1,4 +1,4 @@
--- Load NatUI Library from ArdyBotzz
+-- Load NatUI Library
 local NatUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/Uisource.lua"))()
 
 -- Services
