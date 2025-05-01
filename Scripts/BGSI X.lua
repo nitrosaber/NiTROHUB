@@ -12,7 +12,7 @@ local RemoteEvent = Remote and Remote:FindFirstChild("Event")
 local RemoteFunction = Remote and Remote:FindFirstChild("Function")
 
 --- Create Window
-local Window = NatUI:Window({
+NatUI:Window({
 	Title = "NiTro Hub",
 	Description = "made by 2o3b.",
 	Icon = "rbxassetid://6035019070"
@@ -24,7 +24,7 @@ local Window = NatUI:Window({
 })
 
 --- Open Toggle UI
-local Main = NatUI:OpenUI({
+NatUI:Farm = OpenUI({
 	Title = "Main",
 	Icon = "rbxasset",
 	BackgroundColor = "fromrgb",
@@ -32,10 +32,8 @@ local Main = NatUI:OpenUI({
 })
 
 
-
-
 --- Open Toggle UI
-local Farm = NatUI:OpenUI({
+NatUI:Farm = OpenUI({
 	Title = "Farm",
 	Icon = "rbxasset",
 	BackgroundColor = "fromrgb",
@@ -43,7 +41,7 @@ local Farm = NatUI:OpenUI({
 })
 
 --- Section
-Farm:Section({
+NatUI:Farm = Section({
 	Title = "Bubble",
 	Icon = "rbxasset"
 })
