@@ -96,7 +96,7 @@ end
 local function StartAutoHatchEggLoop()
     if AutoHatchEggTask then return end
     AutoHatchEggTask = task.spawn(function()
-        -- อัปเดตรายการไข่ที่ต้องการฟัก
+        -- รายการของชื่อไข่
         local availableEggs = {
             "Common Egg",
             "Spotted Egg",
@@ -113,14 +113,14 @@ local function StartAutoHatchEggLoop()
             "100M Egg"
         }
 
-        -- เริ่มลูปการฟักไข่
         while AutoHatchEggEnabled do
             for _, eggName in ipairs(availableEggs) do
                 if not AutoHatchEggEnabled then break end
                 pcall(function()
-                    RemoteEvent:FireServer("HatchEgg", eggName, 6) -- `6` หมายถึงจำนวนไข่ที่ต้องการฟักพร้อมกัน
+                    -- เรียกใช้คำสั่ง HatchEgg
+                    RemoteEvent:FireServer("HatchEgg", eggName, 3) -- 3 คือจำนวนไข่ที่ต้องการฟัก
                 end)
-                task.wait(0.1) -- ตั้งค่าความหน่วงเวลาให้เหมาะสม
+                task.wait(0.1) -- ปรับความหน่วงเวลาตามความเหมาะสม
             end
         end
         AutoHatchEggTask = nil
