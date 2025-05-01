@@ -1,4 +1,0 @@
-local ID = game.PlaceId
-if ID == 85896571713843 then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/nitrosaber/NiTROHUB/refs/heads/main/BSGI"))()
-end
