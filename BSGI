@@ -90,8 +90,20 @@ local function StartAutoHatchEggLoop()
     if AutoHatchEggTask then return end
     AutoHatchEggTask = task.spawn(function()
         local args = {
-            "HatchEgg",
+            "HatchEgg",           
+            "Common Egg",
+            "Spotted Egg",
+            "Iceshard Egg",
+            "Spikey Egg",
+            "Magma Egg",
+            "Crystal Egg",
+            "Lunar Egg",
+            "Void Egg",
+            "Hell Egg",
+            "Nightmare Egg",
+            "Rainbow Egg",
             "Infinity Egg",
+            "100M Egg",
             6
         }
         while AutoHatchEggEnabled do
@@ -150,13 +162,14 @@ local Window = Rayfield:CreateWindow({
 })
 
 -- Controls Tab
-local ControlsTab = Window:CreateTab("Controls", nil)
+local ControlsTab = Window:CreateTab("Controls", "rbxassetid://1234567890") -- Replace with your icon asset ID
 
--- Toggle for BlowBubble
+-- Toggle for BlowBubble with Icon
 ControlsTab:CreateToggle({
     Name = "Blow Bubble",
     CurrentValue = false,
     Flag = "BlowBubbleToggle",
+    Icon = "rbxassetid://1234567891", -- Replace with your custom icon asset ID
     Callback = function(Value)
         BlowBubbleEnabled = Value
         if Value then
@@ -167,11 +180,12 @@ ControlsTab:CreateToggle({
     end
 })
 
--- Toggle for UnlockRiftChest
+-- Toggle for UnlockRiftChest with Icon
 ControlsTab:CreateToggle({
     Name = "Unlock Golden Chest",
     CurrentValue = false,
     Flag = "UnlockRiftChestToggle",
+    Icon = "rbxassetid://1234567892", -- Replace with your custom icon asset ID
     Callback = function(Value)
         UnlockRiftChestEnabled = Value
         if Value then
@@ -182,11 +196,12 @@ ControlsTab:CreateToggle({
     end
 })
 
--- Toggle for Main Loop
+-- Toggle for Main Loop with Icon
 ControlsTab:CreateToggle({
     Name = "Main Loop (Spin, Playtime, Chests)",
     CurrentValue = false,
     Flag = "MainLoopToggle",
+    Icon = "rbxassetid://1234567893", -- Replace with your custom icon asset ID
     Callback = function(Value)
         MainLoopEnabled = Value
         if Value then
@@ -197,11 +212,12 @@ ControlsTab:CreateToggle({
     end
 })
 
--- Toggle for Auto Hatch Egg
+-- Toggle for Auto Hatch Egg with Icon
 ControlsTab:CreateToggle({
-    Name = "Auto Hatch Infinity Egg (x6)",
+    Name = "Fast Hatch Egg",
     CurrentValue = false,
     Flag = "AutoHatchEggToggle",
+    Icon = "rbxassetid://1234567894", -- Replace with your custom icon asset ID
     Callback = function(Value)
         AutoHatchEggEnabled = Value
         if Value then
@@ -212,12 +228,13 @@ ControlsTab:CreateToggle({
     end
 })
 
--- Settings Tab
-local SettingsTab = Window:CreateTab("Settings", nil)
+-- Settings Tab with Icon
+local SettingsTab = Window:CreateTab("Settings", "rbxassetid://1234567895") -- Replace with your icon asset ID
 
--- Destroy UI Button
+-- Destroy UI Button with Icon
 SettingsTab:CreateButton({
     Name = "Destroy UI",
+    Icon = "rbxassetid://1234567896", -- Replace with your custom icon asset ID
     Callback = function()
         StopBlowBubbleLoop()
         StopUnlockRiftChestLoop()
