@@ -1,5 +1,12 @@
 -- Load Rayfield Library
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local success, Rayfield = pcall(function()
+    return loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+end)
+
+if not success or not Rayfield then
+    warn("Failed to load Rayfield Library. Please check the URL or your internet connection.")
+    return
+end
 
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -161,8 +168,20 @@ local Window = Rayfield:CreateWindow({
     }
 })
 
+if not Window then
+    warn("Failed to create Rayfield Window")
+    return
+else
+    print("Rayfield Window created successfully!")
+end
+
 -- Controls Tab
 local ControlsTab = Window:CreateTab("Controls")
+if not ControlsTab then
+    warn("Failed to create Controls Tab")
+else
+    print("Controls Tab created successfully!")
+end
 
 -- Toggle for BlowBubble
 ControlsTab:CreateToggle({
@@ -226,6 +245,11 @@ ControlsTab:CreateToggle({
 
 -- Settings Tab
 local SettingsTab = Window:CreateTab("Settings")
+if not SettingsTab then
+    warn("Failed to create Settings Tab")
+else
+    print("Settings Tab created successfully!")
+end
 
 -- Destroy UI Button
 SettingsTab:CreateButton({
