@@ -162,14 +162,13 @@ local Window = Rayfield:CreateWindow({
 })
 
 -- Controls Tab
-local ControlsTab = Window:CreateTab("Controls", "rbxassetid://1234567890") -- Replace with your icon asset ID
+local ControlsTab = Window:CreateTab("Controls")
 
--- Toggle for BlowBubble with Icon
+-- Toggle for BlowBubble
 ControlsTab:CreateToggle({
     Name = "Blow Bubble",
     CurrentValue = false,
     Flag = "BlowBubbleToggle",
-    Icon = "rbxassetid://1234567891", -- Replace with your custom icon asset ID
     Callback = function(Value)
         BlowBubbleEnabled = Value
         if Value then
@@ -180,12 +179,11 @@ ControlsTab:CreateToggle({
     end
 })
 
--- Toggle for UnlockRiftChest with Icon
+-- Toggle for UnlockRiftChest
 ControlsTab:CreateToggle({
     Name = "Unlock Golden Chest",
     CurrentValue = false,
     Flag = "UnlockRiftChestToggle",
-    Icon = "rbxassetid://1234567892", -- Replace with your custom icon asset ID
     Callback = function(Value)
         UnlockRiftChestEnabled = Value
         if Value then
@@ -196,12 +194,11 @@ ControlsTab:CreateToggle({
     end
 })
 
--- Toggle for Main Loop with Icon
+-- Toggle for Main Loop
 ControlsTab:CreateToggle({
     Name = "Main Loop (Spin, Playtime, Chests)",
     CurrentValue = false,
     Flag = "MainLoopToggle",
-    Icon = "rbxassetid://1234567893", -- Replace with your custom icon asset ID
     Callback = function(Value)
         MainLoopEnabled = Value
         if Value then
@@ -212,12 +209,11 @@ ControlsTab:CreateToggle({
     end
 })
 
--- Toggle for Auto Hatch Egg with Icon
+-- Toggle for Auto Hatch Egg
 ControlsTab:CreateToggle({
     Name = "Fast Hatch Egg",
     CurrentValue = false,
     Flag = "AutoHatchEggToggle",
-    Icon = "rbxassetid://1234567894", -- Replace with your custom icon asset ID
     Callback = function(Value)
         AutoHatchEggEnabled = Value
         if Value then
@@ -228,13 +224,12 @@ ControlsTab:CreateToggle({
     end
 })
 
--- Settings Tab with Icon
-local SettingsTab = Window:CreateTab("Settings", "rbxassetid://1234567895") -- Replace with your icon asset ID
+-- Settings Tab
+local SettingsTab = Window:CreateTab("Settings")
 
--- Destroy UI Button with Icon
+-- Destroy UI Button
 SettingsTab:CreateButton({
     Name = "Destroy UI",
-    Icon = "rbxassetid://1234567896", -- Replace with your custom icon asset ID
     Callback = function()
         StopBlowBubbleLoop()
         StopUnlockRiftChestLoop()
