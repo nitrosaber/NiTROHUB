@@ -111,44 +111,6 @@ local function StartAutoHatchEggLoop()
     end)
 end
 
--- เพิ่ม Dropdown สำหรับเลือกไข่ที่ต้องการเปิด
-ControlsTab:CreateDropdown({
-    Name = "Select Egg to Hatch",
-    Options = {
-        "Common Egg",
-        "Spotted Egg",
-        "Iceshard Egg",
-        "Spikey Egg",
-        "Magma Egg",
-        "Crystal Egg",
-        "Lunar Egg",
-        "Void Egg",
-        "Hell Egg",
-        "Nightmare Egg",
-        "Rainbow Egg",
-        "Infinity Egg",
-        "100M Egg"
-    },
-    CurrentOption = "Common Egg", -- ค่าเริ่มต้น
-    Flag = "EggDropdown",
-    Callback = function(Value)
-        SelectedEgg = Value -- ตั้งไข่ที่ผู้ใช้เลือก
-    end
-})
-
--- เพิ่ม Slider สำหรับเลือกจำนวนไข่ที่ต้องการเปิด
-ControlsTab:CreateSlider({
-    Name = "Select Quantity (1-6)",
-    Range = {1, 6}, -- ช่วงค่าที่อนุญาต
-    Increment = 1, -- เพิ่มทีละ 1
-    Suffix = " Egg(s)", -- หน่วยที่แสดงผลท้ายค่า
-    CurrentValue = 3, -- ค่าเริ่มต้น
-    Flag = "EggQuantitySlider",
-    Callback = function(Value)
-        SelectedQuantity = Value -- ตั้งค่าจำนวนไข่ที่ผู้ใช้เลือก
-    end
-})
-
 -- Stop Functions
 local function StopBlowBubbleLoop()
     BlowBubbleEnabled = false
@@ -266,6 +228,44 @@ ControlsTab:CreateToggle({
         else
             StopAutoHatchEggLoop()
         end
+    end
+})
+
+-- เพิ่ม Dropdown สำหรับเลือกไข่ที่ต้องการเปิด
+ControlsTab:CreateDropdown({
+    Name = "Select Egg to Hatch",
+    Options = {
+        "Common Egg",
+        "Spotted Egg",
+        "Iceshard Egg",
+        "Spikey Egg",
+        "Magma Egg",
+        "Crystal Egg",
+        "Lunar Egg",
+        "Void Egg",
+        "Hell Egg",
+        "Nightmare Egg",
+        "Rainbow Egg",
+        "Infinity Egg",
+        "100M Egg"
+    },
+    CurrentOption = "Common Egg", -- ค่าเริ่มต้น
+    Flag = "EggDropdown",
+    Callback = function(Value)
+        SelectedEgg = Value -- ตั้งไข่ที่ผู้ใช้เลือก
+    end
+})
+
+-- เพิ่ม Slider สำหรับเลือกจำนวนไข่ที่ต้องการเปิด
+ControlsTab:CreateSlider({
+    Name = "Select Quantity (1-6)",
+    Range = {1, 6}, -- ช่วงค่าที่อนุญาต
+    Increment = 1, -- เพิ่มทีละ 1
+    Suffix = " Egg(s)", -- หน่วยที่แสดงผลท้ายค่า
+    CurrentValue = 3, -- ค่าเริ่มต้น
+    Flag = "EggQuantitySlider",
+    Callback = function(Value)
+        SelectedQuantity = Value -- ตั้งค่าจำนวนไข่ที่ผู้ใช้เลือก
     end
 })
 
