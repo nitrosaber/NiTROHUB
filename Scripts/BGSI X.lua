@@ -1,4 +1,4 @@
--- Load Test Library
+-- Load NatUI Library
 local NatUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/Uisource.lua"))()
 
 -- Services
@@ -16,15 +16,10 @@ NatUI:Window({
 	Title = "NiTro Hub",
 	Description = "made by 2o3b.",
 	Icon = "rbxassetid://6035019070"
-	ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "NiTroHub",
-        FileName = "Script-BGSI-Settings"
-    }
 })
 
 --- Open Toggle UI
-NatUI:Farm = OpenUI({
+NatUI:Main = OpenUI({
 	Title = "Main",
 	Icon = "rbxasset",
 	BackgroundColor = "fromrgb",
