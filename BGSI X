@@ -1,6 +1,6 @@
--- Load NatUI Library
+-- Load NatUI Library from ArdyBotzz
 local success, NatUI = pcall(function()
-    return loadstring(game:HttpGet('https://github.com/ArdyBottzz/NatUI/raw/main/library.lua'))()
+    return loadstring(game:HttpGet('https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/Uisource.lua'))()
 end)
 
 if not success or not NatUI then
@@ -146,10 +146,10 @@ print("NatUI Window created successfully.")
 
 -- Controls Tab
 local ControlsTab = Window:CreateTab("Controls")
-if not ControlsTab then
-    warn("Failed to create Controls Tab")
-else
+if ControlsTab then
     print("Controls Tab created successfully!")
+else
+    warn("Failed to create Controls Tab")
 end
 
 -- Toggles
@@ -225,10 +225,10 @@ ControlsTab:CreateSlider({
 
 -- Settings Tab
 local SettingsTab = Window:CreateTab("Settings")
-if not SettingsTab then
-    warn("Failed to create Settings Tab")
-else
+if SettingsTab then
     print("Settings Tab created successfully!")
+else
+    warn("Failed to create Settings Tab")
 end
 
 -- Destroy UI Button
