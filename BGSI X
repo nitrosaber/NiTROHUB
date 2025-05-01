@@ -20,7 +20,6 @@ local Remote = Network and Network:WaitForChild("Remote", 10)
 local RemoteEvent = Remote and Remote:FindFirstChild("Event")
 local RemoteFunction = Remote and Remote:FindFirstChild("Function")
 
--- Exit if critical services are missing
 if not (Shared and Framework and Network and Remote and RemoteEvent and RemoteFunction) then
     warn("Failed to initialize: Critical services or remotes not found.")
     return
@@ -34,8 +33,8 @@ local MainLoopEnabled = false
 local AutoHatchEggEnabled = false
 
 -- Variables for user selections
-local SelectedEgg = "Common Egg" -- Default selected egg
-local SelectedQuantity = 3 -- Default quantity
+local SelectedEgg = "Common Egg"
+local SelectedQuantity = 3
 
 -- Task references for loop cancellation
 local BlowBubbleTask, UnlockRiftChestTask, MainLoopTask, AutoHatchEggTask
@@ -111,10 +110,9 @@ local function StartAutoHatchEggLoop()
     AutoHatchEggTask = StartTask(AutoHatchEggTask, function()
         while AutoHatchEggEnabled do
             pcall(function()
-                -- Use the selected egg and quantity from user input
                 RemoteEvent:FireServer("HatchEgg", SelectedEgg, SelectedQuantity)
             end)
-            task.wait(0.1) -- Adjust the delay as needed
+            task.wait(0.1)
         end
         AutoHatchEggTask = nil
     end)
@@ -142,17 +140,9 @@ if not Window then
     warn("Failed to create NatUI Window")
     return
 end
-print("NatUI Window created successfully.")
 
--- Controls Tab
+-- Add Controls Tab
 local ControlsTab = Window:CreateTab("Controls")
-if ControlsTab then
-    print("Controls Tab created successfully!")
-else
-    warn("Failed to create Controls Tab")
-end
-
--- Toggles
 ControlsTab:CreateToggle({
     Name = "Blow Bubble",
     CurrentValue = false,
@@ -173,73 +163,21 @@ ControlsTab:CreateToggle({
     end
 })
 
-ControlsTab:CreateToggle({
-    Name = "Main Loop (Spin, Playtime, Chests)",
-    CurrentValue = false,
-    Flag = "MainLoopToggle",
-    Callback = function(Value)
-        MainLoopEnabled = Value
-        if Value then StartMainLoop() else StopMainLoop() end
-    end
-})
-
-ControlsTab:CreateToggle({
-    Name = "Fast Hatch Egg",
-    CurrentValue = false,
-    Flag = "AutoHatchEggToggle",
-    Callback = function(Value)
-        AutoHatchEggEnabled = Value
-        if Value then StartAutoHatchEggLoop() else StopAutoHatchEggLoop() end
-    end
-})
-
--- Dropdown for Egg Selection
 ControlsTab:CreateDropdown({
     Name = "Select Egg to Hatch",
-    Options = {
-        "Common Egg", "Spotted Egg", "Iceshard Egg", "Spikey Egg", "Magma Egg",
-        "Crystal Egg", "Lunar Egg", "Void Egg", "Hell Egg", "Nightmare Egg",
-        "Rainbow Egg", "Infinity Egg", "100M Egg"
-    },
+    Options = {"Common Egg", "Spotted Egg", "Iceshard Egg"},
     CurrentOption = "Common Egg",
-    Flag = "EggDropdown",
     Callback = function(Value)
         SelectedEgg = Value
-        print("Selected Egg: " .. SelectedEgg)
     end
 })
 
--- Slider for Egg Quantity
 ControlsTab:CreateSlider({
-    Name = "Select Quantity (1-6)",
+    Name = "Select Quantity",
     Range = {1, 6},
     Increment = 1,
-    Suffix = " Egg(s)",
     CurrentValue = 3,
-    Flag = "EggQuantitySlider",
     Callback = function(Value)
         SelectedQuantity = Value
-        print("Selected Quantity: " .. SelectedQuantity)
-    end
-})
-
--- Settings Tab
-local SettingsTab = Window:CreateTab("Settings")
-if SettingsTab then
-    print("Settings Tab created successfully!")
-else
-    warn("Failed to create Settings Tab")
-end
-
--- Destroy UI Button
-SettingsTab:CreateButton({
-    Name = "Destroy UI",
-    Callback = function()
-        StopBlowBubbleLoop()
-        StopUnlockRiftChestLoop()
-        StopMainLoop()
-        StopAutoHatchEggLoop()
-        NatUI:Destroy()
-        print("UI destroyed successfully!")
     end
 })
