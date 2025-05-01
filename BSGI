@@ -34,7 +34,7 @@ local MainLoopEnabled = false
 local AutoHatchEggEnabled = false
 
 -- Variables for user selections
-local SelectedEgg = "Common Egg"
+local SelectedEgg = "Common Egg" -- Default selected egg
 local SelectedQuantity = 3 -- Default quantity
 
 -- Task references for loop cancellation
@@ -111,9 +111,10 @@ local function StartAutoHatchEggLoop()
     AutoHatchEggTask = StartTask(AutoHatchEggTask, function()
         while AutoHatchEggEnabled do
             pcall(function()
+                -- Use the selected egg and quantity from user input
                 RemoteEvent:FireServer("HatchEgg", SelectedEgg, SelectedQuantity)
             end)
-            task.wait(0.1)
+            task.wait(0.1) -- Adjust the delay as needed
         end
         AutoHatchEggTask = nil
     end)
@@ -204,6 +205,7 @@ ControlsTab:CreateDropdown({
     Flag = "EggDropdown",
     Callback = function(Value)
         SelectedEgg = Value
+        print("Selected Egg: " .. SelectedEgg)
     end
 })
 
@@ -217,6 +219,7 @@ ControlsTab:CreateSlider({
     Flag = "EggQuantitySlider",
     Callback = function(Value)
         SelectedQuantity = Value
+        print("Selected Quantity: " .. SelectedQuantity)
     end
 })
 
