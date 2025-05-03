@@ -1,3 +1,10 @@
+warn("Anti afk running")
+game:GetService("Players").LocalPlayer.Idled:connect(function()
+warn("Anti afk ran")
+game:GetService("VirtualUser"):CaptureController()
+game:GetService("VirtualUser"):ClickButton2(Vector2.new())
+end)
+
 -- Load Rayfield Library
 local success, Rayfield = pcall(function()
     return loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
