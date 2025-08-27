@@ -1,0 +1,252 @@
+warn("Anti afk running")
+game:GetService("Players").LocalPlayer.Idled:connect(function()
+    warn("Anti afk ran")
+    game:GetService("VirtualUser"):CaptureController()
+    game:GetService("VirtualUser"):ClickButton2(Vector2.new())
+end)
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UIS = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
+
+local autoFarmActive = false
+
+local function startAutoFarm(updateStatus)
+    spawn(function()
+        while autoFarmActive do
+            for i, v in pairs(workspace:GetChildren()) do
+                if v.ClassName == "Model" and v:FindFirstChild("Container") or v.Name == "PortCraneOversized" then
+                    v:Destroy()
+                end
+            end
+            task.wait(1)
+        end
+    end)
+
+    spawn(function()
+        while autoFarmActive do
+            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if not hum or not hum.SeatPart then updateStatus("Autofarm: OFF (no car)") autoFarmActive = false return end
+            local car = hum.SeatPart.Parent
+            car.PrimaryPart = car.Body:FindFirstChild("#Weight")
+
+            if not getfenv().first then
+                if workspace.Workspace:FindFirstChild("Buildings") then
+                    workspace.Workspace.Buildings:Destroy()
+                end
+                car:PivotTo(CFrame.new(
+                    Vector3.new(-7594.541, -3.51, 5130.95),
+                    Vector3.new(-6205.298, -3.50, 8219.853)
+                ))
+                task.wait(0.1)
+            end
+
+            car.PrimaryPart.Velocity = Vector3.new(0, 0, 0)
+            getfenv().first = true
+            local location = Vector3.new(-6205.298, 100, 8219.853)
+            repeat
+                task.wait()
+                local speed = 550
+                car.PrimaryPart.Velocity = car.PrimaryPart.CFrame.LookVector * speed
+                car:PivotTo(CFrame.new(car.PrimaryPart.Position, location))
+            until LocalPlayer:DistanceFromCharacter(location) < 50 or not autoFarmActive
+
+            car.PrimaryPart.Velocity = Vector3.new(0, 0, 0)
+            location = Vector3.new(-7594.541, 100, 5130.952)
+            repeat
+                task.wait()
+                local speed = 550
+                car.PrimaryPart.Velocity = car.PrimaryPart.CFrame.LookVector * speed
+                car:PivotTo(CFrame.new(car.PrimaryPart.Position, location))
+            until LocalPlayer:DistanceFromCharacter(location) < 50 or not autoFarmActive
+
+            car.PrimaryPart.Velocity = Vector3.new(0, 0, 0)
+        end
+    end)
+end
+
+local function stopAutoFarm()
+    autoFarmActive = false
+end
+
+local function safeParent(gui)
+    local ok = pcall(function() gui.Parent = game.CoreGui end)
+    if not ok then
+        gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end
+end
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "AutoFarmGUI_bymilu"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true -- make full-screen overlays cover notch/topbar area
+safeParent(gui)
+
+-- Full black screen overlay (separate control)
+local blackScreen = Instance.new("Frame")
+blackScreen.Name = "FullBlack"
+blackScreen.Active = true
+blackScreen.Size = UDim2.new(1.02, 0, 1.02, 0) -- slight oversize to kill edge gaps
+blackScreen.Position = UDim2.new(-0.01, 0, -0.01, 0)
+blackScreen.BackgroundColor3 = Color3.new(0,0,0)
+blackScreen.BorderSizePixel = 0
+blackScreen.Visible = false
+blackScreen.ZIndex = 10000
+blackScreen.Parent = gui
+
+-- Double-tap anywhere to close black screen
+local lastTap = 0
+UIS.InputBegan:Connect(function(input, gp)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        local now = tick()
+        if now - lastTap <= 0.35 then
+            if blackScreen.Visible then
+                blackScreen.Visible = false
+                pcall(function() StarterGui:SetCore("TopbarEnabled", true) end)
+            end
+        end
+        lastTap = now
+    end
+end)
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 280, 0, 110)
+frame.Position = UDim2.new(0.3,0,0.3,0)
+frame.BackgroundColor3 = Color3.fromRGB(24,24,24)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,12)
+
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1,0,0,34)
+titleBar.BackgroundColor3 = Color3.fromRGB(32,32,32)
+titleBar.BorderSizePixel = 0
+titleBar.Parent = frame
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0,12)
+
+local title = Instance.new("TextLabel")
+title.BackgroundTransparency = 1
+title.Size = UDim2.new(1,-122,1,0) -- leave space for 3 buttons on the right
+title.Position = UDim2.new(0,12,0,0)
+title.Font = Enum.Font.GothamSemibold
+title.TextSize = 16
+title.TextColor3 = Color3.fromRGB(235,235,235)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Text = "AutoFarm by milu"
+title.Parent = titleBar
+
+-- New: Black Screen button (separate control)
+local btnBlack = Instance.new("TextButton")
+btnBlack.Size = UDim2.new(0,28,0,24)
+btnBlack.Position = UDim2.new(1,-96,0.5,-12)
+btnBlack.Text = "Black"
+btnBlack.Font = Enum.Font.GothamBold
+btnBlack.TextSize = 12
+btnBlack.TextColor3 = Color3.fromRGB(220,220,220)
+btnBlack.BackgroundColor3 = Color3.fromRGB(48,48,48)
+btnBlack.AutoButtonColor = true
+btnBlack.Parent = titleBar
+Instance.new("UICorner", btnBlack).CornerRadius = UDim.new(0,6)
+
+local btnMin = Instance.new("TextButton")
+btnMin.Size = UDim2.new(0,28,0,24)
+btnMin.Position = UDim2.new(1,-64,0.5,-12)
+btnMin.Text = "—"
+btnMin.Font = Enum.Font.GothamBold
+btnMin.TextSize = 18
+btnMin.TextColor3 = Color3.fromRGB(220,220,220)
+btnMin.BackgroundColor3 = Color3.fromRGB(48,48,48)
+btnMin.AutoButtonColor = true
+btnMin.Parent = titleBar
+Instance.new("UICorner", btnMin).CornerRadius = UDim.new(0,6)
+
+local btnExit = Instance.new("TextButton")
+btnExit.Size = UDim2.new(0,28,0,24)
+btnExit.Position = UDim2.new(1,-32,0.5,-12)
+btnExit.Text = "×"
+btnExit.Font = Enum.Font.GothamBold
+btnExit.TextSize = 18
+btnExit.TextColor3 = Color3.fromRGB(220,220,220)
+btnExit.BackgroundColor3 = Color3.fromRGB(70,35,35)
+btnExit.AutoButtonColor = true
+btnExit.Parent = titleBar
+Instance.new("UICorner", btnExit).CornerRadius = UDim.new(0,6)
+
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1,-24,1,-46)
+content.Position = UDim2.new(0,12,0,40)
+content.BackgroundTransparency = 1
+content.Parent = frame
+
+local status = Instance.new("TextButton")
+status.Size = UDim2.new(1,0,0,44)
+status.Position = UDim2.new(0,0,0,0)
+status.Font = Enum.Font.GothamSemibold
+status.TextSize = 18
+status.BackgroundColor3 = Color3.fromRGB(36,36,36)
+status.TextColor3 = Color3.fromRGB(240,240,240)
+status.AutoButtonColor = true
+status.Parent = content
+Instance.new("UICorner", status).CornerRadius = UDim.new(0,10)
+
+local hint = Instance.new("TextLabel")
+hint.Size = UDim2.new(1,0,0,20)
+hint.Position = UDim2.new(0,0,0,52)
+hint.BackgroundTransparency = 1
+hint.Font = Enum.Font.Gotham
+hint.TextSize = 12
+hint.TextColor3 = Color3.fromRGB(170,170,170)
+hint.Text = "Sit in your car, then click to toggle."
+hint.Parent = content
+
+local function setStatus(on,note)
+    if on then
+        status.Text = "Autofarm: ON"
+        status.BackgroundColor3 = Color3.fromRGB(28,120,60)
+    else
+        status.Text = note or "Autofarm: OFF"
+        status.BackgroundColor3 = Color3.fromRGB(36,36,36)
+    end
+end
+setStatus(false)
+
+-- Separate black screen button behavior
+btnBlack.MouseButton1Click:Connect(function()
+    blackScreen.Visible = true
+    pcall(function() StarterGui:SetCore("TopbarEnabled", false) end)
+end)
+
+-- Buttons
+local minimized = false
+btnMin.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    if minimized then
+        content.Visible = false
+        frame.Size = UDim2.new(0,280,0,40)
+    else
+        content.Visible = true
+        frame.Size = UDim2.new(0,280,0,110)
+    end
+end)
+
+btnExit.MouseButton1Click:Connect(function()
+    stopAutoFarm()
+    gui:Destroy()
+end)
+
+status.MouseButton1Click:Connect(function()
+    autoFarmActive = not autoFarmActive
+    if autoFarmActive then
+        setStatus(true)
+        startAutoFarm(function(txt)
+            setStatus(false,txt)
+        end)
+    else
+        setStatus(false)
+        stopAutoFarm()
+    end
+end)
