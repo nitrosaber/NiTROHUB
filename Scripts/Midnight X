@@ -79,7 +79,7 @@ end
 
 -- GUI
 local gui = Instance.new("ScreenGui")
-gui.Name = "AutoFarmGUI_bymilu"
+gui.Name = "AutoFarmGUI_bynitro"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true -- make full-screen overlays cover notch/topbar area
 safeParent(gui)
@@ -136,7 +136,7 @@ title.Font = Enum.Font.GothamSemibold
 title.TextSize = 16
 title.TextColor3 = Color3.fromRGB(235,235,235)
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.Text = "AutoFarm by milu"
+title.Text = "AutoFarm by nitro"
 title.Parent = titleBar
 
 -- New: Black Screen button (separate control)
