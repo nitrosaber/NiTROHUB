@@ -1,4 +1,4 @@
---// 🌀 Bubble Gum Simulator - Infinity Hatch (NiTroHUB PRO)
+--// 🌀 Bubble Gum Simulator - Infinity Hatch (AppleBlox UI Edition)
 --// ✨ by NiTroHUB x ChatGPT
 
 -- ⚙️ ตั้งค่าเริ่มต้น
@@ -28,9 +28,8 @@ task.spawn(function()
     while task.wait(0.2) do
         for _, name in ipairs(guiNames) do
             local gui = playerGui:FindFirstChild(name)
-            if gui then
-                gui.Enabled = false
-                gui.Visible = false
+            if gui and gui:IsA("ScreenGui") then
+                gui.Enabled = false -- ใช้ Enabled แทน Visible
             end
         end
     end
@@ -40,8 +39,7 @@ end)
 game.DescendantAdded:Connect(function(obj)
     if obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") or obj:IsA("ScreenGui") then
         if string.find(obj.Name:lower(), "hatch") or string.find(obj.Name:lower(), "egg") then
-            obj.Enabled = false
-            obj.Visible = false
+            obj.Enabled = false -- ใช้ Enabled แทน Visible
         end
     end
 end)
@@ -51,7 +49,9 @@ end)
 --------------------------------------------------------------------
 local function hatchEgg()
     local args = {"HatchEgg", EGG_NAME, HATCH_AMOUNT}
-    remoteEvent:FireServer(unpack(args))
+    pcall(function() -- เพิ่ม pcall เพื่อป้องกันข้อผิดพลาด
+        remoteEvent:FireServer(unpack(args))
+    end)
 end
 
 --------------------------------------------------------------------
@@ -82,74 +82,98 @@ UIS.InputBegan:Connect(function(input, isTyping)
 end)
 
 --------------------------------------------------------------------
--- 🧭 GUI หลัก
+-- 🎨 GUI หลัก สไตล์ AppleBlox
 --------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui", playerGui)
-ScreenGui.Name = "InfinityHatchGUI"
+ScreenGui.Name = "InfinityHatchUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 
--- 🎛️ กรอบหลัก
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
-Frame.Size = UDim2.new(0, 200, 0, 100)
-Frame.Active = true
-Frame.Draggable = true
-Frame.Visible = true
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 380, 0, 220)
+MainFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 
-Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
-local UIStroke = Instance.new("UIStroke", Frame)
-UIStroke.Color = Color3.fromRGB(255, 165, 0)
-UIStroke.Thickness = 2
+local Header = Instance.new("TextLabel", MainFrame)
+Header.Text = "🌀 NiTroHUB Infinity Hatch"
+Header.Font = Enum.Font.GothamBold
+Header.TextSize = 18
+Header.TextColor3 = Color3.fromRGB(255, 85, 85)
+Header.BackgroundTransparency = 1
+Header.Position = UDim2.new(0, 20, 0, 15)
+Header.Size = UDim2.new(1, -40, 0, 25)
+Header.TextXAlignment = Enum.TextXAlignment.Left
 
--- 🏷️ Title
-local Title = Instance.new("TextLabel", Frame)
-Title.BackgroundTransparency = 1
-Title.Position = UDim2.new(0, 0, 0, 10)
-Title.Size = UDim2.new(1, 0, 0, 25)
-Title.Font = Enum.Font.GothamBold
-Title.Text = "🌀 Infinity Hatch"
-Title.TextColor3 = Color3.new(1, 1, 1)
-Title.TextSize = 16
+-- เส้นคั่น
+local Line = Instance.new("Frame", MainFrame)
+Line.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+Line.Position = UDim2.new(0, 15, 0, 50)
+Line.Size = UDim2.new(1, -30, 0, 1)
 
--- 🔘 ปุ่มสลับสถานะ
-local ToggleButton = Instance.new("TextButton", Frame)
-ToggleButton.Position = UDim2.new(0.1, 0, 0.5, 0)
-ToggleButton.Size = UDim2.new(0.8, 0, 0.35, 0)
-ToggleButton.Text = "เริ่มสุ่มไข่ 🔁"
-ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 115, 0)
-ToggleButton.TextColor3 = Color3.new(1, 1, 1)
-ToggleButton.Font = Enum.Font.GothamBold
-ToggleButton.TextSize = 14
-Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 6)
+-- Info
+local Info = Instance.new("TextLabel", MainFrame)
+Info.BackgroundTransparency = 1
+Info.Position = UDim2.new(0, 20, 0, 60)
+Info.Size = UDim2.new(1, -40, 0, 60)
+Info.Font = Enum.Font.Gotham
+Info.TextColor3 = Color3.fromRGB(220, 220, 220)
+Info.TextSize = 14
+Info.TextXAlignment = Enum.TextXAlignment.Left
+Info.TextYAlignment = Enum.TextYAlignment.Top
+Info.Text = "• Egg: "..EGG_NAME.."\n• Amount: "..HATCH_AMOUNT.." eggs / hatch\n• Delay: "..HATCH_DELAY.."s"
 
-ToggleButton.MouseButton1Click:Connect(function()
+-- ปุ่ม Toggle
+local HatchBtn = Instance.new("TextButton", MainFrame)
+HatchBtn.Position = UDim2.new(0, 20, 0, 130)
+HatchBtn.Size = UDim2.new(0, 340, 0, 35)
+HatchBtn.BackgroundColor3 = Color3.fromRGB(255, 115, 0)
+HatchBtn.TextColor3 = Color3.new(1, 1, 1)
+HatchBtn.Font = Enum.Font.GothamBold
+HatchBtn.Text = "เริ่มสุ่มไข่ 🔁"
+HatchBtn.TextSize = 14
+Instance.new("UICorner", HatchBtn).CornerRadius = UDim.new(0, 6)
+
+HatchBtn.MouseButton1Click:Connect(function()
     running = not running
     if running then
-        ToggleButton.Text = "หยุดสุ่ม ⏸️"
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        HatchBtn.Text = "หยุดสุ่ม ⏸️"
+        HatchBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     else
-        ToggleButton.Text = "เริ่มสุ่มไข่ 🔁"
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 115, 0)
+        HatchBtn.Text = "เริ่มสุ่มไข่ 🔁"
+        HatchBtn.BackgroundColor3 = Color3.fromRGB(255, 115, 0)
     end
 end)
 
+-- ปุ่ม Close
+local CloseBtn = Instance.new("TextButton", MainFrame)
+CloseBtn.Position = UDim2.new(1, -35, 0, 10)
+CloseBtn.Size = UDim2.new(0, 25, 0, 25)
+CloseBtn.Text = "×"
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+end)
+
 --------------------------------------------------------------------
--- 🧿 ปุ่มไอคอนเล็ก (เปิด / ปิด GUI + Hover ชื่อ NiTroHUB)
+-- 🧿 ปุ่มไอคอนเล็ก + Hover "NiTroHUB"
 --------------------------------------------------------------------
 local ToggleIcon = Instance.new("TextButton", ScreenGui)
-ToggleIcon.Size = UDim2.new(0, 40, 0, 40)
+ToggleIcon.Size = UDim2.new(0, 45, 0, 45)
 ToggleIcon.Position = UDim2.new(0.02, 0, 0.7, 0)
 ToggleIcon.Text = "🌀"
 ToggleIcon.Font = Enum.Font.GothamBold
-ToggleIcon.TextSize = 24
+ToggleIcon.TextSize = 22
 ToggleIcon.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
 ToggleIcon.TextColor3 = Color3.new(1, 1, 1)
 ToggleIcon.Draggable = true
 Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1, 0)
 
--- 🏷️ Tooltip NiTroHUB
 local Tooltip = Instance.new("TextLabel", ToggleIcon)
 Tooltip.Size = UDim2.new(0, 100, 0, 25)
 Tooltip.Position = UDim2.new(1, 5, 0.25, 0)
@@ -161,28 +185,23 @@ Tooltip.TextSize = 14
 Tooltip.Visible = false
 Instance.new("UICorner", Tooltip).CornerRadius = UDim.new(0, 6)
 
-ToggleIcon.MouseEnter:Connect(function()
-    Tooltip.Visible = true
-end)
-ToggleIcon.MouseLeave:Connect(function()
-    Tooltip.Visible = false
-end)
-
+ToggleIcon.MouseEnter:Connect(function() Tooltip.Visible = true end)
+ToggleIcon.MouseLeave:Connect(function() Tooltip.Visible = false end)
 ToggleIcon.MouseButton1Click:Connect(function()
-    Frame.Visible = not Frame.Visible
+    MainFrame.Visible = not MainFrame.Visible
 end)
 
 --------------------------------------------------------------------
--- 💤 Anti AFK (ป้องกันหลุด)
+-- 💤 Anti AFK
 --------------------------------------------------------------------
 task.spawn(function()
     local vu = game:GetService("VirtualUser")
     game:GetService("Players").LocalPlayer.Idled:Connect(function()
-        vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+        vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
         task.wait(1)
-        vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+        vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
         print("[🛡️] Anti AFK ทำงานแล้ว!")
     end)
 end)
 
-print("✅ โหลด NiTroHUB เรียบร้อย! ใช้ปุ่ม J หรือปุ่ม GUI เพื่อเปิด/ปิดการสุ่มไข่")
+print("✅ โหลด NiTroHUB AppleBlox UI สำเร็จ! ใช้ปุ่ม J หรือ GUI เพื่อเปิด/ปิด")
