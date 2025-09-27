@@ -1,14 +1,14 @@
 --// 🌀 NiTroHUB PRO - Final Evolution (Non-Teleport Edition)
---// ✨ by NiTroHUB x ChatGPT (ปรับปรุงล่าสุด)
+--// ✨ by NiTroHUB x ChatGPT (ปรับปรุงล่าสุดตามคำขอ)
 --//
 --// คุณสมบัติหลัก:
 --//   - สุ่มไข่อัตโนมัติ (Infinity Hatch)
---//   - เก็บกล่องสมบัติอัตโนมัติ (Auto Chest) **โดยไม่ใช้การเทเลพอร์ต**
+--//   - เก็บกล่องสมบัติอัตโนมัติ (Auto Chest) **ปรับปรุงประสิทธิภาพ**
 --//   - ควบคุมการทำงานของ Auto Hatch และ Auto Chest ได้อย่างอิสระ
 --//   - การแจ้งเตือนผ่าน Discord Webhook เมื่อเก็บกล่องสำเร็จ
 --//   - ปิดอนิเมชันและ UI ที่ไม่จำเป็นเพื่อประสิทธิภาพสูงสุด
 --//   - ระบบป้องกัน AFK (Anti-AFK)
---//   - GUI ควบคุมที่ใช้งานง่ายและลากตำแหน่งได้
+--//   - GUI ควบคุมที่ใช้งานง่ายและลากตำแหน่งได้ พร้อมปุ่มย่อ/ขยาย
 --//   - Hotkey: กดปุ่ม 'J' เพื่อเปิด/ปิดการสุ่มไข่, 'K' เพื่อเปิด/ปิดการเก็บกล่อง
 --// =================================================================
 
@@ -23,8 +23,8 @@ local HATCH_DELAY = 0.05                -- เวลาระหว่างส�
 -- ส่วนของ Auto Chest
 -- *** ปิดการเทเลพอร์ตเป็นค่าเริ่มต้น ***
 local TELEPORT_TO_CHEST = false         -- true = เทเลพอร์ตไปที่กล่องก่อนเก็บ, false = ไม่เทเลพอร์ต
-local CHEST_CHECK_INTERVAL = 10         -- ความถี่ในการตรวจหากล่อง (วินาที)
-local CHEST_COLLECT_COOLDOWN = 60       -- คูลดาวน์หลังจากเก็บกล่องเดิมแล้ว (วินาที)
+local CHEST_CHECK_INTERVAL = 60         -- ความถี่ในการตรวจหากล่อง (วินาที)
+local CHEST_COLLECT_COOLDOWN = 180      -- คูลดาวน์หลังจากเก็บกล่องเดิมแล้ว (วินาที)
 
 -- 📦 รายชื่อกล่องที่ต้องการให้เก็บ (สามารถเพิ่ม/ลบได้)
 local CHEST_NAMES = {
@@ -81,8 +81,9 @@ end
 local hatchRemote = findRemote({"HatchEgg", "EggHatch", "RemoteEvent", "DefaultRemote"})
 if hatchRemote then logmsg("✅ Hatch RemoteEvent พบแล้ว:", hatchRemote:GetFullName()) else warn("❌ ไม่พบ Hatch RemoteEvent!") end
 
-local collectRemote = findRemote({"RemoteEvent", "DefaultRemote", "CollectChest"})
-if collectRemote then logmsg("✅ Collect RemoteEvent พบแล้ว:", collectRemote:GetFullName()) else warn("❌ ไม่พบ Collect RemoteEvent, AutoChest อาจใช้ได้แค่ firetouchinterest") end
+-- ✨ [อัปเดต] เพิ่ม RemoteEvent สำหรับเก็บกล่องโดยเฉพาะตามที่ระบุ
+local specificCollectRemote = ReplicatedStorage:WaitForChild("Shared", 5) and ReplicatedStorage.Shared:WaitForChild("Framework", 5) and ReplicatedStorage.Shared.Framework:WaitForChild("Network", 5) and ReplicatedStorage.Shared.Framework.Network:WaitForChild("Remote", 5) and ReplicatedStorage.Shared.Framework.Network.Remote:WaitForChild("RemoteEvent", 5)
+if specificCollectRemote then logmsg("✅ Specific Collect RemoteEvent พบแล้ว!") else warn("⚠️ ไม่พบ Specific Collect RemoteEvent, จะใช้ระบบสำรอง") end
 
 -- ==========================
 -- 📊 STATE (ตัวแปรสถานะการทำงาน)
@@ -156,7 +157,7 @@ task.spawn(function()
 end)
 
 -- ==========================
--- 💰 AUTO CHEST (*** เวอร์ชันไม่เทเลพอร์ต ***)
+-- 💰 AUTO CHEST (*** อัปเดตประสิทธิภาพ ***)
 -- ==========================
 local function collectChest(chest)
     if not chest or not chest.Parent or not hrp then return end
@@ -167,17 +168,30 @@ local function collectChest(chest)
     local success = false
     currentStatus = "กำลังพยายามเก็บ " .. chest.Name
 
-    -- วิธีเก็บกล่อง (เหมือนเดิม แต่ไม่มีโค้ดเทเลพอร์ต)
-    local trigger = chest:FindFirstChild("TouchTrigger") or chest:FindFirstChildWhichIsA("BasePart")
-    if trigger and firetouchinterest then
-        firetouchinterest(hrp, trigger, 0); task.wait(0.1); firetouchinterest(hrp, trigger, 1)
-        success = true
-        logmsg("💰 [Touch] เก็บ Chest สำเร็จ:", chest.Name)
-    elseif collectRemote then
-        local remoteSuccess = pcall(function() collectRemote:FireServer("ClaimChest", chest.Name, true) end)
-        if remoteSuccess then success = true; logmsg("💰 [Remote] ส่งคำสั่งเก็บ Chest:", chest.Name) end
-    else
-        warn("❌ ไม่สามารถเก็บกล่องได้: ไม่รองรับ firetouchinterest และไม่พบ Collect RemoteEvent")
+    -- ✨ [อัปเดต] ลองใช้วิธีเก็บกล่องแบบใหม่ก่อน
+    if specificCollectRemote then
+        local remoteSuccess, err = pcall(function()
+            local args = {"ClaimChest", chest.Name, true}
+            specificCollectRemote:FireServer(unpack(args))
+        end)
+        if remoteSuccess then
+            success = true
+            logmsg("💰 [Specific Remote] ส่งคำสั่งเก็บ Chest สำเร็จ:", chest.Name)
+        else
+            warn("⚠️ [Specific Remote] ล้มเหลว:", err)
+        end
+    end
+
+    -- หากวิธีแรกไม่สำเร็จ ให้ใช้วิธีสำรอง (firetouchinterest)
+    if not success then
+        local trigger = chest:FindFirstChild("TouchTrigger") or chest:FindFirstChildWhichIsA("BasePart")
+        if trigger and firetouchinterest then
+            firetouchinterest(hrp, trigger, 0); task.wait(0.1); firetouchinterest(hrp, trigger, 1)
+            success = true
+            logmsg("💰 [Touch] เก็บ Chest สำเร็จ:", chest.Name)
+        else
+            warn("❌ ไม่สามารถเก็บกล่องได้: ไม่รองรับ firetouchinterest และไม่พบ RemoteEvent ที่เหมาะสม")
+        end
     end
 
     -- อัปเดตสถานะเมื่อเก็บสำเร็จ
@@ -223,7 +237,7 @@ task.spawn(function()
 end)
 
 -- ==========================
--- 🎨 GUI INTERFACE & 🕹️ CONTROLS (*** คงไว้ตามเดิม ***)
+-- 🎨 GUI INTERFACE & 🕹️ CONTROLS
 -- ==========================
 local gui = Instance.new("ScreenGui", playerGui)
 gui.Name = "NiTroHUB_PRO_GUI"; gui.IgnoreGuiInset = true; gui.ResetOnSpawn = false
@@ -313,4 +327,34 @@ UserInputService.InputBegan:Connect(function(input, isTyping)
     if input.KeyCode == Enum.KeyCode.K then toggleChest() end
 end)
 
+-- ✨ [เพิ่มใหม่] ปุ่มไอคอนสำหรับเปิด/ปิด GUI
+local mini = Instance.new("TextButton", gui)
+mini.Size = UDim2.new(0, 50, 0, 50)
+mini.Position = UDim2.new(0.02, 0, 0.7, 0)
+mini.Text = "🌀"
+mini.Font = Enum.Font.GothamBold
+mini.TextSize = 28
+mini.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+mini.TextColor3 = Color3.fromRGB(0, 255, 255)
+mini.BackgroundTransparency = 0.3
+mini.Draggable = true
+Instance.new("UICorner", mini).CornerRadius = UDim.new(1, 0)
+
+local tip = Instance.new("TextLabel", mini)
+tip.Size = UDim2.new(0, 120, 0, 30)
+tip.Position = UDim2.new(1, 5, 0.25, 0)
+tip.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+tip.TextColor3 = Color3.fromRGB(0, 255, 255)
+tip.Text = "NiTroHUB PRO"
+tip.Font = Enum.Font.GothamBold
+tip.TextSize = 14
+tip.Visible = false
+tip.BackgroundTransparency = 0.2
+Instance.new("UICorner", tip).CornerRadius = UDim.new(0, 8)
+
+mini.MouseEnter:Connect(function() tip.Visible = true end)
+mini.MouseLeave:Connect(function() tip.Visible = false end)
+mini.MouseButton1Click:Connect(function() frame.Visible = not frame.Visible end)
+
 logmsg("✅ NiTroHUB PRO - (Non-Teleport) Loaded! | J = สุ่มไข่, K = เก็บกล่อง")
+
