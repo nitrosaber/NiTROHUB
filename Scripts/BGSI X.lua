@@ -1,24 +1,46 @@
---// 🌀 Bubble Gum Simulator - Infinity Hatch + Auto Chest (สมบูรณ์แบบ)
---// ✨ by NiTroHUB x ChatGPT
+--// 🌀 Bubble Gum Simulator - Infinity Hatch + Auto Chest (Remote Collect v2)
+--// ✨ by NiTroHUB x ChatGPT (2025 Edition)
 
 -- ⚙️ ตั้งค่าเริ่มต้น
-local EGG_NAME = "Autumn Egg"    -- เปลี่ยนชื่อไข่ที่ต้องการ
-local HATCH_AMOUNT = 8           -- จำนวนสุ่มไข่ต่อครั้ง (1 / 3 / 8)
-local HATCH_DELAY = 0.001        -- หน่วงเวลาระหว่างการสุ่ม
-local CHEST_CHECK_INTERVAL = 5   -- วินาทีตรวจ Chest ใหม่
-local CHEST_COLLECT_COOLDOWN = 60  -- วินาทีรอ Chest เก็บซ้ำ (ถ้าเกมมีคูลดาวน์)
+local EGG_NAME = "Autumn Egg"           -- ชื่อไข่ที่จะสุ่ม
+local HATCH_AMOUNT = 8                  -- จำนวนสุ่มต่อครั้ง
+local HATCH_DELAY = 0.05                -- เวลาระหว่างสุ่ม
+local CHEST_CHECK_INTERVAL = 10         -- ตรวจหากล่องทุก ๆ 10 วินาที
+local CHEST_COLLECT_COOLDOWN = 60       -- คูลดาวน์การเก็บซ้ำ (วินาที)
 
--- Services
+-- 📦 รายชื่อกล่องที่รองรับจาก Wiki
+local CHEST_NAMES = {
+    "Royal Chest",
+    "Super Chest",
+    "Golden Chest",
+    "Ancient Chest",
+    "Dice Chest",
+    "Infinity Chest",
+    "Void Chest",
+    "Giant Chest",
+    "Ticket Chest",
+    "Easy Obby Chest",
+    "Medium Obby Chest",
+    "Hard Obby Chest"
+}
+
+-- ✅ แปลงชื่อเป็น lowercase เพื่อเปรียบเทียบ
+local CHEST_LIST = {}
+for _, name in ipairs(CHEST_NAMES) do
+    CHEST_LIST[name:lower()] = true
+end
+
+-- 🧩 Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
 
--- RemoteEvent (อ้างอิงตามโครงสร้างที่เคยใช้)
+-- 📡 RemoteEvent
 local remoteEvent = ReplicatedStorage
     :WaitForChild("Shared")
     :WaitForChild("Framework")
@@ -26,122 +48,96 @@ local remoteEvent = ReplicatedStorage
     :WaitForChild("Remote")
     :WaitForChild("RemoteEvent")
 
---------------------------------------------------------------------
--- 🕵️ ซ่อน GUI การสุ่มเดิม (แบบถาวร)
---------------------------------------------------------------------
+------------------------------------------------------------
+-- 🔁 ปิด GUI & อนิเมชันสุ่มไข่
+------------------------------------------------------------
 task.spawn(function()
-    local guiNames = {
-        "HatchEggUI", "HatchAnimationGui", "HatchGui", "LastHatchGui",
-        "EggHatchUI", "AutoDeleteUI", "HatchPopupUI"
-    }
+    local guiNames = {"HatchEggUI", "HatchAnimationGui", "HatchGui", "LastHatchGui", "EggHatchUI", "AutoDeleteUI", "HatchPopupUI"}
     while task.wait(0.3) do
-        for _, name in ipairs(guiNames) do
-            local gui = playerGui:FindFirstChild(name)
-            if gui then
-                gui.Enabled = false
-                gui.Visible = false
+        for _, n in ipairs(guiNames) do
+            local g = playerGui:FindFirstChild(n)
+            if g then
+                g.Enabled = false
+                g.Visible = false
             end
         end
     end
 end)
 
--- ปิดอนิเมชันสุ่มไข่
 task.spawn(function()
-    local success, err = pcall(function()
-        local EggsScript = player:WaitForChild("PlayerScripts")
+    local ok, err = pcall(function()
+        local s = player:WaitForChild("PlayerScripts")
             :WaitForChild("Scripts")
             :WaitForChild("Game")
             :WaitForChild("Egg Opening Frontend")
-        local env = getsenv(EggsScript)
+        local env = getsenv(s)
         if env and env.PlayEggAnimation then
-            env.PlayEggAnimation = function(...) return end
-            print("[🎬] ปิดอนิเมชันสุ่มไข่เรียบร้อย")
+            env.PlayEggAnimation = function() return end
+            print("[🎬] ปิดอนิเมชันสุ่มไข่แล้ว")
         end
     end)
-    if not success then
-        warn("[❌] ปิดอนิเมชันสุ่มไข่ล้มเหลว:", err)
-    end
+    if not ok then warn("❌ ปิดอนิเมชันสุ่มไข่ล้มเหลว:", err) end
 end)
 
---------------------------------------------------------------------
--- 🎯 ฟังก์ชันสุ่มไข่
---------------------------------------------------------------------
+------------------------------------------------------------
+-- 🥚 ฟังก์ชันสุ่มไข่
+------------------------------------------------------------
 local function hatchEgg()
-    local args = {"HatchEgg", EGG_NAME, HATCH_AMOUNT}
-    remoteEvent:FireServer(unpack(args))
+    pcall(function()
+        remoteEvent:FireServer("HatchEgg", EGG_NAME, HATCH_AMOUNT)
+    end)
 end
 
---------------------------------------------------------------------
+------------------------------------------------------------
 -- 🔁 ลูปสุ่มไข่อัตโนมัติ
---------------------------------------------------------------------
+------------------------------------------------------------
 local running = false
 task.spawn(function()
-    while true do
+    while task.wait(HATCH_DELAY) do
         if running then
-            pcall(hatchEgg)
-            task.wait(HATCH_DELAY)
-        else
-            task.wait(0.1)
+            hatchEgg()
         end
     end
 end)
 
---------------------------------------------------------------------
--- 💰 ระบบ Auto Chest
---------------------------------------------------------------------
--- ตารางเก็บ Chest ที่เคยเก็บ ไปแล้ว (เพื่อหลีกเลี่ยงการเก็บซ้ำทันที)
+------------------------------------------------------------
+-- 💰 ระบบ Auto Chest (เก็บจากระยะไกล)
+------------------------------------------------------------
 local collectedChests = {}
 
-local function tryCollectChest(chest)
-    -- ตรวจให้แน่ใจว่า chest มีส่วน “TouchTrigger” หรือส่วนที่สามารถเก็บได้
-    local touchPart = chest:FindFirstChild("TouchTrigger")
-    if not touchPart then return false end
+-- ฟังก์ชันเก็บกล่องจากระยะไกล
+local function collectChest(chest)
+    if not chest or not chest.Parent then return end
+    local lowerName = chest.Name:lower()
 
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
+    -- ตรวจสอบชื่อว่าตรงกับในลิสต์มั้ย
+    if not CHEST_LIST[lowerName] then return end
 
-    local dist = (hrp.Position - touchPart.Position).magnitude
-    local MAX_DIST = 50  -- ปรับระยะที่สามารถเก็บได้
-
-    if dist <= MAX_DIST then
-        -- ตรวจว่าเก็บไปแล้วหรือไม่
-        if collectedChests[chest] then
-            -- ถ้าคูลดาวน์เก็บซ้ำ (ถ้ามี) ตรวจเวลา
-            local lastTime = collectedChests[chest]
-            if tick() - lastTime < CHEST_COLLECT_COOLDOWN then
-                return false
-            end
-        end
-
-        -- ทำ Touch เพื่อเก็บ
-        firetouchinterest(hrp, touchPart, 0)
-        task.wait(0.2)
-        firetouchinterest(hrp, touchPart, 1)
-
-        collectedChests[chest] = tick()
-        print("[💰] เก็บ Chest:", chest.Name)
-        return true
+    -- Cooldown ป้องกันเก็บซ้ำ
+    if collectedChests[chest] and tick() - collectedChests[chest] < CHEST_COLLECT_COOLDOWN then
+        return
     end
 
-    return false
+    -- หา part ที่จะใช้ FireTouchInterest
+    local trigger = chest:FindFirstChild("TouchTrigger") or chest:FindFirstChildWhichIsA("BasePart")
+    if trigger then
+        firetouchinterest(hrp, trigger, 0)
+        task.wait(0.2)
+        firetouchinterest(hrp, trigger, 1)
+        collectedChests[chest] = tick()
+        print("[💰] เก็บ Chest สำเร็จ:", chest.Name)
+    end
 end
 
--- ไล่ค้น Chest ทุก ๆ ช่วงเวลา
+-- ลูปค้นหาและเก็บ
 task.spawn(function()
-    while true do
-        task.wait(CHEST_CHECK_INTERVAL)
-        -- ตรวจใน Workspace / กล่องที่ชื่อ “Chests” / ชื่ออื่น ๆ
-        local possibleContainers = {workspace, workspace:FindFirstChild("Chests")}
-
-        for _, container in ipairs(possibleContainers) do
-            if container then
-                for _, obj in ipairs(container:GetDescendants()) do
-                    if obj:IsA("Model") then
-                        -- เงื่อนไขให้เลือกเฉพาะโมเดลที่น่าจะเป็น Chest
-                        local nameLower = obj.Name:lower()
-                        if nameLower:find("chest") or nameLower:find("box") or nameLower:find("crate") then
-                            pcall(tryCollectChest, obj)
-                        end
+    while task.wait(CHEST_CHECK_INTERVAL) do
+        local areas = {workspace, workspace:FindFirstChild("Chests")}
+        for _, area in ipairs(areas) do
+            if area then
+                for _, obj in ipairs(area:GetDescendants()) do
+                    if obj:IsA("Model") and CHEST_LIST[obj.Name:lower()] then
+                        pcall(collectChest, obj)
                     end
                 end
             end
@@ -149,148 +145,97 @@ task.spawn(function()
     end
 end)
 
---------------------------------------------------------------------
--- ⌨️ Toggle ด้วยปุ่ม J
---------------------------------------------------------------------
-UIS.InputBegan:Connect(function(input, isTyping)
-    if isTyping then return end
+------------------------------------------------------------
+-- ⌨️ ปุ่ม Toggle (J)
+------------------------------------------------------------
+UIS.InputBegan:Connect(function(input, typing)
+    if typing then return end
     if input.KeyCode == Enum.KeyCode.J then
         running = not running
         warn(running and "[✅] เริ่มสุ่มไข่..." or "[⏸️] หยุดสุ่มไข่แล้ว")
     end
 end)
 
---------------------------------------------------------------------
--- 🧭 GUI หลัก
---------------------------------------------------------------------
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "InfinityHatchGUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.IgnoreGuiInset = true
-ScreenGui.Parent = playerGui
+------------------------------------------------------------
+-- 🧭 GUI Interface
+------------------------------------------------------------
+local gui = Instance.new("ScreenGui", playerGui)
+gui.Name = "InfinityHatchGUI"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
 
-local Frame = Instance.new("Frame")
-Frame.Parent = ScreenGui
-Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
-Frame.Size = UDim2.new(0, 200, 0, 100)
-Frame.Active = true
-Frame.Draggable = true
-Frame.BackgroundTransparency = 0.1
+local frame = Instance.new("Frame", gui)
+frame.Position = UDim2.new(0.05, 0, 0.25, 0)
+frame.Size = UDim2.new(0, 220, 0, 110)
+frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+frame.Active = true
+frame.Draggable = true
+frame.BackgroundTransparency = 0.1
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
 
-do
-    local grad = Instance.new("UIGradient", Frame)
-    grad.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(128, 0, 255))
-    }
-    grad.Rotation = 45
-end
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 25)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBold
+title.Text = "🌀 Infinity Hatch"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 16
 
-Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 15)
-local UIStroke = Instance.new("UIStroke", Frame)
-UIStroke.Color = Color3.fromRGB(0, 255, 255)
-UIStroke.Thickness = 2
-UIStroke.Transparency = 0.3
+local btn = Instance.new("TextButton", frame)
+btn.Position = UDim2.new(0.1, 0, 0.45, 0)
+btn.Size = UDim2.new(0.8, 0, 0.4, 0)
+btn.Text = "เริ่มสุ่มไข่ 🔁"
+btn.Font = Enum.Font.GothamBold
+btn.TextSize = 14
+btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+btn.BackgroundTransparency = 0.2
+Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
 
-local Title = Instance.new("TextLabel", Frame)
-Title.BackgroundTransparency = 1
-Title.Position = UDim2.new(0, 0, 0, 10)
-Title.Size = UDim2.new(1, 0, 0, 25)
-Title.Font = Enum.Font.GothamBold
-Title.Text = "🌀 Infinity Hatch"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
-do
-    local tg = Instance.new("UIGradient", Title)
-    tg.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
-    }
-end
-
-local ToggleButton = Instance.new("TextButton", Frame)
-ToggleButton.Position = UDim2.new(0.1, 0, 0.5, 0)
-ToggleButton.Size = UDim2.new(0.8, 0, 0.35, 0)
-ToggleButton.Text = "เริ่มสุ่มไข่ 🔁"
-ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.Font = Enum.Font.GothamBold
-ToggleButton.TextSize = 14
-ToggleButton.BackgroundTransparency = 0.2
-Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 10)
-
-do
-    local bg = Instance.new("UIGradient", ToggleButton)
-    bg.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 115, 0)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 115))
-    }
-    bg.Rotation = 45
-end
-
-local ButtonStroke = Instance.new("UIStroke", ToggleButton)
-ButtonStroke.Color = Color3.fromRGB(255, 115, 0)
-ButtonStroke.Thickness = 1.5
-ButtonStroke.Transparency = 0.4
-
-ToggleButton.MouseButton1Click:Connect(function()
+btn.MouseButton1Click:Connect(function()
     running = not running
-    if running then
-        ToggleButton.Text = "หยุดสุ่ม ⏸️"
-        -- ปรับสีหรือ gradient เมื่อทำงาน
-    else
-        ToggleButton.Text = "เริ่มสุ่มไข่ 🔁"
-    end
+    btn.Text = running and "หยุดสุ่ม ⏸️" or "เริ่มสุ่มไข่ 🔁"
 end)
 
---------------------------------------------------------------------
--- 🧿 ปุ่มไอคอนเล็ก + Tooltip NiTroHUB
---------------------------------------------------------------------
-local ToggleIcon = Instance.new("TextButton", ScreenGui)
-ToggleIcon.Size = UDim2.new(0, 50, 0, 50)
-ToggleIcon.Position = UDim2.new(0.02, 0, 0.7, 0)
-ToggleIcon.Text = "🌀"
-ToggleIcon.Font = Enum.Font.GothamBold
-ToggleIcon.TextSize = 28
-ToggleIcon.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-ToggleIcon.TextColor3 = Color3.fromRGB(0, 255, 255)
-ToggleIcon.Draggable = true
-ToggleIcon.BackgroundTransparency = 0.3
-Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1, 0)
+-- ปุ่มไอคอนลอย
+local mini = Instance.new("TextButton", gui)
+mini.Size = UDim2.new(0, 50, 0, 50)
+mini.Position = UDim2.new(0.02, 0, 0.7, 0)
+mini.Text = "🌀"
+mini.Font = Enum.Font.GothamBold
+mini.TextSize = 28
+mini.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+mini.TextColor3 = Color3.fromRGB(0, 255, 255)
+mini.BackgroundTransparency = 0.3
+mini.Draggable = true
+Instance.new("UICorner", mini).CornerRadius = UDim.new(1, 0)
 
-local Tooltip = Instance.new("TextLabel", ToggleIcon)
-Tooltip.Size = UDim2.new(0, 120, 0, 30)
-Tooltip.Position = UDim2.new(1, 5, 0.25, 0)
-Tooltip.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-Tooltip.TextColor3 = Color3.fromRGB(0, 255, 255)
-Tooltip.Text = "NiTroHUB PRO"
-Tooltip.Font = Enum.Font.GothamBold
-Tooltip.TextSize = 14
-Tooltip.Visible = false
-Tooltip.BackgroundTransparency = 0.2
-Instance.new("UICorner", Tooltip).CornerRadius = UDim.new(0, 8)
+local tip = Instance.new("TextLabel", mini)
+tip.Size = UDim2.new(0, 120, 0, 30)
+tip.Position = UDim2.new(1, 5, 0.25, 0)
+tip.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+tip.TextColor3 = Color3.fromRGB(0, 255, 255)
+tip.Text = "NiTroHUB PRO"
+tip.Font = Enum.Font.GothamBold
+tip.TextSize = 14
+tip.Visible = false
+tip.BackgroundTransparency = 0.2
+Instance.new("UICorner", tip).CornerRadius = UDim.new(0, 8)
 
-ToggleIcon.MouseEnter:Connect(function()
-    Tooltip.Visible = true
-end)
-ToggleIcon.MouseLeave:Connect(function()
-    Tooltip.Visible = false
-end)
-ToggleIcon.MouseButton1Click:Connect(function()
-    Frame.Visible = not Frame.Visible
-end)
+mini.MouseEnter:Connect(function() tip.Visible = true end)
+mini.MouseLeave:Connect(function() tip.Visible = false end)
+mini.MouseButton1Click:Connect(function() frame.Visible = not frame.Visible end)
 
---------------------------------------------------------------------
+------------------------------------------------------------
 -- 💤 Anti AFK
---------------------------------------------------------------------
+------------------------------------------------------------
 task.spawn(function()
     local vu = game:GetService("VirtualUser")
     player.Idled:Connect(function()
-        vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
         task.wait(1)
-        vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     end)
 end)
 
-print("✅ NiTroHUB PRO + AutoChest Loaded! ใช้ J หรือปุ่ม GUI 🌀 เพื่อควบคุม")
+print("✅ NiTroHUB PRO - Infinity Hatch + AutoChest Loaded!")
