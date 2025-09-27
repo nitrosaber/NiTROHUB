@@ -6,7 +6,7 @@
 -- ==========================
 local EGG_NAME = "Autumn Egg"           -- ชื่อไข่ที่จะสุ่ม
 local HATCH_AMOUNT = 8                  -- จำนวนสุ่มต่อครั้ง (1/3/8)
-local HATCH_DELAY = 0.001               -- เวลาระหว่างสุ่ม (ระวังค่าต่ำเกินไป)
+local HATCH_DELAY = 0.05                -- เวลาระหว่างสุ่ม (ระวังค่าต่ำเกินไป)
 local CHEST_CHECK_INTERVAL = 10         -- ตรวจหากล่องทุก ๆ 10 วินาที
 local CHEST_COLLECT_COOLDOWN = 60       -- คูลดาวน์การเก็บซ้ำ (วินาที)
 
