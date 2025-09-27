@@ -1,31 +1,40 @@
---// 🌀 Bubble Gum Simulator - Infinity Hatch (NiTroHUB PRO)
+--// 🌀 Bubble Gum Simulator - Infinity Hatch + Auto Chest (สมบูรณ์แบบ)
 --// ✨ by NiTroHUB x ChatGPT
 
 -- ⚙️ ตั้งค่าเริ่มต้น
-local EGG_NAME = "Autumn Egg" -- เปลี่ยนชื่อไข่ที่ต้องการ
-local HATCH_AMOUNT = 8        -- จำนวนที่สุ่มต่อครั้ง (1 / 3 / 8)
-local HATCH_DELAY = 0.001      -- เวลาหน่วงระหว่างสุ่ม (ไวขึ้น)
+local EGG_NAME = "Autumn Egg"    -- เปลี่ยนชื่อไข่ที่ต้องการ
+local HATCH_AMOUNT = 8           -- จำนวนสุ่มไข่ต่อครั้ง (1 / 3 / 8)
+local HATCH_DELAY = 0.001        -- หน่วงเวลาระหว่างการสุ่ม
+local CHEST_CHECK_INTERVAL = 5   -- วินาทีตรวจ Chest ใหม่
+local CHEST_COLLECT_COOLDOWN = 60  -- วินาทีรอ Chest เก็บซ้ำ (ถ้าเกมมีคูลดาวน์)
 
--- 📦 อ้างอิง Remote Event
-local remoteEvent = game:GetService("ReplicatedStorage")
+-- Services
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UIS = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- RemoteEvent (อ้างอิงตามโครงสร้างที่เคยใช้)
+local remoteEvent = ReplicatedStorage
     :WaitForChild("Shared")
     :WaitForChild("Framework")
     :WaitForChild("Network")
     :WaitForChild("Remote")
     :WaitForChild("RemoteEvent")
 
-local player = game.Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-
 --------------------------------------------------------------------
--- 🕵️ ปิด / ซ่อน GUI การสุ่ม (แบบสมบูรณ์)
+-- 🕵️ ซ่อน GUI การสุ่มเดิม (แบบถาวร)
 --------------------------------------------------------------------
 task.spawn(function()
     local guiNames = {
         "HatchEggUI", "HatchAnimationGui", "HatchGui", "LastHatchGui",
         "EggHatchUI", "AutoDeleteUI", "HatchPopupUI"
     }
-    while task.wait(0.2) do
+    while task.wait(0.3) do
         for _, name in ipairs(guiNames) do
             local gui = playerGui:FindFirstChild(name)
             if gui then
@@ -33,6 +42,24 @@ task.spawn(function()
                 gui.Visible = false
             end
         end
+    end
+end)
+
+-- ปิดอนิเมชันสุ่มไข่
+task.spawn(function()
+    local success, err = pcall(function()
+        local EggsScript = player:WaitForChild("PlayerScripts")
+            :WaitForChild("Scripts")
+            :WaitForChild("Game")
+            :WaitForChild("Egg Opening Frontend")
+        local env = getsenv(EggsScript)
+        if env and env.PlayEggAnimation then
+            env.PlayEggAnimation = function(...) return end
+            print("[🎬] ปิดอนิเมชันสุ่มไข่เรียบร้อย")
+        end
+    end)
+    if not success then
+        warn("[❌] ปิดอนิเมชันสุ่มไข่ล้มเหลว:", err)
     end
 end)
 
@@ -45,13 +72,13 @@ local function hatchEgg()
 end
 
 --------------------------------------------------------------------
--- 🔁 ลูปสุ่มอัตโนมัติ
+-- 🔁 ลูปสุ่มไข่อัตโนมัติ
 --------------------------------------------------------------------
 local running = false
 task.spawn(function()
     while true do
         if running then
-            hatchEgg()
+            pcall(hatchEgg)
             task.wait(HATCH_DELAY)
         else
             task.wait(0.1)
@@ -60,107 +87,112 @@ task.spawn(function()
 end)
 
 --------------------------------------------------------------------
+-- 💰 ระบบ Auto Chest
+--------------------------------------------------------------------
+-- ตารางเก็บ Chest ที่เคยเก็บ ไปแล้ว (เพื่อหลีกเลี่ยงการเก็บซ้ำทันที)
+local collectedChests = {}
+
+local function tryCollectChest(chest)
+    -- ตรวจให้แน่ใจว่า chest มีส่วน “TouchTrigger” หรือส่วนที่สามารถเก็บได้
+    local touchPart = chest:FindFirstChild("TouchTrigger")
+    if not touchPart then return false end
+
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+
+    local dist = (hrp.Position - touchPart.Position).magnitude
+    local MAX_DIST = 50  -- ปรับระยะที่สามารถเก็บได้
+
+    if dist <= MAX_DIST then
+        -- ตรวจว่าเก็บไปแล้วหรือไม่
+        if collectedChests[chest] then
+            -- ถ้าคูลดาวน์เก็บซ้ำ (ถ้ามี) ตรวจเวลา
+            local lastTime = collectedChests[chest]
+            if tick() - lastTime < CHEST_COLLECT_COOLDOWN then
+                return false
+            end
+        end
+
+        -- ทำ Touch เพื่อเก็บ
+        firetouchinterest(hrp, touchPart, 0)
+        task.wait(0.2)
+        firetouchinterest(hrp, touchPart, 1)
+
+        collectedChests[chest] = tick()
+        print("[💰] เก็บ Chest:", chest.Name)
+        return true
+    end
+
+    return false
+end
+
+-- ไล่ค้น Chest ทุก ๆ ช่วงเวลา
+task.spawn(function()
+    while true do
+        task.wait(CHEST_CHECK_INTERVAL)
+        -- ตรวจใน Workspace / กล่องที่ชื่อ “Chests” / ชื่ออื่น ๆ
+        local possibleContainers = {workspace, workspace:FindFirstChild("Chests")}
+
+        for _, container in ipairs(possibleContainers) do
+            if container then
+                for _, obj in ipairs(container:GetDescendants()) do
+                    if obj:IsA("Model") then
+                        -- เงื่อนไขให้เลือกเฉพาะโมเดลที่น่าจะเป็น Chest
+                        local nameLower = obj.Name:lower()
+                        if nameLower:find("chest") or nameLower:find("box") or nameLower:find("crate") then
+                            pcall(tryCollectChest, obj)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+--------------------------------------------------------------------
 -- ⌨️ Toggle ด้วยปุ่ม J
 --------------------------------------------------------------------
-local UIS = game:GetService("UserInputService")
 UIS.InputBegan:Connect(function(input, isTyping)
     if isTyping then return end
     if input.KeyCode == Enum.KeyCode.J then
         running = not running
-        print(running and "[✅] เริ่มสุ่มไข่..." or "[⏸️] หยุดสุ่มไข่แล้ว")
+        warn(running and "[✅] เริ่มสุ่มไข่..." or "[⏸️] หยุดสุ่มไข่แล้ว")
     end
 end)
 
 --------------------------------------------------------------------
 -- 🧭 GUI หลัก
 --------------------------------------------------------------------
-local ScreenGui = Instance.new("ScreenGui", playerGui)
+local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "InfinityHatchGUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
+ScreenGui.Parent = playerGui
 
--- 🎛️ กรอบหลัก
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+local Frame = Instance.new("Frame")
+Frame.Parent = ScreenGui
+Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
 Frame.Size = UDim2.new(0, 200, 0, 100)
 Frame.Active = true
 Frame.Draggable = true
-Frame.Visible = true
+Frame.BackgroundTransparency = 0.1
 
-Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
+do
+    local grad = Instance.new("UIGradient", Frame)
+    grad.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(128, 0, 255))
+    }
+    grad.Rotation = 45
+end
+
+Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 15)
 local UIStroke = Instance.new("UIStroke", Frame)
-UIStroke.Color = Color3.fromRGB(255, 165, 0)
+UIStroke.Color = Color3.fromRGB(0, 255, 255)
 UIStroke.Thickness = 2
+UIStroke.Transparency = 0.3
 
--- 🏷️ Title
-local Title = Instance.new("TextLabel", Frame)
-Title.BackgroundTransparency = 1
-Title.Position = UDim2.new(0, 0, 0, 10)
-Title.Size = UDim2.new(1, 0, 0, 25)
-Title.Font = Enum.Font.GothamBold
-Title.Text = "🌀 Infinity Hatch"
-Title.TextColor3 = Color3.new(1, 1, 1)
-Title.TextSize = 16
-
--- 🔘 ปุ่มสลับสถานะ
-local ToggleButton = Instance.new("TextButton", Frame)
-ToggleButton.Position = UDim2.new(0.1, 0, 0.5, 0)
-ToggleButton.Size = UDim2.new(0.8, 0, 0.35, 0)
-ToggleButton.Text = "เริ่มสุ่มไข่ 🔁"
-ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 115, 0)
-ToggleButton.TextColor3 = Color3.new(1, 1, 1)
-ToggleButton.Font = Enum.Font.GothamBold
-ToggleButton.TextSize = 14
-Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 6)
-
-ToggleButton.MouseButton1Click:Connect(function()
-    running = not running
-    if running then
-        ToggleButton.Text = "หยุดสุ่ม ⏸️"
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    else
-        ToggleButton.Text = "เริ่มสุ่มไข่ 🔁"
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 115, 0)
-    end
-end)
-
---------------------------------------------------------------------
--- 🧭 GUI หลัก (เวอร์ชันอนาคต:  gradient, neon glow, animations)
---------------------------------------------------------------------
-local ScreenGui = Instance.new("ScreenGui", playerGui)
-ScreenGui.Name = "InfinityHatchGUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.IgnoreGuiInset = true
-
--- 🎛️ กรอบหลัก
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)  -- พื้นฐานดำสำหรับ gradient
-Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
-Frame.Size = UDim2.new(0, 200, 0, 100)
-Frame.Active = true
-Frame.Draggable = true
-Frame.Visible = true
-Frame.BackgroundTransparency = 0.1  -- กึ่งโปร่งใสแบบ holographic
-
--- Gradient สำหรับพื้นหลัง futuristic
-local FrameGradient = Instance.new("UIGradient", Frame)
-FrameGradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 255)),  -- Neon Cyan
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(128, 0, 255))   -- Neon Purple
-}
-FrameGradient.Rotation = 45
-
-Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 15)  -- โค้งมนกว่า
-
--- Neon Glow Stroke
-local UIStroke = Instance.new("UIStroke", Frame)
-UIStroke.Color = Color3.fromRGB(0, 255, 255)  -- Neon Cyan
-UIStroke.Thickness = 2
-UIStroke.Transparency = 0.3  -- Glow effect
-UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
--- 🏷️ Title
 local Title = Instance.new("TextLabel", Frame)
 Title.BackgroundTransparency = 1
 Title.Position = UDim2.new(0, 0, 0, 10)
@@ -169,16 +201,14 @@ Title.Font = Enum.Font.GothamBold
 Title.Text = "🌀 Infinity Hatch"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
-Title.TextStrokeTransparency = 0.8  -- เพิ่ม stroke สำหรับ glow
+do
+    local tg = Instance.new("UIGradient", Title)
+    tg.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
+    }
+end
 
--- Gradient สำหรับ Title
-local TitleGradient = Instance.new("UIGradient", Title)
-TitleGradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
-}
-
--- 🔘 ปุ่มสลับสถานะ
 local ToggleButton = Instance.new("TextButton", Frame)
 ToggleButton.Position = UDim2.new(0.1, 0, 0.5, 0)
 ToggleButton.Size = UDim2.new(0.8, 0, 0.35, 0)
@@ -188,94 +218,47 @@ ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleButton.Font = Enum.Font.GothamBold
 ToggleButton.TextSize = 14
 ToggleButton.BackgroundTransparency = 0.2
-
--- Gradient สำหรับปุ่ม
-local ButtonGradient = Instance.new("UIGradient", ToggleButton)
-ButtonGradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 115, 0)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 115))
-}
-ButtonGradient.Rotation = 45
-
 Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 10)
 
--- Neon Stroke สำหรับปุ่ม
+do
+    local bg = Instance.new("UIGradient", ToggleButton)
+    bg.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 115, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 115))
+    }
+    bg.Rotation = 45
+end
+
 local ButtonStroke = Instance.new("UIStroke", ToggleButton)
 ButtonStroke.Color = Color3.fromRGB(255, 115, 0)
 ButtonStroke.Thickness = 1.5
 ButtonStroke.Transparency = 0.4
 
--- Animation สำหรับ hover (scale up)
-local hoverTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-ToggleButton.MouseEnter:Connect(function()
-    TweenService:Create(ToggleButton, hoverTweenInfo, {Size = UDim2.new(0.85, 0, 0.4, 0)}):Play()
-    TweenService:Create(ButtonStroke, hoverTweenInfo, {Color = Color3.fromRGB(0, 255, 255)}):Play()
-end)
-ToggleButton.MouseLeave:Connect(function()
-    TweenService:Create(ToggleButton, hoverTweenInfo, {Size = UDim2.new(0.8, 0, 0.35, 0)}):Play()
-    TweenService:Create(ButtonStroke, hoverTweenInfo, {Color = Color3.fromRGB(255, 115, 0)}):Play()
-end)
-
 ToggleButton.MouseButton1Click:Connect(function()
     running = not running
     if running then
         ToggleButton.Text = "หยุดสุ่ม ⏸️"
-        ButtonGradient.Color = ColorSequence.new{
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 50, 50)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 0, 0))
-        }
-        ButtonStroke.Color = Color3.fromRGB(200, 50, 50)
+        -- ปรับสีหรือ gradient เมื่อทำงาน
     else
         ToggleButton.Text = "เริ่มสุ่มไข่ 🔁"
-        ButtonGradient.Color = ColorSequence.new{
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 115, 0)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 115))
-        }
-        ButtonStroke.Color = Color3.fromRGB(255, 115, 0)
     end
 end)
 
 --------------------------------------------------------------------
--- 🧿 ปุ่มไอคอนเล็ก (เวอร์ชันอนาคต: neon, glow, animation)
+-- 🧿 ปุ่มไอคอนเล็ก + Tooltip NiTroHUB
 --------------------------------------------------------------------
 local ToggleIcon = Instance.new("TextButton", ScreenGui)
-ToggleIcon.Size = UDim2.new(0, 50, 0, 50)  -- ขนาดใหญ่ขึ้นเล็กน้อย
+ToggleIcon.Size = UDim2.new(0, 50, 0, 50)
 ToggleIcon.Position = UDim2.new(0.02, 0, 0.7, 0)
 ToggleIcon.Text = "🌀"
 ToggleIcon.Font = Enum.Font.GothamBold
 ToggleIcon.TextSize = 28
 ToggleIcon.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-ToggleIcon.TextColor3 = Color3.fromRGB(0, 255, 255)  -- Neon Cyan
+ToggleIcon.TextColor3 = Color3.fromRGB(0, 255, 255)
 ToggleIcon.Draggable = true
 ToggleIcon.BackgroundTransparency = 0.3
+Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1, 0)
 
--- Gradient สำหรับไอคอน
-local IconGradient = Instance.new("UIGradient", ToggleIcon)
-IconGradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 128, 255))
-}
-IconGradient.Rotation = 90
-
-Instance.new("UICorner", ToggleIcon).CornerRadius = UDim.new(1, 0)  -- วงกลมเต็ม
-
--- Neon Glow Stroke
-local IconStroke = Instance.new("UIStroke", ToggleIcon)
-IconStroke.Color = Color3.fromRGB(0, 255, 255)
-IconStroke.Thickness = 2
-IconStroke.Transparency = 0.2
-
--- Animation สำหรับ hover (rotate and glow)
-ToggleIcon.MouseEnter:Connect(function()
-    TweenService:Create(IconGradient, hoverTweenInfo, {Rotation = 180}):Play()
-    TweenService:Create(IconStroke, hoverTweenInfo, {Transparency = 0}):Play()
-end)
-ToggleIcon.MouseLeave:Connect(function()
-    TweenService:Create(IconGradient, hoverTweenInfo, {Rotation = 90}):Play()
-    TweenService:Create(IconStroke, hoverTweenInfo, {Transparency = 0.2}):Play()
-end)
-
--- 🏷️ Tooltip NiTroHUB (เวอร์ชันอนาคต)
 local Tooltip = Instance.new("TextLabel", ToggleIcon)
 Tooltip.Size = UDim2.new(0, 120, 0, 30)
 Tooltip.Position = UDim2.new(1, 5, 0.25, 0)
@@ -286,21 +269,7 @@ Tooltip.Font = Enum.Font.GothamBold
 Tooltip.TextSize = 14
 Tooltip.Visible = false
 Tooltip.BackgroundTransparency = 0.2
-
--- Gradient สำหรับ Tooltip
-local TooltipGradient = Instance.new("UIGradient", Tooltip)
-TooltipGradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(128, 0, 255))
-}
-
 Instance.new("UICorner", Tooltip).CornerRadius = UDim.new(0, 8)
-
--- Stroke สำหรับ Tooltip
-local TooltipStroke = Instance.new("UIStroke", Tooltip)
-TooltipStroke.Color = Color3.fromRGB(0, 255, 255)
-TooltipStroke.Thickness = 1
-TooltipStroke.Transparency = 0.5
 
 ToggleIcon.MouseEnter:Connect(function()
     Tooltip.Visible = true
@@ -308,30 +277,20 @@ end)
 ToggleIcon.MouseLeave:Connect(function()
     Tooltip.Visible = false
 end)
-
 ToggleIcon.MouseButton1Click:Connect(function()
     Frame.Visible = not Frame.Visible
-    -- Animation สำหรับเปิด/ปิด Frame
-    if Frame.Visible then
-        TweenService:Create(Frame, TweenInfo.new(0.3), {BackgroundTransparency = 0.1, Size = UDim2.new(0, 200, 0, 100)}):Play()
-    else
-        TweenService:Create(Frame, TweenInfo.new(0.3), {BackgroundTransparency = 1, Size = UDim2.new(0, 0, 0, 0)}):Play()
-        task.wait(0.3)
-        Frame.Visible = false  -- ซ่อนจริงหลัง animation
-    end
 end)
 
 --------------------------------------------------------------------
--- 💤 Anti AFK (ป้องกันหลุด)
+-- 💤 Anti AFK
 --------------------------------------------------------------------
 task.spawn(function()
     local vu = game:GetService("VirtualUser")
-    game:GetService("Players").LocalPlayer.Idled:Connect(function()
-        vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+    player.Idled:Connect(function()
+        vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
         task.wait(1)
-        vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-        print("[🛡️] Anti AFK ทำงานแล้ว!")
+        vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
     end)
 end)
 
-print("✅ โหลด NiTroHUB เรียบร้อย! ใช้ปุ่ม J หรือปุ่ม GUI เพื่อเปิด/ปิดการสุ่มไข่")
+print("✅ NiTroHUB PRO + AutoChest Loaded! ใช้ J หรือปุ่ม GUI 🌀 เพื่อควบคุม")
