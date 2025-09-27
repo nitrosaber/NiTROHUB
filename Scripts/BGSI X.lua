@@ -1,257 +1,159 @@
---// NiTroHUB PRO - Infinity Hatch + AutoChest (FULL)
---// by NiTroHUB x ChatGPT
---// รวมทุกฟีเจอร์: AutoHatch, AutoChest remote collect, no-animation, AntiAFK, GUI, logs
+--// 🌀 NiTroHUB PRO - Infinity Hatch + Auto Chest (FULL)
+--// ✨ by NiTroHUB x ChatGPT (2025 Edition)
 
 -- ==========================
--- CONFIG (แก้ไขได้ตามต้องการ)
+-- ⚙️ CONFIG (ตั้งค่าตามต้องการ)
 -- ==========================
-local DEFAULT_EGG = "Autumn Egg"
-local DEFAULT_HATCH_AMOUNT = 8      -- 1 / 3 / 8 ตามเกมรองรับ
-local DEFAULT_HATCH_DELAY = 0.5     -- ระวังตั้งค่าต่ำมากจะสแปม server
-local CHEST_CHECK_INTERVAL = 6      -- วินาที ตรวจหา chest
-local CHEST_COOLDOWN = 60           -- วินาทีก่อนเก็บ chest เดิมซ้ำ
-local EGG_LIST = {                  -- ตัวอย่าง list จาก wiki (ขยายได้)
-    "Autumn Egg","Infinity Egg","Common Egg","Spotted Egg","Aura Egg","Pastel Egg",
-    "Bunny Egg","Throwback Egg","100M Egg","Silly Egg","Game Egg","Underworld Egg",
-    "Beach Egg","Icecream Egg","Fruit Egg","Magma Egg","Void Egg","Rainbow Egg"
-}
-local CHEST_WHITELIST = {           -- รายชื่อกล่องตามที่ให้มา (ตรงตามคำขอ)
-    "Royal Chest","Super Chest","Golden Chest","Ancient Chest",
-    "Dice Chest","Infinity Chest","Void Chest","Giant Chest",
-    "Ticket Chest","Easy Obby Chest","Medium Obby Chest","Hard Obby Chest"
+local EGG_NAME = "Autumn Egg"           -- ชื่อไข่ที่จะสุ่ม
+local HATCH_AMOUNT = 8                  -- จำนวนสุ่มต่อครั้ง (1/3/8)
+local HATCH_DELAY = 0.001               -- เวลาระหว่างสุ่ม (ระวังค่าต่ำเกินไป)
+local CHEST_CHECK_INTERVAL = 10         -- ตรวจหากล่องทุก ๆ 10 วินาที
+local CHEST_COLLECT_COOLDOWN = 60       -- คูลดาวน์การเก็บซ้ำ (วินาที)
+
+-- 📦 รายชื่อกล่องที่รองรับจาก Wiki
+local CHEST_NAMES = {
+    "Royal Chest",
+    "Super Chest",
+    "Golden Chest",
+    "Ancient Chest",
+    "Dice Chest",
+    "Infinity Chest",
+    "Void Chest",
+    "Giant Chest",
+    "Ticket Chest",
+    "Easy Obby Chest",
+    "Medium Obby Chest",
+    "Hard Obby Chest"
 }
 
 -- ==========================
--- SERVICES & PLAYER
+-- 🧩 SERVICES & PLAYER
 -- ==========================
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
 
--- ==========================
--- STATE
--- ==========================
-local config = {
-    egg = DEFAULT_EGG,
-    amount = DEFAULT_HATCH_AMOUNT,
-    delay = DEFAULT_HATCH_DELAY
-}
-local autoHatch = false
-local autoChest = true
-local eggsHatchedCount = 0
-local chestsCollectedCount = 0
-local lastCollected = {} -- map[string] = timestamp, key by chest name or unique id
-local lastCollectedChestName = "-" -- New variable to store the name
-
--- prepare chest whitelist lookup (lowercase)
-local CHEST_MAP = {}
-for _, n in ipairs(CHEST_WHITELIST) do CHEST_MAP[n:lower()] = true end
-
--- utility safe print
-local function logmsg(...)
-    print("[NiTroHUB]", ...)
+-- ✅ แปลงชื่อเป็น lowercase เพื่อเปรียบเทียบ
+local CHEST_LIST = {}
+for _, name in ipairs(CHEST_NAMES) do
+    CHEST_LIST[name:lower()] = true
 end
 
--- ==========================
--- RemoteEvent finder (robust)
--- ==========================
-local function findRemoteEvent()
-    local function searchRemoteEvent(root)
-        for _, obj in ipairs(root:GetDescendants()) do
-            if obj:IsA("RemoteEvent") then
-                local lname = obj.Name:lower()
-                if lname:find("remoteevent") or lname:find("remote") or lname:find("network") then
-                    return obj
-                end
-            end
-        end
-        return nil
-    end
-
-    -- Try known path first
-    local ok, remote = pcall(function()
-        local shared = ReplicatedStorage:FindFirstChild("Shared")
-        if shared then
-            local framework = shared:FindFirstChild("Framework")
-            if framework then
-                local network = framework:FindFirstChild("Network")
-                if network then
-                    local remoteFolder = network:FindFirstChild("Remote") or network
-                    if remoteFolder then
-                        return searchRemoteEvent(remoteFolder)
-                    end
-                end
-            end
-        end
-        return nil
-    end)
-    if ok and remote then return remote end
-
-    -- Fallback: search all of ReplicatedStorage
-    return searchRemoteEvent(ReplicatedStorage)
-end
-
-local remoteEvent = findRemoteEvent()
-if not remoteEvent then
-    warn("[NiTroHUB] RemoteEvent not found. Hatch will likely fail.")
-else
-    logmsg("RemoteEvent found:", remoteEvent:GetFullName())
-end
-
--- ==========================
--- No-animation patch (getsenv) - safe
--- ==========================
-task.spawn(function()
-    pcall(function()
-        local success = false
-        local tryRoots = {player:FindFirstChild("PlayerScripts"), playerGui}
-        for _, root in ipairs(tryRoots) do
-            if root and root:IsA("Instance") then
-                for _, child in ipairs(root:GetDescendants()) do
-                    if (child:IsA("LocalScript") or child:IsA("ModuleScript")) and type(getsenv) == "function" then
-                        local nm = child.Name:lower()
-                        if nm:find("egg") and (nm:find("opening") or nm:find("hatch")) then
-                            local env = getsenv(child)
-                            if env and env.PlayEggAnimation then
-                                env.PlayEggAnimation = function(...) end
-                                logmsg("Patched PlayEggAnimation from", child:GetFullName())
-                                success = true
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        if not success then
-            logmsg("No animation patch applied (getsenv unavailable or script not found).")
-        end
-    end)
+-- 📡 REMOTE EVENTS (ค้นหาและตรวจสอบความพร้อม)
+local remoteEvent = pcall(function()
+    return ReplicatedStorage
+        :WaitForChild("Shared", 5)
+        :WaitForChild("Framework", 5)
+        :WaitForChild("Network", 5)
+        :WaitForChild("Remote", 5)
+        :WaitForChild("RemoteEvent", 5)
 end)
 
--- ==========================
--- Hide/disable original hatch GUIs and on spawn disable new GUI items with names
--- ==========================
-local HIDE_GUI_NAMES = {"HatchEggUI","HatchAnimationGui","HatchGui","LastHatchGui","EggHatchUI","AutoDeleteUI","HatchPopupUI"}
+if not remoteEvent then
+    warn("❌ RemoteEvent สำหรับสุ่มไข่ไม่พบ. สคริปต์อาจทำงานไม่สมบูรณ์")
+end
 
+-- 📊 STATE
+local running = false
+local eggsHatchedCount = 0
+local chestsCollectedCount = 0
+local lastCollectedChests = {}
+local lastCollectedChestName = "-"
+
+-- ==========================
+-- 🔁 UI & ANIMATION PATCH
+-- ==========================
+-- ปิด GUI ที่เกี่ยวข้อง
 task.spawn(function()
-    while task.wait(0.6) do
-        for _, name in ipairs(HIDE_GUI_NAMES) do
-            local g = playerGui:FindFirstChild(name)
-            if g and (g:IsA("ScreenGui") or g:IsA("GuiObject")) then
+    local guiNames = {"HatchEggUI", "HatchAnimationGui", "HatchGui", "LastHatchGui", "EggHatchUI", "AutoDeleteUI", "HatchPopupUI"}
+    while task.wait(0.3) do
+        for _, n in ipairs(guiNames) do
+            local g = playerGui:FindFirstChild(n)
+            if g then
                 pcall(function() g.Enabled = false; g.Visible = false end)
             end
         end
     end
 end)
 
-game.DescendantAdded:Connect(function(obj)
+-- ปิดแอนิเมชันสุ่มไข่ (ต้องการ getsenv)
+task.spawn(function()
     pcall(function()
-        if obj:IsA("ScreenGui") or obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
-            local nm = obj.Name:lower()
-            if nm:find("hatch") or nm:find("egg") or nm:find("open") or nm:find("popup") then
-                pcall(function() obj.Enabled = false; obj.Visible = false end)
-            end
+        local s = player:WaitForChild("PlayerScripts", 5)
+            :WaitForChild("Scripts", 5)
+            :WaitForChild("Game", 5)
+            :WaitForChild("Egg Opening Frontend", 5)
+        local env = getsenv(s)
+        if env and env.PlayEggAnimation then
+            env.PlayEggAnimation = function() return end
+            print("✅ ปิดอนิเมชันสุ่มไข่แล้ว")
         end
     end)
 end)
 
 -- ==========================
--- Auto Hatch functions
+-- 🥚 AUTO HATCH
 -- ==========================
-local function doHatch()
+local function hatchEgg()
     if not remoteEvent then return end
     pcall(function()
-        remoteEvent:FireServer("HatchEgg", config.egg, config.amount)
-        eggsHatchedCount = eggsHatchedCount + (tonumber(config.amount) or 1)
+        remoteEvent:FireServer("HatchEgg", EGG_NAME, HATCH_AMOUNT)
+        eggsHatchedCount = eggsHatchedCount + HATCH_AMOUNT
     end)
 end
 
 task.spawn(function()
-    while true do
-        task.wait(math.max(0.0005, tonumber(config.delay) or DEFAULT_HATCH_DELAY))
-        if autoHatch then
-            doHatch()
+    while task.wait(HATCH_DELAY) do
+        if running then
+            hatchEgg()
         end
     end
 end)
 
 -- ==========================
--- Auto Chest (remote collect via server event)
+-- 💰 AUTO CHEST
 -- ==========================
-local CHEST_COLLECT_EVENT = "CollectChest" -- Common name, verify if it's different in-game
-local function findCollectRemoteEvent()
-    local function search(root)
-        for _, obj in ipairs(root:GetDescendants()) do
-            if obj:IsA("RemoteEvent") and obj.Name:lower():find("collect") then
-                return obj
-            end
-        end
-        return nil
+local function collectChest(chest)
+    if not chest or not chest.Parent then return end
+    local lowerName = chest.Name:lower()
+
+    if not CHEST_LIST[lowerName] then return end
+
+    local key = chest:GetDebugId() or chest:GetFullName()
+    if lastCollectedChests[key] and tick() - lastCollectedChests[key] < CHEST_COLLECT_COOLDOWN then
+        return
     end
 
-    -- Look in ReplicatedStorage for a likely named event
-    local collectRemote = search(ReplicatedStorage)
-    if collectRemote then return collectRemote end
-
-    -- Fallback: Use the same remoteEvent if it's a generic one
-    if remoteEvent then
-        local rn = remoteEvent.Name:lower()
-        if rn:find("remoteevent") or rn:find("network") then
-            return remoteEvent
+    local trigger = chest:FindFirstChild("TouchTrigger") or chest:FindFirstChildWhichIsA("BasePart")
+    if trigger then
+        if firetouchinterest then
+            firetouchinterest(hrp, trigger, 0)
+            task.wait(0.2)
+            firetouchinterest(hrp, trigger, 1)
+            lastCollectedChests[key] = tick()
+            chestsCollectedCount = chestsCollectedCount + 1
+            lastCollectedChestName = chest.Name
+            print("💰 เก็บ Chest สำเร็จ:", chest.Name)
+        else
+            warn("❌ ฟังก์ชัน firetouchinterest ไม่รองรับใน Executor นี้")
         end
     end
-
-    return nil
-end
-
-local collectRemoteEvent = findCollectRemoteEvent()
-if not collectRemoteEvent then
-    warn("[NiTroHUB] Collect RemoteEvent not found. AutoChest may not work.")
-else
-    logmsg("Collect RemoteEvent found:", collectRemoteEvent:GetFullName())
-end
-
-local function chestIsWhitelisted(model)
-    if not model or not model.Name then return false end
-    local lower = model.Name:lower()
-    return CHEST_MAP[lower] or false
-end
-
--- Collect a chest by invoking the server's remote event
-local function remoteCollectChest(model)
-    if not model or not collectRemoteEvent then return false end
-    pcall(function()
-        collectRemoteEvent:FireServer(model)
-        chestsCollectedCount = chestsCollectedCount + 1
-        lastCollectedChestName = model.Name
-        logmsg("Collected chest:", model.Name)
-    end)
-    return true
 end
 
 task.spawn(function()
-    while true do
-        task.wait(CHEST_CHECK_INTERVAL)
-        if autoChest and player.Character then
-            local searchAreas = {workspace}
-            if workspace:FindFirstChild("Chests") then table.insert(searchAreas, workspace.Chests) end
-
-            for _, area in ipairs(searchAreas) do
+    while task.wait(CHEST_CHECK_INTERVAL) do
+        local areas = {workspace, workspace:FindFirstChild("Chests")}
+        for _, area in ipairs(areas) do
+            if area then
                 for _, obj in ipairs(area:GetDescendants()) do
-                    if obj:IsA("Model") and chestIsWhitelisted(obj) then
-                        local key = obj:GetDebugId and obj:GetDebugId() or obj:GetFullName()
-                        if lastCollected[key] and tick() - lastCollected[key] < CHEST_COOLDOWN then
-                            -- still cooling down
-                        else
-                            local ok = remoteCollectChest(obj)
-                            if ok then
-                                lastCollected[key] = tick()
-                            end
-                        end
+                    if obj:IsA("Model") and CHEST_LIST[obj.Name:lower()] then
+                        pcall(collectChest, obj)
                     end
                 end
             end
@@ -260,278 +162,121 @@ task.spawn(function()
 end)
 
 -- ==========================
--- Anti AFK
+-- 💤 ANTI AFK
 -- ==========================
 task.spawn(function()
     local vu = game:GetService("VirtualUser")
     player.Idled:Connect(function()
-        pcall(function()
-            vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-            task.wait(1)
-            vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        end)
+        vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     end)
 end)
 
 -- ==========================
--- GUI (dropdown for eggs, toggles, stats log)
+-- 🧭 GUI INTERFACE
 -- ==========================
--- Avoid creating multiple GUIs
-if playerGui:FindFirstChild("NiTroHUB_GUI") then
-    playerGui.NiTroHUB_GUI:Destroy()
-end
+local gui = Instance.new("ScreenGui", playerGui)
+gui.Name = "InfinityHatchGUI"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
 
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "NiTroHUB_GUI"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = playerGui
-screenGui.IgnoreGuiInset = true
-
-local frame = Instance.new("Frame", screenGui)
-frame.Size = UDim2.new(0, 380, 0, 220)
-frame.Position = UDim2.new(0.3, 0, 0.25, 0)
-frame.AnchorPoint = Vector2.new(0.5, 0.5)
-frame.BackgroundColor3 = Color3.fromRGB(18,18,18)
-frame.BorderSizePixel = 0
+local frame = Instance.new("Frame", gui)
+frame.Position = UDim2.new(0.05, 0, 0.25, 0)
+frame.Size = UDim2.new(0, 220, 0, 150)
+frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 frame.Active = true
 frame.Draggable = true
+frame.BackgroundTransparency = 0.1
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
 
--- Header
-local header = Instance.new("TextLabel", frame)
-header.Position = UDim2.new(0, 20, 0, 12)
-header.Size = UDim2.new(1, -40, 0, 28)
-header.BackgroundTransparency = 1
-header.Font = Enum.Font.GothamBold
-header.TextSize = 18
-header.Text = "🌀 NiTroHUB PRO - Infinity Hatch"
-header.TextColor3 = Color3.fromRGB(255,120,120)
-header.TextXAlignment = Enum.TextXAlignment.Left
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 25)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBold
+title.Text = "🌀 Infinity Hatch"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 16
 
--- Close button
-local closeBtn = Instance.new("TextButton", frame)
-closeBtn.Size = UDim2.new(0, 28, 0, 24)
-closeBtn.Position = UDim2.new(1, -34, 0, 10)
-closeBtn.BackgroundTransparency = 1
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 18
-closeBtn.Text = "✕"
-closeBtn.TextColor3 = Color3.fromRGB(255,100,100)
-closeBtn.MouseButton1Click:Connect(function() frame.Visible = false end)
+local btn = Instance.new("TextButton", frame)
+btn.Position = UDim2.new(0.1, 0, 0.35, 0)
+btn.Size = UDim2.new(0.8, 0, 0.2, 0)
+btn.Text = "เริ่มสุ่มไข่ 🔁"
+btn.Font = Enum.Font.GothamBold
+btn.TextSize = 14
+btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+btn.BackgroundTransparency = 0.2
+Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
 
--- Egg dropdown (simple)
-local ddBtn = Instance.new("TextButton", frame)
-ddBtn.Position = UDim2.new(0.04, 0, 0.16, 0)
-ddBtn.Size = UDim2.new(0.6, 0, 0, 30)
-ddBtn.Font = Enum.Font.Gotham
-ddBtn.TextSize = 14
-ddBtn.Text = "Egg: "..tostring(config.egg)
-ddBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
-ddBtn.TextColor3 = Color3.fromRGB(255,255,255)
-Instance.new("UICorner", ddBtn).CornerRadius = UDim.new(0,6)
-
-local ddOpen = false
-local ddFrame = Instance.new("Frame", frame)
-ddFrame.Position = UDim2.new(0.04, 0, 0.16, 30)
-ddFrame.Size = UDim2.new(0.6, 0, 0, 0)
-ddFrame.ClipsDescendants = true
-ddFrame.BackgroundTransparency = 1
-
-local scroll = Instance.new("ScrollingFrame", ddFrame)
-scroll.Size = UDim2.new(1,0,1,0)
-scroll.CanvasSize = UDim2.new(0,0,0,#EGG_LIST * 30)
-scroll.BackgroundTransparency = 1
-scroll.ScrollBarThickness = 6
-local layout = Instance.new("UIListLayout", scroll)
-layout.SortOrder = Enum.SortOrder.LayoutOrder
-
--- populate eggs
-for i,eggname in ipairs(EGG_LIST) do
-    local it = Instance.new("TextButton", scroll)
-    it.Size = UDim2.new(1, -6, 0, 28)
-    it.Position = UDim2.new(0, 3, 0, (i-1)*30)
-    it.BackgroundColor3 = Color3.fromRGB(30,30,30)
-    it.Font = Enum.Font.Gotham
-    it.TextSize = 14
-    it.TextColor3 = Color3.fromRGB(255,255,255)
-    it.Text = eggname
-    local corner = Instance.new("UICorner", it)
-    corner.CornerRadius = UDim.new(0,6)
-    it.MouseButton1Click:Connect(function()
-        config.egg = eggname
-        ddBtn.Text = "Egg: "..eggname
-        ddOpen = false
-        ddFrame:TweenSize(UDim2.new(0.6,0,0,0),"Out","Quad",0.18,true)
-    end)
-end
-
-ddBtn.MouseButton1Click:Connect(function()
-    if ddOpen then
-        ddFrame:TweenSize(UDim2.new(0.6, 0, 0, 0),"Out","Quad",0.18,true)
+btn.MouseButton1Click:Connect(function()
+    running = not running
+    if running then
+        btn.Text = "หยุดสุ่ม ⏸️"
+        btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     else
-        local fullh = math.min(#EGG_LIST * 30, 180)
-        ddFrame:TweenSize(UDim2.new(0.6,0,0,fullh),"Out","Quad",0.18,true)
-    end
-    ddOpen = not ddOpen
-end)
-
--- Hatch amount selection (1 / 3 / 8)
-local amtLabel = Instance.new("TextLabel", frame)
-amtLabel.Position = UDim2.new(0.66, 0, 0.16, 0)
-amtLabel.Size = UDim2.new(0.12, 0, 0, 30)
-amtLabel.BackgroundTransparency = 1
-amtLabel.Font = Enum.Font.Gotham
-amtLabel.TextSize = 14
-amtLabel.Text = "Amount"
-amtLabel.TextColor3 = Color3.fromRGB(200,200,200)
-
-local amtBox = Instance.new("TextBox", frame)
-amtBox.Position = UDim2.new(0.78, 0, 0.16, 0)
-amtBox.Size = UDim2.new(0.18, 0, 0, 30)
-amtBox.BackgroundColor3 = Color3.fromRGB(35,35,35)
-amtBox.Text = tostring(config.amount)
-amtBox.ClearTextOnFocus = false
-amtBox.Font = Enum.Font.Gotham
-amtBox.TextColor3 = Color3.fromRGB(255,255,255)
-Instance.new("UICorner", amtBox).CornerRadius = UDim.new(0,6)
-amtBox.FocusLost:Connect(function(enter)
-    local v = tonumber(amtBox.Text)
-    if v and v > 0 then
-        config.amount = math.floor(v)
-        amtBox.Text = tostring(config.amount)
-    else
-        amtBox.Text = tostring(config.amount)
+        btn.Text = "เริ่มสุ่มไข่ 🔁"
+        btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     end
 end)
 
--- Delay Box
-local delayLabel = Instance.new("TextLabel", frame)
-delayLabel.Position = UDim2.new(0.04, 0, 0.34, 0)
-delayLabel.Size = UDim2.new(0.35, 0, 0, 20)
-delayLabel.BackgroundTransparency = 1
-delayLabel.Font = Enum.Font.Gotham
-delayLabel.TextSize = 12
-delayLabel.Text = "Delay (s)"
-delayLabel.TextColor3 = Color3.fromRGB(200,200,200)
+local statsLabel = Instance.new("TextLabel", frame)
+statsLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
+statsLabel.Position = UDim2.new(0.1, 0, 0.6, 0)
+statsLabel.BackgroundTransparency = 1
+statsLabel.Font = Enum.Font.Gotham
+statsLabel.TextSize = 12
+statsLabel.TextXAlignment = Enum.TextXAlignment.Left
+statsLabel.TextYAlignment = Enum.TextYAlignment.Top
+statsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 
-local delayBox = Instance.new("TextBox", frame)
-delayBox.Position = UDim2.new(0.34, 0, 0.34, 0)
-delayBox.Size = UDim2.new(0.22, 0, 0, 20)
-delayBox.BackgroundColor3 = Color3.fromRGB(35,35,35)
-delayBox.Text = tostring(config.delay)
-delayBox.ClearTextOnFocus = false
-delayBox.Font = Enum.Font.Gotham
-delayBox.TextColor3 = Color3.fromRGB(255,255,255)
-Instance.new("UICorner", delayBox).CornerRadius = UDim.new(0,6)
-delayBox.FocusLost:Connect(function()
-    local v = tonumber(delayBox.Text)
-    if v and v >= 0 then
-        config.delay = v
-        delayBox.Text = tostring(config.delay)
-    else
-        delayBox.Text = tostring(config.delay)
-    end
-end)
-
--- AutoHatch toggle
-local hatchBtn = Instance.new("TextButton", frame)
-hatchBtn.Position = UDim2.new(0.04, 0, 0.52, 0)
-hatchBtn.Size = UDim2.new(0.44, 0, 0, 28)
-hatchBtn.Font = Enum.Font.GothamBold
-hatchBtn.TextSize = 14
-hatchBtn.Text = "AutoHatch: OFF (J)"
-hatchBtn.BackgroundColor3 = Color3.fromRGB(80,80,80)
-hatchBtn.TextColor3 = Color3.fromRGB(255,255,255)
-Instance.new("UICorner", hatchBtn).CornerRadius = UDim.new(0,6)
-hatchBtn.MouseButton1Click:Connect(function()
-    autoHatch = not autoHatch
-    hatchBtn.Text = "AutoHatch: "..(autoHatch and "ON (J)" or "OFF (J)")
-    hatchBtn.BackgroundColor3 = autoHatch and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(80,80,80)
-end)
-
--- AutoChest toggle
-local chestBtn = Instance.new("TextButton", frame)
-chestBtn.Position = UDim2.new(0.52, 0, 0.52, 0)
-chestBtn.Size = UDim2.new(0.44, 0, 0, 28)
-chestBtn.Font = Enum.Font.GothamBold
-chestBtn.TextSize = 14
-chestBtn.Text = "AutoChest: ON"
-chestBtn.BackgroundColor3 = Color3.fromRGB(0,170,255)
-chestBtn.TextColor3 = Color3.fromRGB(255,255,255)
-Instance.new("UICorner", chestBtn).CornerRadius = UDim.new(0,6)
-chestBtn.MouseButton1Click:Connect(function()
-    autoChest = not autoChest
-    chestBtn.Text = "AutoChest: "..(autoChest and "ON" or "OFF")
-    chestBtn.BackgroundColor3 = autoChest and Color3.fromRGB(0,170,255) or Color3.fromRGB(80,80,80)
-end)
-
--- Stats / Log area
-local stats = Instance.new("TextLabel", frame)
-stats.Position = UDim2.new(0.04, 0, 0.72, 0)
-stats.Size = UDim2.new(0.92, 0, 0.22, 0)
-stats.BackgroundTransparency = 1
-stats.Font = Enum.Font.Gotham
-stats.TextSize = 13
-stats.TextColor3 = Color3.fromRGB(220,220,220)
-stats.TextXAlignment = Enum.TextXAlignment.Left
-stats.TextYAlignment = Enum.TextYAlignment.Top
-stats.Text = "Eggs Hatched: 0\nChests Collected: 0\nLast Chest: -"
-
--- Mini icon (tooltip)
-local mini = Instance.new("TextButton", screenGui)
-mini.Size = UDim2.new(0,48,0,48)
-mini.Position = UDim2.new(0.02, 0, 0.75, 0)
-mini.BackgroundColor3 = Color3.fromRGB(8,8,8)
-mini.Text = "🌀"
-mini.TextSize = 26
-mini.Font = Enum.Font.GothamBold
-mini.TextColor3 = Color3.fromRGB(0,255,255)
-mini.BackgroundTransparency = 0.2
-Instance.new("UICorner", mini).CornerRadius = UDim.new(1,0)
-
-local miniTip = Instance.new("TextLabel", mini)
-miniTip.Size = UDim2.new(0, 140, 0, 26)
-miniTip.Position = UDim2.new(1, 6, 0.2, 0)
-miniTip.BackgroundColor3 = Color3.fromRGB(12,12,12)
-miniTip.Text = "NiTroHUB PRO"
-miniTip.TextColor3 = Color3.fromRGB(0,255,255)
-miniTip.Font = Enum.Font.GothamBold
-miniTip.TextSize = 14
-miniTip.Visible = false
-miniTip.BackgroundTransparency = 0.2
-Instance.new("UICorner", miniTip).CornerRadius = UDim.new(0,6)
-
-mini.MouseEnter:Connect(function() miniTip.Visible = true end)
-mini.MouseLeave:Connect(function() miniTip.Visible = false end)
-mini.MouseButton1Click:Connect(function() frame.Visible = not frame.Visible end)
-
--- update stats periodically
 task.spawn(function()
     while task.wait(0.5) do
-        stats.Text = string.format("Eggs Hatched: %d\nChests Collected: %d\nLast Chest: %s",
+        statsLabel.Text = string.format("ฟักไข่แล้ว: %d\nเก็บกล่องแล้ว: %d\nกล่องล่าสุด: %s",
             eggsHatchedCount, chestsCollectedCount, lastCollectedChestName)
     end
 end)
 
--- ensure egg text shows config
-ddBtn.Text = "Egg: "..tostring(config.egg)
-amtBox.Text = tostring(config.amount)
-delayBox.Text = tostring(config.delay)
+-- ปุ่มไอคอนลอย
+local mini = Instance.new("TextButton", gui)
+mini.Size = UDim2.new(0, 50, 0, 50)
+mini.Position = UDim2.new(0.02, 0, 0.7, 0)
+mini.Text = "🌀"
+mini.Font = Enum.Font.GothamBold
+mini.TextSize = 28
+mini.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+mini.TextColor3 = Color3.fromRGB(0, 255, 255)
+mini.BackgroundTransparency = 0.3
+mini.Draggable = true
+Instance.new("UICorner", mini).CornerRadius = UDim.new(1, 0)
+
+local tip = Instance.new("TextLabel", mini)
+tip.Size = UDim2.new(0, 120, 0, 30)
+tip.Position = UDim2.new(1, 5, 0.25, 0)
+tip.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+tip.TextColor3 = Color3.fromRGB(0, 255, 255)
+tip.Text = "NiTroHUB PRO"
+tip.Font = Enum.Font.GothamBold
+tip.TextSize = 14
+tip.Visible = false
+tip.BackgroundTransparency = 0.2
+Instance.new("UICorner", tip).CornerRadius = UDim.new(0, 8)
+
+mini.MouseEnter:Connect(function() tip.Visible = true end)
+mini.MouseLeave:Connect(function() tip.Visible = false end)
+mini.MouseButton1Click:Connect(function() frame.Visible = not frame.Visible end)
 
 -- ==========================
--- Input J toggles AutoHatch
+-- ⌨️ HOTKEY TOGGLE
 -- ==========================
-UserInputService.InputBegan:Connect(function(input, isTyping)
-    if isTyping then return end
+UIS.InputBegan:Connect(function(input, typing)
+    if typing then return end
     if input.KeyCode == Enum.KeyCode.J then
-        autoHatch = not autoHatch
-        hatchBtn.Text = "AutoHatch: "..(autoHatch and "ON (J)" or "OFF (J)")
-        hatchBtn.BackgroundColor3 = autoHatch and Color3.fromRGB(200,50,50) or Color3.fromRGB(80,80,80)
+        running = not running
+        btn.Text = running and "หยุดสุ่ม ⏸️" or "เริ่มสุ่มไข่ 🔁"
+        btn.BackgroundColor3 = running and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(0, 0, 0)
+        warn(running and "✅ เริ่มสุ่มไข่..." or "⏸️ หยุดสุ่มไข่แล้ว")
     end
 end)
 
--- ==========================
--- Final message
--- ==========================
-logmsg("NiTroHUB PRO loaded. Requirements: executor with 'getsenv' optional for no-animation patch.")
-logmsg("Controls: J toggles AutoHatch; use GUI to toggle AutoChest, change egg/amount/delay.")
+print("✅ NiTroHUB PRO - Infinity Hatch + AutoChest Loaded!")
