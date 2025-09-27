@@ -3,11 +3,11 @@
 --// รวมทุกฟีเจอร์: AutoHatch, AutoChest remote collect, no-animation, AntiAFK, GUI, logs
 
 -- ==========================
--- CONFIG (แก้ได้ตามต้องการ)
+-- CONFIG (แก้ไขได้ตามต้องการ)
 -- ==========================
 local DEFAULT_EGG = "Autumn Egg"
 local DEFAULT_HATCH_AMOUNT = 8      -- 1 / 3 / 8 ตามเกมรองรับ
-local DEFAULT_HATCH_DELAY = 0.05    -- ระวังตั้งค่าต่ำมากจะสแปม server
+local DEFAULT_HATCH_DELAY = 0.5     -- ระวังตั้งค่าต่ำมากจะสแปม server
 local CHEST_CHECK_INTERVAL = 6      -- วินาที ตรวจหา chest
 local CHEST_COOLDOWN = 60           -- วินาทีก่อนเก็บ chest เดิมซ้ำ
 local EGG_LIST = {                  -- ตัวอย่าง list จาก wiki (ขยายได้)
@@ -45,6 +45,7 @@ local autoChest = true
 local eggsHatchedCount = 0
 local chestsCollectedCount = 0
 local lastCollected = {} -- map[string] = timestamp, key by chest name or unique id
+local lastCollectedChestName = "-" -- New variable to store the name
 
 -- prepare chest whitelist lookup (lowercase)
 local CHEST_MAP = {}
@@ -59,7 +60,19 @@ end
 -- RemoteEvent finder (robust)
 -- ==========================
 local function findRemoteEvent()
-    -- try known path
+    local function searchRemoteEvent(root)
+        for _, obj in ipairs(root:GetDescendants()) do
+            if obj:IsA("RemoteEvent") then
+                local lname = obj.Name:lower()
+                if lname:find("remoteevent") or lname:find("remote") or lname:find("network") then
+                    return obj
+                end
+            end
+        end
+        return nil
+    end
+
+    -- Try known path first
     local ok, remote = pcall(function()
         local shared = ReplicatedStorage:FindFirstChild("Shared")
         if shared then
@@ -69,8 +82,7 @@ local function findRemoteEvent()
                 if network then
                     local remoteFolder = network:FindFirstChild("Remote") or network
                     if remoteFolder then
-                        local re = remoteFolder:FindFirstChild("RemoteEvent") or remoteFolder:FindFirstChildWhichIsA("RemoteEvent")
-                        if re then return re end
+                        return searchRemoteEvent(remoteFolder)
                     end
                 end
             end
@@ -79,22 +91,8 @@ local function findRemoteEvent()
     end)
     if ok and remote then return remote end
 
-    -- fallback: search any RemoteEvent under ReplicatedStorage with likely name
-    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("RemoteEvent") then
-            local lname = obj.Name:lower()
-            if lname:find("remoteevent") or lname:find("remote") or lname:find("network") then
-                return obj
-            end
-        end
-    end
-
-    -- last resort: first RemoteEvent
-    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("RemoteEvent") then return obj end
-    end
-
-    return nil
+    -- Fallback: search all of ReplicatedStorage
+    return searchRemoteEvent(ReplicatedStorage)
 end
 
 local remoteEvent = findRemoteEvent()
@@ -109,54 +107,25 @@ end
 -- ==========================
 task.spawn(function()
     pcall(function()
-        -- Try multiple likely script paths to be robust
         local success = false
-        local tryRoots = {}
-        -- PlayerScripts -> Scripts -> Game
-        local pScripts = player:FindFirstChild("PlayerScripts")
-        if pScripts then
-            local scriptsFolder = pScripts:FindFirstChild("Scripts")
-            if scriptsFolder then
-                local gameFolder = scriptsFolder:FindFirstChild("Game") or scriptsFolder
-                table.insert(tryRoots, gameFolder)
-            end
-        end
-        -- also try PlayerGui or other places
-        table.insert(tryRoots, player:FindFirstChild("PlayerScripts"))
+        local tryRoots = {player:FindFirstChild("PlayerScripts"), playerGui}
         for _, root in ipairs(tryRoots) do
             if root and root:IsA("Instance") then
                 for _, child in ipairs(root:GetDescendants()) do
-                    if child:IsA("LocalScript") or child:IsA("ModuleScript") then
+                    if (child:IsA("LocalScript") or child:IsA("ModuleScript")) and type(getsenv) == "function" then
                         local nm = child.Name:lower()
-                        if nm:find("egg") and (nm:find("open") or nm:find("open") or nm:find("frontend") or nm:find("hatch")) then
-                            if type(getsenv) == "function" then
-                                local env = getsenv(child)
-                                if env and env.PlayEggAnimation then
-                                    env.PlayEggAnimation = function(...) return end
-                                    logmsg("Patched PlayEggAnimation from", child:GetFullName())
-                                    success = true
-                                end
+                        if nm:find("egg") and (nm:find("opening") or nm:find("hatch")) then
+                            local env = getsenv(child)
+                            if env and env.PlayEggAnimation then
+                                env.PlayEggAnimation = function(...) end
+                                logmsg("Patched PlayEggAnimation from", child:GetFullName())
+                                success = true
                             end
                         end
                     end
                 end
             end
         end
-        -- explicit try by name if available
-        pcall(function()
-            local candidate = player:WaitForChild("PlayerScripts", 1)
-            if candidate then
-                local eggsScript = candidate:FindFirstChild("Scripts") and candidate.Scripts:FindFirstChild("Game") and candidate.Scripts.Game:FindFirstChild("Egg Opening Frontend")
-                if eggsScript and type(getsenv) == "function" then
-                    local env = getsenv(eggsScript)
-                    if env and env.PlayEggAnimation then
-                        env.PlayEggAnimation = function(...) return end
-                        logmsg("Patched PlayEggAnimation (Egg Opening Frontend)")
-                        success = true
-                    end
-                end
-            end
-        end)
         if not success then
             logmsg("No animation patch applied (getsenv unavailable or script not found).")
         end
@@ -169,18 +138,16 @@ end)
 local HIDE_GUI_NAMES = {"HatchEggUI","HatchAnimationGui","HatchGui","LastHatchGui","EggHatchUI","AutoDeleteUI","HatchPopupUI"}
 
 task.spawn(function()
-    -- initial and periodic disable
     while task.wait(0.6) do
         for _, name in ipairs(HIDE_GUI_NAMES) do
             local g = playerGui:FindFirstChild(name)
-            if g and g:IsA("ScreenGui") or g and g:IsA("GuiObject") then
+            if g and (g:IsA("ScreenGui") or g:IsA("GuiObject")) then
                 pcall(function() g.Enabled = false; g.Visible = false end)
             end
         end
     end
 end)
 
--- disable newly added GUIs that look like hatch UI
 game.DescendantAdded:Connect(function(obj)
     pcall(function()
         if obj:IsA("ScreenGui") or obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
@@ -198,7 +165,6 @@ end)
 local function doHatch()
     if not remoteEvent then return end
     pcall(function()
-        -- FireServer arguments depend on game - based on your earlier usage:
         remoteEvent:FireServer("HatchEgg", config.egg, config.amount)
         eggsHatchedCount = eggsHatchedCount + (tonumber(config.amount) or 1)
     end)
@@ -214,24 +180,39 @@ task.spawn(function()
 end)
 
 -- ==========================
--- Auto Chest (remote collect NO teleport)
+-- Auto Chest (remote collect via server event)
 -- ==========================
--- Find candidate touch part for a chest model
-local function findTriggerPart(model)
-    if not model then return nil end
-    -- try common names first (recursive)
-    local names = {"TouchTrigger","Touch","Trigger","Hitbox","HitBox","CollectPart","Part"}
-    for _, n in ipairs(names) do
-        local p = model:FindFirstChild(n, true)
-        if p and p:IsA("BasePart") then return p end
+local CHEST_COLLECT_EVENT = "CollectChest" -- Common name, verify if it's different in-game
+local function findCollectRemoteEvent()
+    local function search(root)
+        for _, obj in ipairs(root:GetDescendants()) do
+            if obj:IsA("RemoteEvent") and obj.Name:lower():find("collect") then
+                return obj
+            end
+        end
+        return nil
     end
-    -- try PrimaryPart
-    if model.PrimaryPart and model.PrimaryPart:IsA("BasePart") then return model.PrimaryPart end
-    -- fallback first BasePart descendant
-    for _, d in ipairs(model:GetDescendants()) do
-        if d:IsA("BasePart") then return d end
+
+    -- Look in ReplicatedStorage for a likely named event
+    local collectRemote = search(ReplicatedStorage)
+    if collectRemote then return collectRemote end
+
+    -- Fallback: Use the same remoteEvent if it's a generic one
+    if remoteEvent then
+        local rn = remoteEvent.Name:lower()
+        if rn:find("remoteevent") or rn:find("network") then
+            return remoteEvent
+        end
     end
+
     return nil
+end
+
+local collectRemoteEvent = findCollectRemoteEvent()
+if not collectRemoteEvent then
+    warn("[NiTroHUB] Collect RemoteEvent not found. AutoChest may not work.")
+else
+    logmsg("Collect RemoteEvent found:", collectRemoteEvent:GetFullName())
 end
 
 local function chestIsWhitelisted(model)
@@ -240,58 +221,35 @@ local function chestIsWhitelisted(model)
     return CHEST_MAP[lower] or false
 end
 
--- Use firetouchinterest to simulate touch without moving player
-local function remoteCollectPart(part)
-    if not part or not player.Character then return false end
-    if type(firetouchinterest) == "function" then
-        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp then return false end
-        pcall(function()
-            firetouchinterest(hrp, part, 0)
-            task.wait(0.12)
-            firetouchinterest(hrp, part, 1)
-        end)
-        return true
-    else
-        -- firetouchinterest not available on this executor
-        return false
-    end
+-- Collect a chest by invoking the server's remote event
+local function remoteCollectChest(model)
+    if not model or not collectRemoteEvent then return false end
+    pcall(function()
+        collectRemoteEvent:FireServer(model)
+        chestsCollectedCount = chestsCollectedCount + 1
+        lastCollectedChestName = model.Name
+        logmsg("Collected chest:", model.Name)
+    end)
+    return true
 end
 
 task.spawn(function()
     while true do
         task.wait(CHEST_CHECK_INTERVAL)
-        if autoChest then
-            -- scan workspace and optional "Chests" folder
+        if autoChest and player.Character then
             local searchAreas = {workspace}
             if workspace:FindFirstChild("Chests") then table.insert(searchAreas, workspace.Chests) end
 
             for _, area in ipairs(searchAreas) do
                 for _, obj in ipairs(area:GetDescendants()) do
-                    if obj:IsA("Model") then
-                        -- check whitelist by name (case-insensitive)
-                        local nm = obj.Name and obj.Name:lower() or ""
-                        if CHEST_MAP[nm] then
-                            -- cooldown per chest-name (or use unique id if you want per instance)
-                            local key = obj:GetDebugId and obj:GetDebugId() or obj:GetFullName() or obj.Name
-                            if lastCollected[key] and tick() - lastCollected[key] < CHEST_COOLDOWN then
-                                -- still cooling down
-                            else
-                                local trigger = findTriggerPart(obj)
-                                if trigger then
-                                    local ok = remoteCollectPart(trigger)
-                                    if ok then
-                                        lastCollected[key] = tick()
-                                        chestsCollectedCount = chestsCollectedCount + 1
-                                        logmsg("Collected chest:", obj.Name)
-                                    else
-                                        -- remote collect not supported by executor
-                                        -- (do not teleport; skip)
-                                        -- Optionally we can try to invoke a server remote to collect if known (not implemented)
-                                        -- warn once
-                                        warn("[NiTroHUB] remoteCollect not supported on this executor (firetouchinterest missing). Chest not collected:", obj.Name)
-                                    end
-                                end
+                    if obj:IsA("Model") and chestIsWhitelisted(obj) then
+                        local key = obj:GetDebugId and obj:GetDebugId() or obj:GetFullName()
+                        if lastCollected[key] and tick() - lastCollected[key] < CHEST_COOLDOWN then
+                            -- still cooling down
+                        else
+                            local ok = remoteCollectChest(obj)
+                            if ok then
+                                lastCollected[key] = tick()
                             end
                         end
                     end
@@ -318,7 +276,7 @@ end)
 -- ==========================
 -- GUI (dropdown for eggs, toggles, stats log)
 -- ==========================
--- avoid creating multiple GUIs
+-- Avoid creating multiple GUIs
 if playerGui:FindFirstChild("NiTroHUB_GUI") then
     playerGui.NiTroHUB_GUI:Destroy()
 end
@@ -551,14 +509,9 @@ mini.MouseButton1Click:Connect(function() frame.Visible = not frame.Visible end)
 task.spawn(function()
     while task.wait(0.5) do
         stats.Text = string.format("Eggs Hatched: %d\nChests Collected: %d\nLast Chest: %s",
-            eggsHatchedCount, chestsCollectedCount, (lastCollected._lastName or "-"))
+            eggsHatchedCount, chestsCollectedCount, lastCollectedChestName)
     end
 end)
-
--- when a chest collected, update last name (helper)
-local function setLastChestName(name)
-    lastCollected._lastName = name or "-"
-end
 
 -- ensure egg text shows config
 ddBtn.Text = "Egg: "..tostring(config.egg)
@@ -578,13 +531,7 @@ UserInputService.InputBegan:Connect(function(input, isTyping)
 end)
 
 -- ==========================
--- Helper: chest collection log inside the auto collection loop
--- ==========================
--- The auto collection loop sets lastCollected[key] and chestsCollectedCount when successful.
--- We also set lastCollected._lastName to show latest chest name in GUI
-
--- ==========================
 -- Final message
 -- ==========================
-logmsg("NiTroHUB PRO loaded. Requirements: executor with 'firetouchinterest' recommended for remote chest collection; 'getsenv' optional for no-animation patch.")
+logmsg("NiTroHUB PRO loaded. Requirements: executor with 'getsenv' optional for no-animation patch.")
 logmsg("Controls: J toggles AutoHatch; use GUI to toggle AutoChest, change egg/amount/delay.")
