@@ -1,21 +1,28 @@
---// 🌀 NiTroHUB PRO - Infinity Hatch + Auto Chest (FULL)
---// ✨ by NiTroHUB x ChatGPT (2025 Final Edition)
+--// 🌀 NiTroHUB PRO - Final Evolution (Non-Teleport Edition)
+--// ✨ by NiTroHUB x ChatGPT (ปรับปรุงล่าสุด)
 --//
---// คุณสมบัติ:
+--// คุณสมบัติหลัก:
 --//   - สุ่มไข่อัตโนมัติ (Infinity Hatch)
---//   - เก็บกล่องสมบัติที่กำหนดให้อัตโนมัติ (Auto Chest)
---//   - ปิดอนิเมชันและ UI การฟักไข่เพื่อลดอาการแลค
+--//   - เก็บกล่องสมบัติอัตโนมัติ (Auto Chest) **โดยไม่ใช้การเทเลพอร์ต**
+--//   - ควบคุมการทำงานของ Auto Hatch และ Auto Chest ได้อย่างอิสระ
+--//   - การแจ้งเตือนผ่าน Discord Webhook เมื่อเก็บกล่องสำเร็จ
+--//   - ปิดอนิเมชันและ UI ที่ไม่จำเป็นเพื่อประสิทธิภาพสูงสุด
 --//   - ระบบป้องกัน AFK (Anti-AFK)
---//   - GUI ควบคุมที่เรียบง่ายและลากตำแหน่งได้
---//   - Hotkey: กดปุ่ม 'J' เพื่อเปิด/ปิดการสุ่มไข่
+--//   - GUI ควบคุมที่ใช้งานง่ายและลากตำแหน่งได้
+--//   - Hotkey: กดปุ่ม 'J' เพื่อเปิด/ปิดการสุ่มไข่, 'K' เพื่อเปิด/ปิดการเก็บกล่อง
 --// =================================================================
 
 -- ==========================
 -- ⚙️ CONFIG (ตั้งค่าตามต้องการ)
 -- ==========================
+-- ส่วนของ Auto Hatch
 local EGG_NAME = "Autumn Egg"           -- ชื่อไข่ที่จะสุ่ม
 local HATCH_AMOUNT = 8                  -- จำนวนสุ่มต่อครั้ง (รองรับ 1, 3, หรือ 8)
 local HATCH_DELAY = 0.05                -- เวลาระหว่างสุ่ม (วินาที) | คำเตือน: ค่าที่ต่ำเกินไปอาจทำให้ถูกตัดออกจากเซิร์ฟเวอร์
+
+-- ส่วนของ Auto Chest
+-- *** ปิดการเทเลพอร์ตเป็นค่าเริ่มต้น ***
+local TELEPORT_TO_CHEST = false         -- true = เทเลพอร์ตไปที่กล่องก่อนเก็บ, false = ไม่เทเลพอร์ต
 local CHEST_CHECK_INTERVAL = 10         -- ความถี่ในการตรวจหากล่อง (วินาที)
 local CHEST_COLLECT_COOLDOWN = 60       -- คูลดาวน์หลังจากเก็บกล่องเดิมแล้ว (วินาที)
 
@@ -26,20 +33,22 @@ local CHEST_NAMES = {
     "Ticket Chest", "Easy Obby Chest", "Medium Obby Chest", "Hard Obby Chest"
 }
 
+-- ส่วนของการแจ้งเตือน (Webhook)
+local ENABLE_WEBHOOK = false            -- ตั้งเป็น true เพื่อเปิดใช้งานการแจ้งเตือนผ่าน Discord
+local WEBHOOK_URL = ""                  -- ใส่ URL ของ Discord Webhook ที่นี่
+
 -- ==========================
--- 🧩 SERVICES & PLAYER
+-- 🧩 SERVICES & CORE SETUP
 -- ==========================
--- การเรียกใช้ Services หลักของ Roblox
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local HttpService = game:GetService("HttpService")
 
--- การเข้าถึงข้อมูลของผู้เล่น
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
--- รอให้ตัวละครโหลดเสร็จสมบูรณ์เพื่อป้องกัน Error
 local character = player.Character or player.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 
@@ -50,64 +59,69 @@ for _, name in ipairs(CHEST_NAMES) do
 end
 
 -- ==========================
--- 📡 REMOTE EVENTS (ปรับปรุงการค้นหาให้ดีขึ้น)
+-- 📡 REMOTE EVENTS & UTILITIES
 -- ==========================
-local function logmsg(...)
-    print("[NiTroHUB]", ...)
-end
+local function logmsg(...) print("[NiTroHUB]", ...) end
 
--- ฟังก์ชันค้นหา RemoteEvent ที่ปรับปรุงใหม่
 local function findRemote(possibleNames)
-    local locations = {ReplicatedStorage, player:WaitForChild("PlayerScripts")} -- เพิ่มพื้นที่ค้นหา
+    local locations = {ReplicatedStorage, player:WaitForChild("PlayerScripts")}
     for _, loc in ipairs(locations) do
         for _, obj in ipairs(loc:GetDescendants()) do
             if obj:IsA("RemoteEvent") then
                 local objNameLower = obj.Name:lower()
                 for _, name in ipairs(possibleNames) do
-                    if objNameLower == name:lower() or objNameLower:find(name:lower(), 1, true) then
-                        return obj
-                    end
+                    if objNameLower == name:lower() or objNameLower:find(name:lower(), 1, true) then return obj end
                 end
             end
         end
     end
-    return nil -- ค้นหาไม่พบ
+    return nil
 end
 
--- ค้นหา RemoteEvent สำหรับการฟักไข่
 local hatchRemote = findRemote({"HatchEgg", "EggHatch", "RemoteEvent", "DefaultRemote"})
-if hatchRemote then
-    logmsg("✅ Hatch RemoteEvent พบแล้ว:", hatchRemote:GetFullName())
-else
-    warn("❌ Hatch RemoteEvent ไม่พบ! สคริปต์อาจทำงานไม่สมบูรณ์")
-end
+if hatchRemote then logmsg("✅ Hatch RemoteEvent พบแล้ว:", hatchRemote:GetFullName()) else warn("❌ ไม่พบ Hatch RemoteEvent!") end
 
--- ค้นหา RemoteEvent สำหรับการเก็บกล่อง (อาจเป็นอันเดียวกับ RemoteEvent หลัก)
 local collectRemote = findRemote({"RemoteEvent", "DefaultRemote", "CollectChest"})
-if collectRemote then
-    logmsg("✅ Collect RemoteEvent พบแล้ว:", collectRemote:GetFullName())
-else
-    warn("❌ Collect RemoteEvent ไม่พบ! AutoChest อาจไม่ทำงาน")
-end
+if collectRemote then logmsg("✅ Collect RemoteEvent พบแล้ว:", collectRemote:GetFullName()) else warn("❌ ไม่พบ Collect RemoteEvent, AutoChest อาจใช้ได้แค่ firetouchinterest") end
 
 -- ==========================
 -- 📊 STATE (ตัวแปรสถานะการทำงาน)
 -- ==========================
-local running = false
+local hatchRunning = false
+local chestRunning = false
 local eggsHatchedCount = 0
 local chestsCollectedCount = 0
-local lastCollectedChests = {} -- ใช้เก็บข้อมูล {chestId = lastCollectTime}
+local lastCollectedChests = {}
 local lastCollectedChestName = "-"
+local currentStatus = "Idle"
 
 -- ==========================
--- 🔁 UI & ANIMATION PATCH (ปรับปรุงประสิทธิภาพ)
+-- 💬 WEBHOOK FUNCTION
 -- ==========================
--- (ส่วนนี้เหมือนเดิม เนื่องจากทำงานได้ดีอยู่แล้ว)
+local function sendWebhook(chestName)
+    if not ENABLE_WEBHOOK or WEBHOOK_URL == "" then return end
+    task.spawn(function()
+        local data = {
+            embeds = {{
+                title = "✨ เก็บกล่องสมบัติสำเร็จ!",
+                description = string.format("ผู้เล่น **%s** ได้เก็บ **%s**", player.Name, chestName),
+                color = 0x00FFFF, -- สี Aqua
+                footer = {text = "NiTroHUB PRO - Final Evolution"},
+                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+            }}
+        }
+        local success, err = pcall(function()
+            HttpService:PostAsync(WEBHOOK_URL, HttpService:JSONEncode(data))
+        end)
+        if not success then warn("⚠️ ไม่สามารถส่ง Webhook ได้:", err) end
+    end)
+end
+
+-- ==========================
+-- 🚀 PERFORMANCE PATCHES
+-- ==========================
 local function hideUnwantedGui(gui)
-    local guiNamesToHide = {
-        HatchEggUI = true, HatchAnimationGui = true, HatchGui = true,
-        LastHatchGui = true, EggHatchUI = true, AutoDeleteUI = true, HatchPopupUI = true
-    }
+    local guiNamesToHide = {HatchEggUI=true, HatchAnimationGui=true, HatchGui=true, LastHatchGui=true, EggHatchUI=true, AutoDeleteUI=true, HatchPopupUI=true}
     if gui and guiNamesToHide[gui.Name] then
         pcall(function() gui.Enabled = false; gui.Visible = false; end)
     end
@@ -120,10 +134,7 @@ task.spawn(function()
     local success, err = pcall(function()
         local eggOpeningScript = player:WaitForChild("PlayerScripts"):WaitForChild("Scripts"):WaitForChild("Game"):WaitForChild("Egg Opening Frontend")
         local env = getfenv and getfenv(eggOpeningScript) or getsenv and getsenv(eggOpeningScript)
-        if env and env.PlayEggAnimation then
-            env.PlayEggAnimation = function() return end
-            logmsg("✅ ปิดอนิเมชันสุ่มไข่สำเร็จ")
-        end
+        if env and env.PlayEggAnimation then env.PlayEggAnimation = function() return end; logmsg("✅ ปิดอนิเมชันสุ่มไข่สำเร็จ") end
     end)
     if not success then warn("⚠️ ไม่สามารถปิดอนิเมชันสุ่มไข่ได้:", err) end
 end)
@@ -131,56 +142,40 @@ end)
 -- ==========================
 -- 🥚 AUTO HATCH
 -- ==========================
-local function hatchEgg()
-    if not hatchRemote then return end
-    pcall(function()
-        hatchRemote:FireServer("HatchEgg", EGG_NAME, HATCH_AMOUNT)
-        eggsHatchedCount = eggsHatchedCount + HATCH_AMOUNT
-    end)
-end
-
 task.spawn(function()
     while true do
-        if running then hatchEgg() end
+        if hatchRunning then
+            currentStatus = "กำลังฟักไข่..."
+            pcall(function()
+                hatchRemote:FireServer("HatchEgg", EGG_NAME, HATCH_AMOUNT)
+                eggsHatchedCount = eggsHatchedCount + HATCH_AMOUNT
+            end)
+        end
         task.wait(HATCH_DELAY)
     end
 end)
 
 -- ==========================
--- 💰 AUTO CHEST (*** อัปเดตส่วนนี้ ***)
+-- 💰 AUTO CHEST (*** เวอร์ชันไม่เทเลพอร์ต ***)
 -- ==========================
 local function collectChest(chest)
-    if not chest or not chest.Parent then return end
+    if not chest or not chest.Parent or not hrp then return end
 
     local key = chest:GetDebugId()
-    if lastCollectedChests[key] and (tick() - lastCollectedChests[key] < CHEST_COLLECT_COOLDOWN) then
-        return -- ยังอยู่ในช่วงคูลดาวน์
-    end
+    if lastCollectedChests[key] and (tick() - lastCollectedChests[key] < CHEST_COLLECT_COOLDOWN) then return end
 
     local success = false
-    local trigger = chest:FindFirstChild("TouchTrigger") or chest:FindFirstChildWhichIsA("BasePart")
+    currentStatus = "กำลังพยายามเก็บ " .. chest.Name
 
+    -- วิธีเก็บกล่อง (เหมือนเดิม แต่ไม่มีโค้ดเทเลพอร์ต)
+    local trigger = chest:FindFirstChild("TouchTrigger") or chest:FindFirstChildWhichIsA("BasePart")
     if trigger and firetouchinterest then
-        -- วิธีที่ 1: ใช้ firetouchinterest (สำหรับ Executor ส่วนใหญ่)
-        firetouchinterest(hrp, trigger, 0)
-        task.wait(0.1)
-        firetouchinterest(hrp, trigger, 1)
+        firetouchinterest(hrp, trigger, 0); task.wait(0.1); firetouchinterest(hrp, trigger, 1)
         success = true
         logmsg("💰 [Touch] เก็บ Chest สำเร็จ:", chest.Name)
     elseif collectRemote then
-        -- วิธีที่ 2: ใช้ RemoteEvent ตามโครงสร้างที่คุณให้มา (Fallback)
-        local remoteSuccess, _ = pcall(function()
-            local args = {
-                "ClaimChest", -- ชื่อฟังก์ชันบนเซิร์ฟเวอร์
-                chest.Name,   -- ชื่อของกล่องที่เก็บแบบไดนามิก
-                true          -- อาร์กิวเมนต์เพิ่มเติม (อาจจำเป็น)
-            }
-            collectRemote:FireServer(unpack(args))
-        end)
-        if remoteSuccess then
-            success = true
-            logmsg("💰 [Remote] ส่งคำสั่งเก็บ Chest:", chest.Name)
-        end
+        local remoteSuccess = pcall(function() collectRemote:FireServer("ClaimChest", chest.Name, true) end)
+        if remoteSuccess then success = true; logmsg("💰 [Remote] ส่งคำสั่งเก็บ Chest:", chest.Name) end
     else
         warn("❌ ไม่สามารถเก็บกล่องได้: ไม่รองรับ firetouchinterest และไม่พบ Collect RemoteEvent")
     end
@@ -190,21 +185,27 @@ local function collectChest(chest)
         lastCollectedChests[key] = tick()
         chestsCollectedCount = chestsCollectedCount + 1
         lastCollectedChestName = chest.Name
+        sendWebhook(chest.Name)
     end
 end
 
 task.spawn(function()
-    while task.wait(CHEST_CHECK_INTERVAL) do
-        local searchAreas = {Workspace, Workspace:FindFirstChild("Chests"), Workspace:FindFirstChild("Areas")}
-        for _, area in ipairs(searchAreas) do
-            if area then
-                for _, obj in ipairs(area:GetDescendants()) do
-                    if obj:IsA("Model") and CHEST_LIST[obj.Name:lower()] then
-                        pcall(collectChest, obj)
+    while true do
+        if chestRunning then
+            currentStatus = "กำลังค้นหากล่อง..."
+            local searchAreas = {Workspace, Workspace:FindFirstChild("Chests"), Workspace:FindFirstChild("Areas")}
+            for _, area in ipairs(searchAreas) do
+                if area then
+                    for _, obj in ipairs(area:GetDescendants()) do
+                        if obj:IsA("Model") and CHEST_LIST[obj.Name:lower()] and chestRunning then
+                            pcall(collectChest, obj)
+                            task.wait()
+                        end
                     end
                 end
             end
         end
+        task.wait(CHEST_CHECK_INTERVAL)
     end
 end)
 
@@ -215,123 +216,101 @@ task.spawn(function()
     pcall(function()
         local vu = game:GetService("VirtualUser")
         player.Idled:Connect(function()
-            vu:Button2Down(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
-            task.wait(1)
-            vu:Button2Up(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
-            logmsg("💤 Anti-AFK ทำงาน")
+            vu:Button2Down(Vector2.new(0,0), Workspace.CurrentCamera.CFrame); task.wait(1)
+            vu:Button2Up(Vector2.new(0,0), Workspace.CurrentCamera.CFrame); logmsg("💤 Anti-AFK ทำงาน")
         end)
     end)
 end)
 
 -- ==========================
--- 🎨 GUI INTERFACE & 🕹️ CONTROLS
--- (ส่วนนี้เหมือนเดิมทุกประการ)
+-- 🎨 GUI INTERFACE & 🕹️ CONTROLS (*** คงไว้ตามเดิม ***)
 -- ==========================
 local gui = Instance.new("ScreenGui", playerGui)
-gui.Name = "NiTroHUB_InfinityHatch"
-gui.IgnoreGuiInset = true
-gui.ResetOnSpawn = false
+gui.Name = "NiTroHUB_PRO_GUI"; gui.IgnoreGuiInset = true; gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
-frame.Position = UDim2.new(0.05, 0, 0.25, 0)
-frame.Size = UDim2.new(0, 240, 0, 160)
-frame.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
-frame.Active = true
-frame.Draggable = true
+frame.Position = UDim2.new(0.05, 0, 0.2, 0); frame.Size = UDim2.new(0, 260, 0, 200)
+frame.BackgroundColor3 = Color3.fromRGB(28, 28, 32); frame.Active = true; frame.Draggable = true
 frame.BackgroundTransparency = 0.1
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
 Instance.new("UIStroke", frame).Color = Color3.fromRGB(80, 80, 80)
 
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-title.Font = Enum.Font.GothamBold
-title.Text = "🌀 NiTroHUB PRO"
-title.TextColor3 = Color3.fromRGB(0, 225, 255)
-title.TextSize = 16
+title.Size = UDim2.new(1, 0, 0, 35); title.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+title.Font = Enum.Font.GothamBold; title.Text = "🌀 NiTroHUB PRO 🌀"
+title.TextColor3 = Color3.fromRGB(0, 225, 255); title.TextSize = 18
 Instance.new("UICorner", title).CornerRadius = UDim.new(0, 12)
-local titleStroke = Instance.new("UIStroke", title)
-titleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-titleStroke.Color = Color3.fromRGB(80, 80, 80)
+local titleStroke = Instance.new("UIStroke", title); titleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; titleStroke.Color = Color3.fromRGB(80, 80, 80)
 
-local btn = Instance.new("TextButton", frame)
-btn.Position = UDim2.new(0.5, -90, 0.25, 0)
-btn.Size = UDim2.new(0, 180, 0, 35)
-btn.Text = "เริ่มสุ่มไข่ 🔁"
-btn.Font = Enum.Font.GothamBold
-btn.TextSize = 15
-btn.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
-btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-Instance.new("UIStroke", btn).Color = Color3.fromRGB(90, 90, 90)
+-- ฟังก์ชันสร้างปุ่ม Toggle
+local function createToggleButton(parent, text, hotkey, yPos)
+    local btn = Instance.new("TextButton", parent)
+    btn.Position = UDim2.new(0.5, -110, 0, yPos); btn.Size = UDim2.new(0, 220, 0, 30)
+    btn.Font = Enum.Font.GothamBold; btn.TextSize = 14
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke", btn).Color = Color3.fromRGB(120, 120, 120)
 
-local statsLabel = Instance.new("TextLabel", frame)
-statsLabel.Size = UDim2.new(1, -20, 0.5, 0)
-statsLabel.Position = UDim2.new(0, 10, 0.55, 0)
-statsLabel.BackgroundTransparency = 1
-statsLabel.Font = Enum.Font.Gotham
-statsLabel.TextSize = 13
-statsLabel.TextXAlignment = Enum.TextXAlignment.Left
-statsLabel.TextYAlignment = Enum.TextYAlignment.Top
-statsLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-statsLabel.Text = "กำลังรอเริ่ม..."
-
-local mini = Instance.new("TextButton", gui)
-mini.Size = UDim2.new(0, 50, 0, 50)
-mini.Position = UDim2.new(0.02, 0, 0.7, 0)
-mini.Text = "🌀"
-mini.Font = Enum.Font.GothamBold
-mini.TextSize = 28
-mini.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
-mini.TextColor3 = Color3.fromRGB(0, 225, 255)
-mini.BackgroundTransparency = 0.2
-mini.Draggable = true
-Instance.new("UICorner", mini).CornerRadius = UDim.new(1, 0)
-Instance.new("UIStroke", mini).Color = Color3.fromRGB(0, 225, 255)
-
-local tip = Instance.new("TextLabel", mini)
-tip.Size = UDim2.new(0, 120, 0, 30)
-tip.Position = UDim2.new(1, 5, 0.25, 0)
-tip.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-tip.TextColor3 = Color3.fromRGB(0, 225, 255)
-tip.Text = "NiTroHUB PRO"
-tip.Font = Enum.Font.GothamBold
-tip.TextSize = 14
-tip.Visible = false
-tip.BackgroundTransparency = 0.2
-Instance.new("UICorner", tip).CornerRadius = UDim.new(0, 8)
-
-local function toggleScript(newState)
-    running = (newState == nil) and not running or newState
-    if running then
-        btn.Text = "หยุดสุ่ม ⏸️"
-        btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        logmsg("✅ เริ่มสุ่มไข่...")
-    else
-        btn.Text = "เริ่มสุ่มไข่ 🔁"
-        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
-        logmsg("⏸️ หยุดสุ่มไข่แล้ว")
+    local function updateVisuals(state)
+        if state then
+            btn.Text = text .. " [ON] - ("..hotkey..")"
+            btn.BackgroundColor3 = Color3.fromRGB(76, 175, 80) -- สีเขียว
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            btn.Text = text .. " [OFF] - ("..hotkey..")"
+            btn.BackgroundColor3 = Color3.fromRGB(220, 50, 50) -- สีแดง
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        end
     end
+    return btn, updateVisuals
 end
 
-btn.MouseButton1Click:Connect(function() toggleScript() end)
-mini.MouseEnter:Connect(function() tip.Visible = true end)
-mini.MouseLeave:Connect(function() tip.Visible = false end)
-mini.MouseButton1Click:Connect(function() frame.Visible = not frame.Visible end)
+-- ปุ่มควบคุม
+local hatchBtn, updateHatchBtn = createToggleButton(frame, "Auto Hatch", "J", 45)
+local chestBtn, updateChestBtn = createToggleButton(frame, "Auto Chest", "K", 85)
 
+local statsLabel = Instance.new("TextLabel", frame)
+statsLabel.Size = UDim2.new(1, -20, 0, 65); statsLabel.Position = UDim2.new(0, 10, 0, 125)
+statsLabel.BackgroundTransparency = 1; statsLabel.Font = Enum.Font.Gotham
+statsLabel.TextSize = 13; statsLabel.TextXAlignment = Enum.TextXAlignment.Left
+statsLabel.TextYAlignment = Enum.TextYAlignment.Top; statsLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+
+-- ฟังก์ชันควบคุมหลัก
+local function toggleHatch()
+    hatchRunning = not hatchRunning
+    updateHatchBtn(hatchRunning)
+    logmsg("Auto Hatch:", hatchRunning and "ON" or "OFF")
+end
+
+local function toggleChest()
+    chestRunning = not chestRunning
+    updateChestBtn(chestRunning)
+    if not chestRunning and not hatchRunning then currentStatus = "Idle" end
+    logmsg("Auto Chest:", chestRunning and "ON" or "OFF")
+end
+
+-- เชื่อมต่อ Event
+hatchBtn.MouseButton1Click:Connect(toggleHatch)
+chestBtn.MouseButton1Click:Connect(toggleChest)
+
+-- ตั้งค่าเริ่มต้น
+updateHatchBtn(hatchRunning)
+updateChestBtn(chestRunning)
+
+-- อัปเดต GUI Loop
 task.spawn(function()
-    while true do
-        statsLabel.Text = string.format("ฟักไข่แล้ว: %d\nเก็บกล่องแล้ว: %d\nกล่องล่าสุด: %s",
-            eggsHatchedCount, chestsCollectedCount, lastCollectedChestName)
-        task.wait(0.5)
+    while task.wait(0.25) do
+        statsLabel.Text = string.format(
+            "สถานะ: %s\nฟักไข่แล้ว: %d\nเก็บกล่องแล้ว: %d\nกล่องล่าสุด: %s",
+            currentStatus, eggsHatchedCount, chestsCollectedCount, lastCollectedChestName
+        )
     end
 end)
 
+-- Hotkeys
 UserInputService.InputBegan:Connect(function(input, isTyping)
     if isTyping then return end
-    if input.KeyCode == Enum.KeyCode.J then
-        toggleScript()
-    end
+    if input.KeyCode == Enum.KeyCode.J then toggleHatch() end
+    if input.KeyCode == Enum.KeyCode.K then toggleChest() end
 end)
 
-logmsg("✅ NiTroHUB PRO - Infinity Hatch + AutoChest Loaded! | กด 'J' เพื่อเริ่ม/หยุด")
+logmsg("✅ NiTroHUB PRO - (Non-Teleport) Loaded! | J = สุ่มไข่, K = เก็บกล่อง")
