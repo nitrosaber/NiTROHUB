@@ -45,18 +45,53 @@ for _, name in ipairs(CHEST_NAMES) do
     CHEST_LIST[name:lower()] = true
 end
 
+-- ==========================
 -- 📡 REMOTE EVENTS (ค้นหาและตรวจสอบความพร้อม)
-local remoteEvent = pcall(function()
-    return ReplicatedStorage
-        :WaitForChild("Shared", 5)
-        :WaitForChild("Framework", 5)
-        :WaitForChild("Network", 5)
-        :WaitForChild("Remote", 5)
-        :WaitForChild("RemoteEvent", 5)
-end)
+-- ==========================
+local function logmsg(...)
+    print("[NiTroHUB]", ...)
+end
 
+local function findRemoteEvent(name)
+    local function searchRemote(root)
+        for _, obj in ipairs(root:GetDescendants()) do
+            if obj:IsA("RemoteEvent") then
+                local lname = obj.Name:lower()
+                if lname:find(name:lower()) or lname:find("remote") or lname:find("network") then
+                    return obj
+                end
+            end
+        end
+        return nil
+    end
+
+    local remote = searchRemote(ReplicatedStorage)
+    if remote then return remote end
+
+    local shared = ReplicatedStorage:FindFirstChild("Shared")
+    if shared then
+        local remoteFolder = shared:FindFirstChild("Framework") and shared.Framework:FindFirstChild("Network") and shared.Framework.Network:FindFirstChild("Remote")
+        if remoteFolder then
+            local r = searchRemote(remoteFolder)
+            if r then return r end
+        end
+    end
+    
+    return nil
+end
+
+local remoteEvent = findRemoteEvent("HatchEgg") or findRemoteEvent("RemoteEvent")
 if not remoteEvent then
     warn("❌ RemoteEvent สำหรับสุ่มไข่ไม่พบ. สคริปต์อาจทำงานไม่สมบูรณ์")
+else
+    logmsg("✅ RemoteEvent สำหรับสุ่มไข่พบแล้ว:", remoteEvent.Name)
+end
+
+local collectRemoteEvent = findRemoteEvent("CollectChest") or findRemoteEvent("RemoteEvent")
+if not collectRemoteEvent then
+    warn("❌ Collect RemoteEvent สำหรับเก็บกล่องไม่พบ. AutoChest อาจไม่ทำงาน")
+else
+    logmsg("✅ Collect RemoteEvent สำหรับเก็บกล่องพบแล้ว:", collectRemoteEvent.Name)
 end
 
 -- 📊 STATE
@@ -92,7 +127,7 @@ task.spawn(function()
         local env = getsenv(s)
         if env and env.PlayEggAnimation then
             env.PlayEggAnimation = function() return end
-            print("✅ ปิดอนิเมชันสุ่มไข่แล้ว")
+            logmsg("✅ ปิดอนิเมชันสุ่มไข่แล้ว")
         end
     end)
 end)
@@ -139,7 +174,7 @@ local function collectChest(chest)
             lastCollectedChests[key] = tick()
             chestsCollectedCount = chestsCollectedCount + 1
             lastCollectedChestName = chest.Name
-            print("💰 เก็บ Chest สำเร็จ:", chest.Name)
+            logmsg("💰 เก็บ Chest สำเร็จ:", chest.Name)
         else
             warn("❌ ฟังก์ชัน firetouchinterest ไม่รองรับใน Executor นี้")
         end
@@ -275,8 +310,8 @@ UIS.InputBegan:Connect(function(input, typing)
         running = not running
         btn.Text = running and "หยุดสุ่ม ⏸️" or "เริ่มสุ่มไข่ 🔁"
         btn.BackgroundColor3 = running and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(0, 0, 0)
-        warn(running and "✅ เริ่มสุ่มไข่..." or "⏸️ หยุดสุ่มไข่แล้ว")
+        logmsg(running and "✅ เริ่มสุ่มไข่..." or "⏸️ หยุดสุ่มไข่แล้ว")
     end
 end)
 
-print("✅ NiTroHUB PRO - Infinity Hatch + AutoChest Loaded!")
+logmsg("✅ NiTroHUB PRO - Infinity Hatch + AutoChest Loaded!")
