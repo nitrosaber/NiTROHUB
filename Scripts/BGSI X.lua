@@ -1,6 +1,6 @@
---// 🌀 NiTroHUB - NatHub Edition v5.2
---// ✨ by NiTroHUB x Gemini (Executor Compatibility Hotfix)
---// Description: แก้ไข Error ที่เกิดจาก NatHub Library โดยเปลี่ยนวิธีการเรียกใช้ฟังก์ชันให้เข้ากันได้กับทุก Executor
+--// 🌀 NiTroHUB - NatHub Edition v5.3
+--// ✨ by NiTroHUB x Gemini (Final Compatibility Workaround)
+--// Description: แก้ไข Error โดยการเลี่ยงไม่ใช้ฟังก์ชัน AddTab ที่มีปัญหา และนำ UI ทั้งหมดใส่ในหน้าต่างหลักโดยตรง
 
 -- =================================================================
 -- [[ SECTION 1: LOAD NATHUB LIBRARY (WITH ERROR HANDLING) ]]
@@ -136,33 +136,35 @@ task.spawn(function()
 end)
 
 -- =================================================================
--- [[ SECTION 3: GUI CREATION & INTEGRATION (HOTFIX APPLIED) ]]
+-- [[ SECTION 3: GUI CREATION (BYPASSING BUGGY AddTab FUNCTION) ]]
 -- =================================================================
 
 local Window = NatLib:CreateWindow("NiTroHUB")
--- [FIX] ใช้ตาราง {Name = ...} ในการสร้าง Tab เพื่อความเข้ากันได้สูงสุด
-local FarmTab = Window:AddTab({ Name = "Farming" }) 
+-- [FIX] เราจะไม่สร้าง Tab แยกอีกต่อไป แต่จะเพิ่ม UI Element ทั้งหมดลงใน Window โดยตรง
+-- เพื่อเลี่ยงการใช้ฟังก์ชัน AddTab ที่มีปัญหา
 local Toggles = {}
 
 _G.UpdateNiTroHUBToggle = function(name, value)
     if Toggles[name] then Toggles[name]:Update(value) end
 end
 
-Toggles.AutoHatch = FarmTab:AddToggle({ Name = "Auto Hatch", Default = State.HatchRunning, Callback = function(Value) State.HatchRunning = Value end })
-Toggles.AutoChest = FarmTab:AddToggle({ Name = "Auto Chest Collect", Default = State.ChestRunning, Callback = function(Value) State.ChestRunning = Value end })
-Toggles.AntiAFK = FarmTab:AddToggle({ Name = "Anti-AFK", Default = State.AntiAfkRunning, Callback = function(Value) State.AntiAfkRunning = Value end })
+-- เพิ่ม Toggles ลงใน Window โดยตรง
+Toggles.AutoHatch = Window:AddToggle({ Name = "Auto Hatch", Default = State.HatchRunning, Callback = function(Value) State.HatchRunning = Value end })
+Toggles.AutoChest = Window:AddToggle({ Name = "Auto Chest Collect", Default = State.ChestRunning, Callback = function(Value) State.ChestRunning = Value end })
+Toggles.AntiAFK = Window:AddToggle({ Name = "Anti-AFK", Default = State.AntiAfkRunning, Callback = function(Value) State.AntiAfkRunning = Value end })
 
-FarmTab:AddSeparator()
+Window:AddSeparator()
 
--- [FIX] ใช้ตาราง {Text = ...} ในการสร้าง Label เพื่อป้องกัน Error
-FarmTab:AddLabel({ Text = "--- Stats ---" })
+-- เพิ่ม Labels ลงใน Window โดยตรง
+Window:AddLabel({ Text = "--- Stats ---" })
 local StatLabels = {
-    Status = FarmTab:AddLabel({ Text = "Status: Idle" }),
-    Eggs = FarmTab:AddLabel({ Text = "Eggs Hatched: 0" }),
-    Chests = FarmTab:AddLabel({ Text = "Chests Collected: 0" }),
-    LastChest = FarmTab:AddLabel({ Text = "Last Chest: -" })
+    Status = Window:AddLabel({ Text = "Status: Idle" }),
+    Eggs = Window:AddLabel({ Text = "Eggs Hatched: 0" }),
+    Chests = Window:AddLabel({ Text = "Chests Collected: 0" }),
+    LastChest = Window:AddLabel({ Text = "Last Chest: -" })
 }
 
+-- Loop สำหรับอัปเดตข้อมูลบน Labels ยังคงทำงานเหมือนเดิม
 task.spawn(function()
     while task.wait(0.25) do
         if not State.HatchRunning and not State.ChestRunning then
