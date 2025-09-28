@@ -1,17 +1,24 @@
---// 🌀 NiTroHUB - NatHub Edition v5.0
---// ✨ by NiTroHUB x Gemini (Adapted for NatHub Library)
---// Description: ย้ายการทำงานทั้งหมดของ NiTroHUB เข้าไปใน UI ของ NatHub เพื่อความสวยงามและคุ้นเคย
+--// 🌀 NiTroHUB - NatHub Edition v5.1
+--// ✨ by NiTroHUB x Gemini (Error Hotfix & Robustness Update)
+--// Description: แก้ไข Error และปรับปรุงความเสถียรในการทำงานร่วมกับ NatHub Library
 
 -- =================================================================
--- [[ 1. UI LIBRARY LOADER ]]
+-- [[ SECTION 1: LOAD NATHUB LIBRARY (WITH ERROR HANDLING) ]]
 -- =================================================================
--- โหลด Library ของ NatHub เข้ามาเพื่อใช้งาน
-local NatLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/NatLibrary/SourceV2.lua"))()
-logmsg("NatHub Library Loaded.")
+local NatLib
+local success, result = pcall(function()
+    NatLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/NatLibrary/SourceV2.lua"))()
+end)
+
+if not success or not NatLib then
+    warn("[NiTroHUB] FATAL: Could not load NatHub Library. The script cannot continue. Error: " .. tostring(result))
+    return -- หยุดการทำงานของสคริปต์ทันทีถ้าโหลด Library ไม่สำเร็จ
+end
+print("[NiTroHUB] NatHub Library loaded successfully.")
+
 
 -- =================================================================
--- [[ 2. NITROHUB CORE LOGIC (UNCHANGED) ]]
--- ส่วนนี้คือการทำงานหลักของสคริปต์ ซึ่งยังคงเหมือนเดิมทุกประการ
+-- [[ SECTION 2: NITROHUB CORE LOGIC (UNCHANGED) ]]
 -- =================================================================
 
 -- // ⚙️ CONFIGURATION
@@ -32,51 +39,28 @@ local Config = {
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
-
 local CHEST_LIST = {}
-for _, name in ipairs(Config.ChestNames) do
-    CHEST_LIST[name:lower()] = true
-end
-
+for _, name in ipairs(Config.ChestNames) do CHEST_LIST[name:lower()] = true end
 local function logmsg(...) print("[NiTroHUB]", ...) end
 local function warnmsg(...) warn("[NiTroHUB]", ...) end
 
 -- // 📡 REMOTE EVENT HANDLER
 local frameworkRemote
-do
-    local success, remote = pcall(function()
-        return ReplicatedStorage:WaitForChild("Shared", 10):WaitForChild("Framework", 5):WaitForChild("Network", 5):WaitForChild("Remote", 5):WaitForChild("RemoteEvent", 5)
-    end)
-    if success and remote then
-        frameworkRemote = remote
-        logmsg("Framework RemoteEvent found.")
-    else
-        warnmsg("Could not find the Framework RemoteEvent! The script will not function.")
-    end
-end
+pcall(function()
+    frameworkRemote = ReplicatedStorage:WaitForChild("Shared", 10):WaitForChild("Framework", 5):WaitForChild("Network", 5):WaitForChild("Remote", 5):WaitForChild("RemoteEvent", 5)
+    logmsg("Framework RemoteEvent found.")
+end)
+if not frameworkRemote then warnmsg("Could not find the Framework RemoteEvent! Script will not function.") end
 
 -- // 📊 SCRIPT STATE
-local State = {
-    HatchRunning = false,
-    ChestRunning = false,
-    AntiAfkRunning = true,
-    EggsHatched = 0,
-    ChestsCollected = 0,
-    LastChest = "-",
-    Status = "Idle"
-}
+local State = { HatchRunning = false, ChestRunning = false, AntiAfkRunning = true, EggsHatched = 0, ChestsCollected = 0, LastChest = "-", Status = "Idle" }
 local lastCollectedChests = {}
 
 -- // 🚀 CORE FUNCTIONS
 pcall(function()
-    local function destroyHatchGui(child)
-        if child and child.Parent and (child.Name:match("Hatch") or child.Name:match("Egg")) then
-            task.wait(); child:Destroy()
-        end
-    end
+    local function destroyHatchGui(child) if child and child.Parent and (child.Name:match("Hatch") or child.Name:match("Egg")) then task.wait(); child:Destroy() end end
     for _, v in ipairs(playerGui:GetChildren()) do destroyHatchGui(v) end
     playerGui.ChildAdded:Connect(destroyHatchGui)
 end)
@@ -92,7 +76,6 @@ task.spawn(function()
             if not success then
                 warnmsg("Auto Hatch failed: " .. tostring(err))
                 State.HatchRunning = false
-                -- ส่งสัญญาณให้ UI ของ NatHub ปิดตัวเองลง
                 if _G.UpdateNiTroHUBToggle then _G.UpdateNiTroHUBToggle("AutoHatch", false) end
             end
             task.wait(Config.HatchDelay)
@@ -108,12 +91,9 @@ local function collectChest(chest)
     if not character then return false end
     local key = chest:GetDebugId()
     if lastCollectedChests[key] and (tick() - lastCollectedChests[key] < Config.ChestCollectCooldown) then return false end
-
     State.Status = "Collecting " .. chest.Name
     if frameworkRemote then
-        local success, _ = pcall(function()
-            frameworkRemote:FireServer("ClaimChest", chest.Name, true)
-        end)
+        local success, _ = pcall(function() frameworkRemote:FireServer("ClaimChest", chest.Name, true) end)
         if success then
             lastCollectedChests[key] = tick()
             State.ChestsCollected = State.ChestsCollected + 1
@@ -133,9 +113,7 @@ task.spawn(function()
                 if area and State.ChestRunning then
                     for _, obj in ipairs(area:GetDescendants()) do
                         if not State.ChestRunning then break end
-                        if obj:IsA("Model") and CHEST_LIST[obj.Name:lower()] then
-                            pcall(collectChest, obj); task.wait()
-                        end
+                        if obj:IsA("Model") and CHEST_LIST[obj.Name:lower()] then pcall(collectChest, obj); task.wait() end
                     end
                 end
             end
@@ -157,79 +135,49 @@ task.spawn(function()
     end)
 end)
 
-
 -- =================================================================
--- [[ 3. GUI CREATION & INTEGRATION ]]
--- ส่วนนี้คือการสร้าง UI ด้วย NatHub และเชื่อมต่อกับ Logic ด้านบน
+-- [[ SECTION 3: GUI CREATION & INTEGRATION ]]
 -- =================================================================
 
--- สร้างหน้าต่างหลักของ UI
+-- สร้างหน้าต่างหลัก
 local Window = NatLib:CreateWindow("NiTroHUB")
-
--- สร้างแท็บสำหรับฟังก์ชันฟาร์ม
 local FarmTab = Window:AddTab("Farming")
-
--- สร้างตารางสำหรับเก็บ Object ของ Toggle เพื่อให้สามารถอัปเดตจากภายนอกได้
 local Toggles = {}
 
--- สร้างฟังก์ชัน Global สำหรับอัปเดตสถานะปุ่ม Toggle ใน UI
+-- ฟังก์ชัน Global สำหรับอัปเดตปุ่มจากภายนอก (เช่นเมื่อเกิด Error)
 _G.UpdateNiTroHUBToggle = function(name, value)
-    if Toggles[name] then
-        Toggles[name]:Update(value) -- ใช้ฟังก์ชัน Update ของ NatHub
-    end
+    if Toggles[name] then Toggles[name]:Update(value) end
 end
 
--- // -- สร้างปุ่ม Toggle สำหรับ Auto Hatch -- //
-Toggles.AutoHatch = FarmTab:AddToggle({
-    Name = "Auto Hatch",
-    Default = State.HatchRunning, -- ค่าเริ่มต้น
-    Callback = function(Value)
-        -- เมื่อผู้ใช้กดปุ่ม สถานะจะถูกส่งมาที่นี่
-        State.HatchRunning = Value
-    end
-})
+-- สร้างปุ่ม Toggles ทั้งหมด
+Toggles.AutoHatch = FarmTab:AddToggle({ Name = "Auto Hatch", Default = State.HatchRunning, Callback = function(Value) State.HatchRunning = Value end })
+Toggles.AutoChest = FarmTab:AddToggle({ Name = "Auto Chest Collect", Default = State.ChestRunning, Callback = function(Value) State.ChestRunning = Value end })
+Toggles.AntiAFK = FarmTab:AddToggle({ Name = "Anti-AFK", Default = State.AntiAfkRunning, Callback = function(Value) State.AntiAfkRunning = Value end })
 
--- // -- สร้างปุ่ม Toggle สำหรับ Auto Chest -- //
-Toggles.AutoChest = FarmTab:AddToggle({
-    Name = "Auto Chest Collect",
-    Default = State.ChestRunning,
-    Callback = function(Value)
-        State.ChestRunning = Value
-    end
-})
-
--- // -- สร้างปุ่ม Toggle สำหรับ Anti-AFK -- //
-Toggles.AntiAFK = FarmTab:AddToggle({
-    Name = "Anti-AFK",
-    Default = State.AntiAfkRunning,
-    Callback = function(Value)
-        State.AntiAfkRunning = Value
-    end
-})
-
--- เพิ่มเส้นคั่นเพื่อความสวยงาม
+-- เพิ่มเส้นคั่น
 FarmTab:AddSeparator()
 
--- สร้าง Label สำหรับแสดงสถานะและสถิติ
-local StatsDisplay = FarmTab:AddLabel("Loading stats...")
+-- สร้าง Labels สำหรับแสดงผลสถานะ (แยกส่วนเพื่อความเสถียร)
+FarmTab:AddLabel("--- Stats ---")
+local StatLabels = {
+    Status = FarmTab:AddLabel("Status: Idle"),
+    Eggs = FarmTab:AddLabel("Eggs Hatched: 0"),
+    Chests = FarmTab:AddLabel("Chests Collected: 0"),
+    LastChest = FarmTab:AddLabel("Last Chest: -")
+}
 
--- เริ่ม Loop สำหรับอัปเดตข้อมูลบน Label ทุกๆ 0.25 วินาที
+-- Loop สำหรับอัปเดตข้อมูลบน Labels
 task.spawn(function()
     while task.wait(0.25) do
         if not State.HatchRunning and not State.ChestRunning then
             State.Status = "Idle"
         end
 
-        -- สร้างข้อความที่จะแสดงผล
-        local statsString = string.format(
-            "Status: %s\n\nEggs Hatched: %d\nChests Collected: %d\nLast Chest: %s",
-            State.Status, State.EggsHatched, State.ChestsCollected, State.LastChest
-        )
-
-        -- อัปเดตข้อความบน Label ของ NatHub (ใช้ pcall เพื่อป้องกัน error)
-        pcall(function()
-            StatsDisplay:Set(statsString)
-        end)
+        -- อัปเดต Label แต่ละอันแยกกัน เพื่อป้องกัน Error
+        pcall(function() StatLabels.Status:Set("Status: " .. State.Status) end)
+        pcall(function() StatLabels.Eggs:Set("Eggs Hatched: " .. State.EggsHatched) end)
+        pcall(function() StatLabels.Chests:Set("Chests Collected: " .. State.ChestsCollected) end)
+        pcall(function() StatLabels.LastChest:Set("Last Chest: " .. State.LastChest) end)
     end
 end)
 
