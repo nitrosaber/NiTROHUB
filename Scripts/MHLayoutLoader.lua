@@ -1,5 +1,6 @@
 -- Gui to Lua
 -- Version: 3.2
+-- Modified by Gemini for Mobile Usability (Toggle, Draggable UI)
 
 -- Instances:
 
@@ -56,13 +57,21 @@ local UICorner_16 = Instance.new("UICorner")
 LayoutsStealer.Name = "LayoutsStealer"
 LayoutsStealer.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 LayoutsStealer.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+LayoutsStealer.ResetOnSpawn = false -- [+] ป้องกัน GUI รีเซ็ตเมื่อตัวละครเกิดใหม่
 
+-- [*] การตั้งค่า MainFrame ถูกปรับปรุงเพื่อรองรับการเปิด/ปิดและลาก
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = LayoutsStealer
 MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-MainFrame.BackgroundTransparency = 1.000
-MainFrame.Position = UDim2.new(0.25, 0, 0.25, 0)
-MainFrame.Size = UDim2.new(0.3, 0, 0.3, 0)
+MainFrame.BorderSizePixel = 0
+MainFrame.Size = UDim2.new(0.5, 0, 0.6, 0) -- [*] ปรับขนาดให้เหมาะสมกับหน้าจอโดยรวม
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5) -- [*] ยึดตำแหน่งจากจุดกึ่งกลาง
+MainFrame.Position = UDim2.new(0.5, 0, -1, 0) -- [*] ตำแหน่งเริ่มต้น (ซ่อนอยู่นอกจอด้านบน)
+MainFrame.Visible = false -- [*] เริ่มต้นแบบซ่อน
+MainFrame.Active = true -- [+] ทำให้สามารถรับ Input ได้ (สำหรับการลาก)
+MainFrame.Draggable = true -- [+] ทำให้ลากย้ายตำแหน่งได้
+local mainFrameCorner = Instance.new("UICorner") -- [+] เพิ่มความมนให้กับ MainFrame
+mainFrameCorner.Parent = MainFrame
 
 Players.Name = "Players"
 Players.Parent = MainFrame
@@ -292,8 +301,6 @@ User.TextScaled = true
 User.TextSize = 14.000
 User.TextWrapped = true
 
-
-
 WaterMark.Name = "WaterMark"
 WaterMark.Parent = MainFrame
 WaterMark.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -353,12 +360,17 @@ Close.TextWrapped = true
 
 UICorner_16.Parent = Close
 
+-- =========================================================================================
+-- ||                     ส่วนของโค้ดหลัก (ทำงานเหมือนเดิมทุกประการ)                          ||
+-- =========================================================================================
+
 local findItem = require(game.ReplicatedStorage.FetchItem)
 local HasItem = game.ReplicatedStorage.HasItem
 local Withdraw = game.ReplicatedStorage.DestroyAll
 local PlaceItem = game.ReplicatedStorage.PlaceItem 
 local buyItem = game.ReplicatedStorage.BuyItem 
 local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService") -- [+] เรียกใช้ TweenService
 
 local RealAmount = Instance.new("IntValue")
 RealAmount.Name = "RealAmount"
@@ -376,8 +388,6 @@ Count2.Value = 0
 Count2.Parent = MissingItems
 
 local Player = game.Players.LocalPlayer
-
-
 
 function GetPlayerImage(Object)
 	local thumbType = Enum.ThumbnailType.HeadShot
@@ -398,29 +408,29 @@ function Message(Text)
 	local SafeText = LoaddingMessage.Text
 	LoaddingMessage.Text = Text
 	LoaddingMessage.Visible = true
-	wait(3)
+	task.wait(3)
 	LoaddingMessage.Visible = false
 	LoaddingMessage.Text = SafeText
 end
 
 function clearMissing()
 	for i,v in pairs(MissingItems.Items:GetChildren()) do
-		spawn(function()
+		task.spawn(function()
 			if v:IsA("ImageLabel") then
 				v:Destroy()
 			end
 		end)
-
 	end
 end
+
 function FindMissing(Layout)
 	clearMissing()
-	wait(0.01)
+	task.wait(0.01)
 	local ItemCountValue = Count2
 	Count2.Value = 0
 	MissingItems.Visible =true
 	for i,Item in pairs(Layout) do
-		spawn(function()
+		task.spawn(function()
 			local RealItem = findItem:Get(Item.ItemId)
 			if HasItem:InvokeServer(RealItem.ItemId.Value) <=0 then
 				if MissingItems.Items:FindFirstChild(RealItem.Name) then
@@ -436,20 +446,17 @@ function FindMissing(Layout)
 					Clone.Visible = true
 					Clone.Amount.Text = "X"..Clone.RealAmount.Value
 					ItemCountValue.Value = ItemCountValue.Value +1
-					--MissingItems.Items.CanvasSize = UDim2.new(0,0,0,UIGridLayout_2.AbsoluteContentSize.Y)
 				end
 			end
 		end)
 	end
-
 end
 
 function SaveLayout(Layout)
 	Withdraw:InvokeServer()
 	print(Player.PlayerTycoon.Value.Base.CFrame)
 	for i,Item in pairs(Layout) do
-		spawn(function()
-			--print(Item.ItemId,Item.Position)
+		task.spawn(function()
 			local RealItem = findItem:Get(Item.ItemId)
 			local Tycoon = Player.PlayerTycoon.Value
 			local TycoonBase = Tycoon.Base
@@ -464,7 +471,6 @@ function SaveLayout(Layout)
 			local Position = TycoonTopLeft * Vector3.new(Item.Position[1], Item.Position[2], Item.Position[3])
 			local lookVector = Vector3.new(Item.Position[4],Item.Position[5],Item.Position[6])
 			local CoordinateFrame = CFrame.new(Position, Position + (lookVector * 5))
-			--print(CoordinateFrame)
 
 			if RealItem.ItemType.Value >=1 and RealItem.ItemType.Value <5  then
 				if Player.PlayerGui.GUI.Money.Value >= RealItem.Cost.Value then
@@ -473,26 +479,22 @@ function SaveLayout(Layout)
 				else
 					print("Cant buy item :(")
 				end
-
 			else
 				if HasItem:InvokeServer(RealItem.ItemId.Value) >0 then
 					PlaceItem:InvokeServer(RealItem.Name,  CoordinateFrame, {Player.PlayerTycoon.Value.Base}) 
 				else
 					print("You Dont have "..RealItem.Name)
 				end
-
 			end 
 		end)
 	end
 	Message("Loading Finnished. Check F9/Dev menu for item that didnt get placed")
 end
 
-
-
 function SaveBase(Base)
 	Withdraw:InvokeServer()
 	for i,v in pairs(Base:GetChildren()) do
-		spawn(function()
+		task.spawn(function()
 			if v:FindFirstChild("ItemId") then
 				local Pos = v.Hitbox.CFrame - Base.Base.Position
 				local PlacePos = Pos + Player.PlayerTycoon.Value.Base.Position
@@ -503,16 +505,13 @@ function SaveBase(Base)
 					else
 						print("Cant buy item :(")
 					end
-
 				else
 					if HasItem:InvokeServer(v.ItemId.Value) >0 then
 						PlaceItem:InvokeServer(v.Name,  PlacePos, {Player.PlayerTycoon.Value.Base}) 
 					else
 						print("You Dont have "..v.Name)
 					end
-
 				end 
-
 			end
 		end)
 	end
@@ -540,31 +539,25 @@ function LoadPlayersLayouts(SelectedPlayer)
 	ClearLayoutsFrame()
 	local PlayerLayouts = SelectedPlayer.Layouts
 	for x,Layout in pairs(PlayerLayouts:GetChildren()) do
-		print(Layout.Name)
 		local Frame = LayoutTemplate:Clone()
 		Frame.LayoutName.Text = Layout.Name 
 		Frame.Visible = true
 		Frame.Parent = Layouts
 		local layoutItems = game.HttpService:JSONDecode(Layout.Value)
 		local LayoutNumber = string.gsub(tostring(Layout.Name), "%D", "")
-		Frame.LayoutOrder = LayoutNumber
+		Frame.LayoutOrder = tonumber(LayoutNumber) or x
 		local RealItemCount = 0
 		local ItemCountValue = 0
 		for a,Item in pairs(layoutItems) do
 			if Item then
-				--("Yes")
 				local RealItem = findItem:Get(Item.ItemId)
-
 				if RealItem then
-					--print("Found")
 					if Frame.Items:FindFirstChild(RealItem.Name) then
-						--print("Already in")
 						local Item = Frame.Items:FindFirstChild(RealItem.Name)
 						Item.RealAmount.Value =Item.RealAmount.Value +1
 						RealItemCount = RealItemCount +1
 						Item.Amount.Text = "X"..Item.RealAmount.Value
 					else
-						--print("Adding")
 						local Clone = ItemTemplate:Clone()
 						Clone.Name = RealItem.Name
 						Clone.Image = "rbxassetid://"..RealItem.ThumbnailId.Value
@@ -576,12 +569,9 @@ function LoadPlayersLayouts(SelectedPlayer)
 						RealItemCount = RealItemCount +1
 					end
 				end
-				---wait(0.01)
-			else
 			end
 		end
 		Frame.Visible = true
-		--Frame.Parent= Layouts
 		Layouts.CanvasSize = UDim2.new(0,0,0,260*x)
 		Frame.ItemCount.Text = "Item Count: ".. RealItemCount
 		Frame.Count.Value  =ItemCountValue
@@ -592,7 +582,6 @@ function LoadPlayersLayouts(SelectedPlayer)
 			else
 				Message("You have to load in to the game first.")
 			end
-
 		end)
 		Frame.Missing.MouseButton1Click:Connect(function()
 			FindMissing(layoutItems)
@@ -611,13 +600,11 @@ function LoadPlayersLayouts(SelectedPlayer)
 		for a,BaseItem in pairs(Base:GetChildren()) do 
 			if BaseItem:FindFirstChild("ItemId") then
 				if Frame.Items:FindFirstChild(BaseItem.Name) then
-					--print("Already in")
 					local Item = Frame.Items:FindFirstChild(BaseItem.Name)
 					Item.RealAmount.Value =Item.RealAmount.Value +1
 					RealItemCount = RealItemCount +1
 					Item.Amount.Text = "X"..Item.RealAmount.Value
 				else
-					--print("Adding")
 					local Clone = ItemTemplate:Clone()
 					Clone.Name = BaseItem.Name
 					Clone.Image = "rbxassetid://"..BaseItem.ThumbnailId.Value
@@ -629,7 +616,6 @@ function LoadPlayersLayouts(SelectedPlayer)
 					RealItemCount = RealItemCount +1
 				end
 			end
-			--wait(0.01)
 		end
 
 		Frame.ItemCount.Text = "Item Count: ".. RealItemCount
@@ -641,10 +627,8 @@ function LoadPlayersLayouts(SelectedPlayer)
 			else
 				Message("You have to load in to the game first.")
 			end
-
 		end)
 	end)
-
 	Message("Loading is complete enjoy stealing:)")
 end
 
@@ -664,22 +648,75 @@ function GetPlayers()
 				LoadPlayersLayouts(v)
 			else
 				Message("Players is not loaded in please select another player")
-
 			end
 		end)
 	end
 end
+
 Close.MouseButton1Click:Connect(function()
 	MissingItems.Visible = false
 end)
+
 GetPlayers()
-game.Players.PlayerAdded:Connect(function()
-	GetPlayers()
-end)
-game.Players.PlayerRemoving:Connect(function()
-	GetPlayers()
+game.Players.PlayerAdded:Connect(GetPlayers)
+game.Players.PlayerRemoving:Connect(GetPlayers)
+
+-- =========================================================================================
+-- ||                     [+] โค้ดใหม่สำหรับเปิด/ปิด และควบคุม UI                             ||
+-- =========================================================================================
+
+local isUiVisible = false
+
+-- สร้างปุ่มสำหรับเปิด/ปิด UI
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Parent = LayoutsStealer
+ToggleButton.Size = UDim2.fromOffset(50, 50)
+ToggleButton.Position = UDim2.new(0, 15, 0, 15) -- ตำแหน่งมุมซ้ายบน
+ToggleButton.Text = "⚙️" -- ใช้อิโมจิ
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.TextSize = 30
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+ToggleButton.Draggable = true -- ทำให้ปุ่มลากได้
+ToggleButton.Active = true
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 8)
+toggleCorner.Parent = ToggleButton
+
+local toggleStroke = Instance.new("UIStroke")
+toggleStroke.Color = Color3.fromRGB(80, 80, 80)
+toggleStroke.Thickness = 1
+toggleStroke.Parent = ToggleButton
+
+-- ฟังก์ชันสำหรับควบคุมการเปิด/ปิด
+ToggleButton.MouseButton1Click:Connect(function()
+    isUiVisible = not isUiVisible
+
+    local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local targetPosition
+
+    if isUiVisible then
+        MainFrame.Visible = true
+        targetPosition = UDim2.new(0.5, 0, 0.5, 0) -- ตำแหน่งกลางจอ
+    else
+        targetPosition = UDim2.new(0.5, 0, -1, 0) -- เลื่อนกลับไปซ่อนนอกจอ
+    end
+    
+    local tween = TweenService:Create(MainFrame, tweenInfo, { Position = targetPosition })
+    tween:Play()
+
+    -- ถ้าเป็นการปิด ให้ซ่อน Frame หลังจากอนิเมชันจบ
+    if not isUiVisible then
+        tween.Completed:Connect(function()
+            MainFrame.Visible = false
+        end)
+    end
 end)
 
+-- [-] ลบโค้ดเก่าที่ใช้ปุ่ม 'K'
+--[[
 UIS.InputBegan:Connect(function(Input)
 	if UIS:GetFocusedTextBox() == nil then
 		if Input.KeyCode == Enum.KeyCode.K then
@@ -687,3 +724,4 @@ UIS.InputBegan:Connect(function(Input)
 		end
 	end
 end)
+]]
