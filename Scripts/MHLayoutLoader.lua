@@ -1,3 +1,26 @@
+-- =========================================================================================
+-- ||                     [+] PATCH: โค้ดสำหรับบล็อกเสียงที่มีปัญหา                             ||
+-- =========================================================================================
+-- โค้ดส่วนนี้จะทำงานก่อนเพื่อดักจับและหยุดเสียงเจ้าปัญหาจากสคริปต์อื่นๆ
+pcall(function()
+    local problematicSoundId = "18939739460633"
+    local oldSoundPlay -- ประกาศตัวแปรไว้ก่อน
+    
+    -- ทำการ Hook หรือดักจับฟังก์ชัน Play ของเสียง
+    oldSoundPlay = hookfunction(Instance.new("Sound").Play, function(self, ...)
+        -- ตรวจสอบว่า SoundId ที่กำลังจะเล่นตรงกับ ID ที่มีปัญหาหรือไม่
+        if self and type(self.SoundId) == "string" and string.find(self.SoundId, problematicSoundId) then
+            -- ถ้าใช่ ให้หยุดการทำงาน ไม่ต้องเล่นเสียง และแจ้งเตือนใน Console (F9)
+            warn("Blocked problematic sound:", self.SoundId)
+            return
+        end
+        -- ถ้าไม่ใช่เสียงที่มีปัญหา ก็ให้เล่นตามปกติ
+        return oldSoundPlay(self, ...)
+    end)
+end)
+-- =========================================================================================
+
+
 -- Gui to Lua
 -- Version: 3.2
 -- Modified by Gemini for Mobile Usability (Toggle, Draggable UI)
@@ -55,7 +78,7 @@ local UICorner_16 = Instance.new("UICorner")
 --Properties:
 
 LayoutsStealer.Name = "LayoutsStealer"
-LayoutsStealer.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+LayoutsStealer.Parent = game:GetService("CoreGui") or game.Players.LocalPlayer:WaitForChild("PlayerGui")
 LayoutsStealer.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 LayoutsStealer.ResetOnSpawn = false -- [+] ป้องกัน GUI รีเซ็ตเมื่อตัวละครเกิดใหม่
 
@@ -714,14 +737,3 @@ ToggleButton.MouseButton1Click:Connect(function()
         end)
     end
 end)
-
--- [-] ลบโค้ดเก่าที่ใช้ปุ่ม 'K'
---[[
-UIS.InputBegan:Connect(function(Input)
-	if UIS:GetFocusedTextBox() == nil then
-		if Input.KeyCode == Enum.KeyCode.K then
-			MainFrame.Visible = not MainFrame.Visible
-		end
-	end
-end)
-]]
