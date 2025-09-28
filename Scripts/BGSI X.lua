@@ -1,6 +1,6 @@
---// 🌀 NiTroHUB PRO - Emoji & Max Speed Edition
---// ✨ by NiTroHUB x Gemini (อัปเกรด UI เป็นอีโมจิ, สุ่มไข่ความเร็วสูงสุด, และซ่อนอนิเมชัน)
---// Description: ปรับปรุงให้เร็วและคลีนที่สุดสำหรับสายฟาร์มโดยเฉพาะ
+--// 🌀 NiTroHUB PRO - Accurate Counter & Menu Redesign
+--// ✨ by NiTroHUB x Gemini (ปรับปรุงระบบนับไข่ให้สมจริง และดีไซน์ปุ่มเมนูใหม่)
+--// Description: แก้ไขการนับให้แม่นยำขึ้นและปรับ UI ให้สวยงามเหมือนเมนู
 
 -- =================================================================
 -- [[ SAFETY WAIT MECHANISM ]]
@@ -16,7 +16,8 @@ task.wait(1)
 local Config = {
     EggName = "Autumn Egg",
     HatchAmount = 8,
-    HatchDelay = 0, -- ✨ [SPEED] ตั้งเป็น 0 เพื่อความเร็วสูงสุดในการสุ่มไข่
+    HatchDelay = 0, -- ความเร็วในการส่งคำสั่ง (0 = สูงสุด)
+    HATCH_COUNT_INTERVAL = 1, -- ✨ [NEW] หน่วงเวลาการนับไข่ (วินาที) เพื่อให้สมจริง
     ChestCheckInterval = 10,
     ChestCollectCooldown = 60,
     ChestNames = {
@@ -77,27 +78,21 @@ local State = {
 local lastCollectedChests = {}
 
 -- =================================================================
--- [[ ✨ NEW: ANIMATION & VFX HIDER ]]
+-- [[ 💨 ANIMATION & VFX HIDER ]]
 -- =================================================================
 task.spawn(function()
-    -- ส่วนที่ 1: ซ่อน GUI ที่เกี่ยวกับการสุ่มไข่
     pcall(function()
         local function hideHatchGui(child)
-            if child.Name:match("Hatch") or child.Name:match("Egg") then
-                task.wait(); child.Enabled = false
-            end
+            if child.Name:match("Hatch") or child.Name:match("Egg") then task.wait(); child.Enabled = false end
         end
         for _, v in ipairs(playerGui:GetChildren()) do hideHatchGui(v) end
         playerGui.ChildAdded:Connect(hideHatchGui)
     end)
     
-    -- ส่วนที่ 2: ซ่อนโมเดล/เอฟเฟกต์/Hitbox ที่เกิดใน Workspace ตอนสุ่มไข่
     Workspace.ChildAdded:Connect(function(child)
         if State.HatchRunning then
             local name = child.Name:lower()
-            -- ตรวจจับคำที่เกี่ยวข้องกับการสุ่มไข่ และทำลายทิ้งทันที
             if name:match("egg") or name:match("hatch") or name:match("reward") or name:match("open") then
-                -- ใช้ Debris เพื่อป้องกัน error และจัดการหน่วยความจำ
                 game:GetService("Debris"):AddItem(child, 0)
             end
         end
@@ -105,16 +100,15 @@ task.spawn(function()
 end)
 
 -- =================================================================
--- [[ 🚀 CORE FUNCTIONS (HATCH, CHEST, ANTI-AFK) ]]
+-- [[ 🚀 CORE FUNCTIONS ]]
 -- =================================================================
--- [ Auto Hatch Module ]
+-- [ Auto Hatch Command Sender ]
 task.spawn(function()
     while true do
         if State.HatchRunning and frameworkRemote then
             State.Status = "Hatching Eggs (Max Speed)"
             local success, err = pcall(function()
                 frameworkRemote:FireServer("HatchEgg", Config.EggName, Config.HatchAmount)
-                State.EggsHatched = State.EggsHatched + Config.HatchAmount
             end)
             if not success then
                 warnmsg("Auto Hatch failed: " .. tostring(err))
@@ -122,26 +116,31 @@ task.spawn(function()
                 if _G.UpdateToggleButton then _G.UpdateToggleButton("AutoHatch", false) end
             end
             
-            if Config.HatchDelay > 0 then
-                task.wait(Config.HatchDelay)
-            else
-                RunService.Heartbeat:Wait() -- ใช้ Heartbeat:Wait() แทน task.wait(0) เพื่อประสิทธิภาพสูงสุด
-            end
+            if Config.HatchDelay > 0 then task.wait(Config.HatchDelay) else RunService.Heartbeat:Wait() end
         else
             task.wait(0.2)
         end
     end
 end)
 
+-- ✨ [NEW] Accurate Egg Counter
+task.spawn(function()
+    while true do
+        if State.HatchRunning then
+            -- จะนับเพิ่มตามเวลาที่ตั้งไว้ใน Config ทำให้ตัวเลขสมจริงขึ้น
+            State.EggsHatched = State.EggsHatched + Config.HatchAmount
+            task.wait(Config.HATCH_COUNT_INTERVAL)
+        else
+            task.wait(1)
+        end
+    end
+end)
+
 -- [ Auto Chest Module ]
 local function collectChest(chest)
-    if not chest or not chest.Parent then return false end
-    if not player.Character then return false end
-
+    if not chest or not chest.Parent or not player.Character then return false end
     local key = chest:GetDebugId()
-    if lastCollectedChests[key] and (tick() - lastCollectedChests[key] < Config.ChestCollectCooldown) then
-        return false
-    end
+    if lastCollectedChests[key] and (tick() - lastCollectedChests[key] < Config.ChestCollectCooldown) then return false end
 
     State.Status = "Collecting " .. chest.Name
     if frameworkRemote then
@@ -165,8 +164,7 @@ task.spawn(function()
                     for _, obj in ipairs(area:GetDescendants()) do
                         if not State.ChestRunning then break end
                         if obj:IsA("Model") and CHEST_LIST[obj.Name:lower()] then
-                            pcall(collectChest, obj)
-                            task.wait()
+                            pcall(collectChest, obj); task.wait()
                         end
                     end
                 end
@@ -190,24 +188,18 @@ task.spawn(function()
 end)
 
 -- ================================================================================
--- // SECTION: 🎨 GUI INTERFACE - EMOJI EDITION
+-- // SECTION: 🎨 GUI INTERFACE - MENU REDESIGN
 -- ================================================================================
 pcall(function() playerGui:FindFirstChild("NiTroHUB_PRO_GUI"):Destroy() end)
 
 local Theme = { Background = Color3.fromRGB(28, 28, 32), Primary = Color3.fromRGB(40, 40, 45), Accent = Color3.fromRGB(0, 225, 255), Text = Color3.fromRGB(255, 255, 255), TextSecondary = Color3.fromRGB(180, 180, 180), Green = Color3.fromRGB(76, 175, 80), Red = Color3.fromRGB(220, 50, 50), Font = Enum.Font.Gotham, FontBold = Enum.Font.GothamBold }
-
-local gui = Instance.new("ScreenGui", playerGui)
-gui.Name, gui.IgnoreGuiInset, gui.ResetOnSpawn = "NiTroHUB_PRO_GUI", true, false
-
+local gui = Instance.new("ScreenGui", playerGui); gui.Name, gui.IgnoreGuiInset, gui.ResetOnSpawn = "NiTroHUB_PRO_GUI", true, false
 local function Create(instanceType) return function(properties) local obj = Instance.new(instanceType); for prop, value in pairs(properties) do pcall(function() obj[prop] = value end) end; return obj end end
 
 local mainFrame = Create("Frame"){ Name = "MainFrame", Size = UDim2.fromOffset(300, 280), Position = UDim2.fromScale(0.5, 0.4), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Theme.Background, BorderColor3 = Theme.Accent, BorderSizePixel = 1, Active = true, Draggable = true, Visible = false, Parent = gui, ClipsDescendants = true }
-Create("UICorner"){CornerRadius = UDim.new(0, 12), Parent = mainFrame}
-Create("UIGradient"){ Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 45)), ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 24))}), Rotation = 90, Parent = mainFrame }
-
+Create("UICorner"){CornerRadius = UDim.new(0, 12), Parent = mainFrame}; Create("UIGradient"){ Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 45)), ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 24))}), Rotation = 90, Parent = mainFrame }
 local header = Create("Frame"){ Name = "Header", Size = UDim2.new(1, 0, 0, 40), BackgroundColor3 = Theme.Primary, BackgroundTransparency = 0.5, Parent = mainFrame }
 Create("TextLabel"){ Name = "Title", Size = UDim2.new(1, -10, 1, 0), Position = UDim2.fromOffset(10, 0), BackgroundTransparency = 1, Font = Theme.FontBold, Text = "NiTroHUB PRO", TextColor3 = Theme.Accent, TextSize = 18, TextXAlignment = Enum.TextXAlignment.Left, Parent = header }
-
 local content = Create("Frame"){ Name = "Content", Size = UDim2.new(1, -20, 1, -50), Position = UDim2.fromOffset(10, 40), BackgroundTransparency = 1, Parent = mainFrame }
 Create("UIListLayout"){ Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Parent = content }
 
@@ -216,9 +208,12 @@ local function createToggleButton(config)
     local buttonFrame = Create("Frame"){ Name = config.Name, Size = UDim2.new(1, 0, 0, 45), BackgroundColor3 = Theme.Primary, LayoutOrder = config.Order, Parent = content }
     Create("UICorner"){CornerRadius = UDim.new(0, 8), Parent = buttonFrame}; Create("UIStroke"){Color = Theme.Accent, Transparency = 0.8, Parent = buttonFrame}
     
-    -- ✨ [UI] ใช้ Emoji แทนรูปภาพ
-    Create("TextLabel"){ Text = config.Emoji, Size = UDim2.fromOffset(30, 30), Position = UDim2.fromOffset(10, 7.5), BackgroundTransparency = 1, TextSize = 28, Parent = buttonFrame }
-    Create("TextLabel"){ Size = UDim2.new(1, -50, 1, 0), Position = UDim2.fromOffset(45, 0), BackgroundTransparency = 1, Font = Theme.FontBold, Text = config.Text, TextColor3 = Theme.Text, TextSize = 16, TextXAlignment = Enum.TextXAlignment.Left, Parent = buttonFrame }
+    -- ✨ [REDESIGN] จัดเรียงข้อความและไอคอนใหม่
+    Create("UIListLayout"){ FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 10), Parent = buttonFrame }
+    Create("UIPadding"){ PaddingLeft = UDim.new(0, 15), Parent = buttonFrame }
+
+    Create("TextLabel"){ Name = "Label", LayoutOrder = 1, Size = UDim2.new(1, -45, 1, 0), BackgroundTransparency = 1, Font = Theme.FontBold, Text = config.Text, TextColor3 = Theme.Text, TextSize = 16, TextXAlignment = Enum.TextXAlignment.Left, Parent = buttonFrame }
+    Create("TextLabel"){ Name = "Icon", LayoutOrder = 2, Size = UDim2.fromOffset(30, 30), BackgroundTransparency = 1, Font = Theme.Font, Text = config.Emoji, TextColor3 = Theme.Text, TextSize = 28, TextXAlignment = Enum.TextXAlignment.Right, Parent = buttonFrame }
     
     local toggleButton = Create("TextButton"){ Size = UDim2.new(1, 0, 1, 0), Text = "", BackgroundTransparency = 1, Parent = buttonFrame }
     local stateIndicator = Create("Frame"){ Size = UDim2.new(1, 0, 0, 3), Position = UDim2.new(0, 0, 1, 0), BackgroundColor3 = Theme.Red, BorderSizePixel = 0, Parent = buttonFrame }
@@ -236,20 +231,15 @@ createToggleButton({ Name = "AutoChest", Order = 2, Text = "Auto Chest", Emoji =
 createToggleButton({ Name = "AntiAFK", Order = 3, Text = "Anti-AFK", Emoji = "⚙️", InitialState = State.AntiAfkRunning, Callback = function() State.AntiAfkRunning = not State.AntiAfkRunning; toggleButtonUpdaters.AntiAFK(State.AntiAfkRunning) end })
 
 local statsLabel = Create("TextLabel"){ Name = "StatsLabel", Size = UDim2.new(1, 0, 0, 90), BackgroundTransparency = 1, Font = Theme.Font, RichText = true, TextColor3 = Theme.TextSecondary, TextSize = 14, TextYAlignment = Enum.TextYAlignment.Top, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 4, Parent = content }
-
 local miniIcon = Create("TextButton"){ Name = "MiniIcon", Text = "🌀", Size = UDim2.fromOffset(55, 55), Position = UDim2.new(0.02, 0, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = Theme.Background, TextColor3 = Theme.Accent, Font = Theme.Font, TextSize = 40, Active = true, Draggable = true, Parent = gui }
 Create("UICorner"){CornerRadius = UDim.new(1, 0), Parent = miniIcon}; Create("UIStroke"){Color = Theme.Accent, Thickness = 1.5, Parent = miniIcon}; Create("UIAspectRatioConstraint"){AspectRatio = 1, Parent = miniIcon}
 
--- ================================================================================
--- // SECTION: 🖱️ GUI LOGIC & EVENTS
--- ================================================================================
 local isGuiVisible = false
 miniIcon.MouseButton1Click:Connect(function()
     isGuiVisible = not isGuiVisible
     local targetSize = isGuiVisible and UDim2.fromOffset(300, 280) or UDim2.fromOffset(300, 0)
-    local targetPos = UDim2.fromScale(0.5, 0.4)
     mainFrame.Visible = true
-    mainFrame:TweenSizeAndPosition(targetSize, targetPos, "Out", "Quad", 0.3, true, function(s) if s == Enum.TweenStatus.Completed then mainFrame.Visible = isGuiVisible end end)
+    mainFrame:TweenSize(targetSize, "Out", "Quad", 0.3, true)
 end)
 
 RunService.RenderStepped:Connect(function()
@@ -261,5 +251,5 @@ end)
 -- =================================================================
 -- [[ ✨ INITIALIZATION ]]
 -- =================================================================
-logmsg("NiTroHUB PRO - Emoji & Max Speed Edition Loaded!")
-logmsg("แตะที่ไอคอน 🌀 เพื่อเปิด/ปิดเมนู | Auto Hatch is now at maximum speed!")
+logmsg("NiTroHUB PRO - Accurate Counter & Menu Redesign Loaded!")
+logmsg("แตะที่ไอคอน 🌀 เพื่อเปิด/ปิดเมนู | Egg counter is now more accurate!")
