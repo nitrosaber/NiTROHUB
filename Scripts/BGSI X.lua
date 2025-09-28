@@ -1,18 +1,20 @@
---// 🌀 NiTroHUB - Compact & Performance v4.0
---// ✨ by NiTroHUB x Gemini (ปรับปรุงประสิทธิภาพและดีไซน์)
---// Description: ยกเครื่อง UI ให้เล็กลง สวยงาม และปรับปรุงโค้ดเพื่อลดอาการกระตุกขณะทำงาน
+--// 🌀 NiTroHUB - NatHub Edition v5.0
+--// ✨ by NiTroHUB x Gemini (Adapted for NatHub Library)
+--// Description: ย้ายการทำงานทั้งหมดของ NiTroHUB เข้าไปใน UI ของ NatHub เพื่อความสวยงามและคุ้นเคย
 
 -- =================================================================
--- [[ SAFETY WAIT MECHANISM ]]
+-- [[ 1. UI LIBRARY LOADER ]]
 -- =================================================================
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
-task.wait(1)
+-- โหลด Library ของ NatHub เข้ามาเพื่อใช้งาน
+local NatLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/NatLibrary/SourceV2.lua"))()
+logmsg("NatHub Library Loaded.")
 
 -- =================================================================
--- [[ ⚙️ CONFIGURATION ]]
+-- [[ 2. NITROHUB CORE LOGIC (UNCHANGED) ]]
+-- ส่วนนี้คือการทำงานหลักของสคริปต์ ซึ่งยังคงเหมือนเดิมทุกประการ
 -- =================================================================
+
+-- // ⚙️ CONFIGURATION
 local Config = {
     EggName = "Autumn Egg",
     HatchAmount = 8,
@@ -26,13 +28,10 @@ local Config = {
     }
 }
 
--- =================================================================
--- [[ 🧩 SERVICES & CORE SETUP ]]
--- =================================================================
+-- // 🧩 SERVICES & CORE SETUP
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -45,9 +44,7 @@ end
 local function logmsg(...) print("[NiTroHUB]", ...) end
 local function warnmsg(...) warn("[NiTroHUB]", ...) end
 
--- =================================================================
--- [[ 📡 REMOTE EVENT HANDLER ]]
--- =================================================================
+-- // 📡 REMOTE EVENT HANDLER
 local frameworkRemote
 do
     local success, remote = pcall(function()
@@ -55,15 +52,13 @@ do
     end)
     if success and remote then
         frameworkRemote = remote
-        logmsg("Successfully located Framework RemoteEvent.")
+        logmsg("Framework RemoteEvent found.")
     else
-        warnmsg("Could not find the specific Framework RemoteEvent! The script will not function.")
+        warnmsg("Could not find the Framework RemoteEvent! The script will not function.")
     end
 end
 
--- =================================================================
--- [[ 📊 SCRIPT STATE ]]
--- =================================================================
+-- // 📊 SCRIPT STATE
 local State = {
     HatchRunning = false,
     ChestRunning = false,
@@ -75,22 +70,17 @@ local State = {
 }
 local lastCollectedChests = {}
 
--- =================================================================
--- [[ 🚀 CORE FUNCTIONS (HATCH, CHEST, ANTI-AFK) ]]
--- =================================================================
--- [ Performance: Aggressively destroy hatching UI to prevent lag ]
+-- // 🚀 CORE FUNCTIONS
 pcall(function()
     local function destroyHatchGui(child)
         if child and child.Parent and (child.Name:match("Hatch") or child.Name:match("Egg")) then
-            task.wait()
-            child:Destroy()
+            task.wait(); child:Destroy()
         end
     end
     for _, v in ipairs(playerGui:GetChildren()) do destroyHatchGui(v) end
     playerGui.ChildAdded:Connect(destroyHatchGui)
 end)
 
--- [ Auto Hatch Module ]
 task.spawn(function()
     while true do
         if State.HatchRunning and frameworkRemote then
@@ -102,7 +92,8 @@ task.spawn(function()
             if not success then
                 warnmsg("Auto Hatch failed: " .. tostring(err))
                 State.HatchRunning = false
-                if _G.UpdateToggleButton then _G.UpdateToggleButton("AutoHatch", false) end
+                -- ส่งสัญญาณให้ UI ของ NatHub ปิดตัวเองลง
+                if _G.UpdateNiTroHUBToggle then _G.UpdateNiTroHUBToggle("AutoHatch", false) end
             end
             task.wait(Config.HatchDelay)
         else
@@ -111,16 +102,12 @@ task.spawn(function()
     end
 end)
 
--- [ Auto Chest Module ]
 local function collectChest(chest)
     if not chest or not chest.Parent then return false end
     local character = player.Character
     if not character then return false end
-
     local key = chest:GetDebugId()
-    if lastCollectedChests[key] and (tick() - lastCollectedChests[key] < Config.ChestCollectCooldown) then
-        return false
-    end
+    if lastCollectedChests[key] and (tick() - lastCollectedChests[key] < Config.ChestCollectCooldown) then return false end
 
     State.Status = "Collecting " .. chest.Name
     if frameworkRemote then
@@ -147,8 +134,7 @@ task.spawn(function()
                     for _, obj in ipairs(area:GetDescendants()) do
                         if not State.ChestRunning then break end
                         if obj:IsA("Model") and CHEST_LIST[obj.Name:lower()] then
-                            pcall(collectChest, obj)
-                            task.wait()
+                            pcall(collectChest, obj); task.wait()
                         end
                     end
                 end
@@ -158,7 +144,6 @@ task.spawn(function()
     end
 end)
 
--- [ Anti-AFK Module ]
 task.spawn(function()
     pcall(function()
         local VirtualUser = game:GetService("VirtualUser")
@@ -172,125 +157,80 @@ task.spawn(function()
     end)
 end)
 
--- ================================================================================
--- // SECTION: 🎨 GUI INTERFACE - COMPACT EDITION
--- ================================================================================
-pcall(function() playerGui:FindFirstChild("NiTroHUB_GUI"):Destroy() end)
 
-local Theme = {
-    Background = Color3.fromRGB(28, 28, 32),
-    Primary = Color3.fromRGB(40, 40, 45),
-    Accent = Color3.fromRGB(0, 225, 255),
-    Text = Color3.fromRGB(255, 255, 255),
-    TextSecondary = Color3.fromRGB(180, 180, 180),
-    Green = Color3.fromRGB(76, 175, 80),
-    Red = Color3.fromRGB(220, 50, 50),
-    Font = Enum.Font.Gotham,
-    FontBold = Enum.Font.GothamBold,
-    Icons = { MiniIcon = "🌀", Hatch = "🥚", Chest = "📦", Settings = "⚙️" }
-}
+-- =================================================================
+-- [[ 3. GUI CREATION & INTEGRATION ]]
+-- ส่วนนี้คือการสร้าง UI ด้วย NatHub และเชื่อมต่อกับ Logic ด้านบน
+-- =================================================================
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "NiTroHUB_GUI"
-gui.IgnoreGuiInset = true
-gui.ResetOnSpawn = false
-gui.Parent = playerGui
+-- สร้างหน้าต่างหลักของ UI
+local Window = NatLib:CreateWindow("NiTroHUB")
 
-local function Create(instanceType)
-    return function(properties)
-        local obj = Instance.new(instanceType)
-        for prop, value in pairs(properties) do pcall(function() obj[prop] = value end) end
-        return obj
+-- สร้างแท็บสำหรับฟังก์ชันฟาร์ม
+local FarmTab = Window:AddTab("Farming")
+
+-- สร้างตารางสำหรับเก็บ Object ของ Toggle เพื่อให้สามารถอัปเดตจากภายนอกได้
+local Toggles = {}
+
+-- สร้างฟังก์ชัน Global สำหรับอัปเดตสถานะปุ่ม Toggle ใน UI
+_G.UpdateNiTroHUBToggle = function(name, value)
+    if Toggles[name] then
+        Toggles[name]:Update(value) -- ใช้ฟังก์ชัน Update ของ NatHub
     end
 end
 
-local mainFrame = Create("Frame"){
-    Name = "MainFrame",
-    Size = UDim2.fromOffset(280, 260), --<-- Smaller UI
-    Position = UDim2.fromScale(0.5, 0.4),
-    AnchorPoint = Vector2.new(0.5, 0.5),
-    BackgroundColor3 = Theme.Background,
-    BorderColor3 = Theme.Accent,
-    BorderSizePixel = 1,
-    Active = true,
-    Draggable = true,
-    Visible = false,
-    Parent = gui,
-    ClipsDescendants = true
-}
-Create("UICorner"){CornerRadius = UDim.new(0, 10), Parent = mainFrame}
-Create("UIGradient"){ Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 45)), ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 24))}), Rotation = 90, Parent = mainFrame }
-
-local header = Create("Frame"){ Name = "Header", Size = UDim2.new(1, 0, 0, 35), BackgroundColor3 = Theme.Primary, BackgroundTransparency = 0.5, Parent = mainFrame }
-Create("UIStroke"){Color = Theme.Accent, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Thickness = 1.5, Parent = header} --<-- Added Stroke
-Create("TextLabel"){ Name = "Title", Size = UDim2.new(1, -10, 1, 0), Position = UDim2.fromOffset(10, 0), BackgroundTransparency = 1, Font = Theme.FontBold, Text = "NiTroHUB", TextColor3 = Theme.Accent, TextSize = 16, TextXAlignment = Enum.TextXAlignment.Left, Parent = header }
-
-local content = Create("Frame"){ Name = "Content", Size = UDim2.new(1, -20, 1, -45), Position = UDim2.fromOffset(10, 35), BackgroundTransparency = 1, Parent = mainFrame }
-Create("UIListLayout"){ Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = content }
-
-local toggleButtonUpdaters = {}
-local function createToggleButton(config)
-    local buttonFrame = Create("Frame"){ Name = config.Name, Size = UDim2.new(1, 0, 0, 40), BackgroundColor3 = Theme.Primary, LayoutOrder = config.Order, Parent = content }
-    Create("UICorner"){CornerRadius = UDim.new(0, 8), Parent = buttonFrame}
-    Create("UIStroke"){Color = Theme.Accent, Transparency = 0.8, Parent = buttonFrame}
-    Create("TextLabel"){ Size = UDim2.fromOffset(28, 28), Position = UDim2.fromOffset(10, 6), BackgroundTransparency = 1, Font = Theme.FontBold, Text = config.Icon, TextColor3 = Theme.Accent, TextScaled = true, Parent = buttonFrame }
-    Create("TextLabel"){ Size = UDim2.new(1, -50, 1, 0), Position = UDim2.fromOffset(45, 0), BackgroundTransparency = 1, Font = Theme.FontBold, Text = config.Text, TextColor3 = Theme.Text, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left, Parent = buttonFrame }
-    local toggleButton = Create("TextButton"){ Size = UDim2.new(1, 0, 1, 0), Text = "", BackgroundTransparency = 1, Parent = buttonFrame }
-    local stateIndicator = Create("Frame"){ Size = UDim2.new(1, 0, 0, 3), Position = UDim2.new(0, 0, 1, 0), BackgroundColor3 = Theme.Red, BorderSizePixel = 0, Parent = buttonFrame }
-    Create("UICorner"){Parent = stateIndicator}
-
-    local function updateVisuals(state)
-        local color = state and Theme.Green or Theme.Red
-        TweenService:Create(stateIndicator, TweenInfo.new(0.2), {BackgroundColor3 = color}):Play()
+-- // -- สร้างปุ่ม Toggle สำหรับ Auto Hatch -- //
+Toggles.AutoHatch = FarmTab:AddToggle({
+    Name = "Auto Hatch",
+    Default = State.HatchRunning, -- ค่าเริ่มต้น
+    Callback = function(Value)
+        -- เมื่อผู้ใช้กดปุ่ม สถานะจะถูกส่งมาที่นี่
+        State.HatchRunning = Value
     end
-    
-    toggleButton.MouseButton1Click:Connect(config.Callback)
-    updateVisuals(config.InitialState)
-    toggleButtonUpdaters[config.Name] = updateVisuals
-    _G.UpdateToggleButton = function(name, state) if toggleButtonUpdaters[name] then toggleButtonUpdaters[name](state) end end
-end
+})
 
-createToggleButton({ Name = "AutoHatch", Order = 1, Text = "Auto Hatch", Icon = Theme.Icons.Hatch, InitialState = State.HatchRunning, Callback = function() State.HatchRunning = not State.HatchRunning; toggleButtonUpdaters.AutoHatch(State.HatchRunning) end })
-createToggleButton({ Name = "AutoChest", Order = 2, Text = "Auto Chest", Icon = Theme.Icons.Chest, InitialState = State.ChestRunning, Callback = function() State.ChestRunning = not State.ChestRunning; toggleButtonUpdaters.AutoChest(State.ChestRunning) end })
-createToggleButton({ Name = "AntiAFK", Order = 3, Text = "Anti-AFK", Icon = Theme.Icons.Settings, InitialState = State.AntiAfkRunning, Callback = function() State.AntiAfkRunning = not State.AntiAfkRunning; toggleButtonUpdaters.AntiAFK(State.AntiAfkRunning) end })
+-- // -- สร้างปุ่ม Toggle สำหรับ Auto Chest -- //
+Toggles.AutoChest = FarmTab:AddToggle({
+    Name = "Auto Chest Collect",
+    Default = State.ChestRunning,
+    Callback = function(Value)
+        State.ChestRunning = Value
+    end
+})
 
-local statsLabel = Create("TextLabel"){ Name = "StatsLabel", Size = UDim2.new(1, 0, 1, -140), Position = UDim2.fromOffset(0,135), BackgroundTransparency = 1, Font = Theme.Font, RichText = true, TextColor3 = Theme.TextSecondary, TextSize = 13, TextYAlignment = Enum.TextYAlignment.Top, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 4, Parent = content }
+-- // -- สร้างปุ่ม Toggle สำหรับ Anti-AFK -- //
+Toggles.AntiAFK = FarmTab:AddToggle({
+    Name = "Anti-AFK",
+    Default = State.AntiAfkRunning,
+    Callback = function(Value)
+        State.AntiAfkRunning = Value
+    end
+})
 
-local miniIcon = Create("TextButton"){ Name = "MiniIcon", Size = UDim2.fromOffset(50, 50), Position = UDim2.new(0.02, 0, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = Theme.Background, BackgroundTransparency = 0.3, Text = Theme.Icons.MiniIcon, Font = Theme.FontBold, TextColor3 = Theme.Accent, TextScaled = true, Active = true, Draggable = true, Parent = gui }
-Create("UICorner"){CornerRadius = UDim.new(1, 0), Parent = miniIcon}
-Create("UIStroke"){Color = Theme.Accent, Thickness = 1.5, Parent = miniIcon}
-Create("UIAspectRatioConstraint"){AspectRatio = 1, Parent = miniIcon}
+-- เพิ่มเส้นคั่นเพื่อความสวยงาม
+FarmTab:AddSeparator()
 
--- ================================================================================
--- // SECTION: 🖱️ GUI LOGIC & EVENTS
--- ================================================================================
+-- สร้าง Label สำหรับแสดงสถานะและสถิติ
+local StatsDisplay = FarmTab:AddLabel("Loading stats...")
 
-local isGuiVisible = false
-miniIcon.MouseButton1Click:Connect(function()
-    isGuiVisible = not isGuiVisible
-    local targetSize = isGuiVisible and UDim2.fromOffset(280, 260) or UDim2.fromOffset(280, 0)
-    local targetPos = UDim2.fromScale(0.5, 0.4)
-
-    mainFrame.Visible = true
-    mainFrame:TweenSizeAndPosition(targetSize, targetPos, "Out", "Quad", 0.3, true, function(state)
-        if state == Enum.TweenStatus.Completed then mainFrame.Visible = isGuiVisible end
-    end)
-end)
-
--- [ Performance: Stats update loop. Replaces RenderStepped to reduce lag. ]
+-- เริ่ม Loop สำหรับอัปเดตข้อมูลบน Label ทุกๆ 0.25 วินาที
 task.spawn(function()
-    while gui and gui.Parent and task.wait(0.25) do
-        if not State.HatchRunning and not State.ChestRunning then State.Status = "Idle" end
+    while task.wait(0.25) do
+        if not State.HatchRunning and not State.ChestRunning then
+            State.Status = "Idle"
+        end
 
-        statsLabel.Text = string.format(
-            "<b>Status:</b> <font color='#%s'>%s</font>\n\n🥚 Hatched: %d\n📦 Collected: %d\n🏷️ Last: %s",
-            Theme.Accent:ToHex(), State.Status, State.EggsHatched, State.ChestsCollected, State.LastChest
+        -- สร้างข้อความที่จะแสดงผล
+        local statsString = string.format(
+            "Status: %s\n\nEggs Hatched: %d\nChests Collected: %d\nLast Chest: %s",
+            State.Status, State.EggsHatched, State.ChestsCollected, State.LastChest
         )
+
+        -- อัปเดตข้อความบน Label ของ NatHub (ใช้ pcall เพื่อป้องกัน error)
+        pcall(function()
+            StatsDisplay:Set(statsString)
+        end)
     end
 end)
 
--- =================================================================
--- [[ ✨ INITIALIZATION ]]
--- =================================================================
-logmsg("NiTroHUB - Compact Edition Loaded!")
-logmsg("แตะที่ไอคอน 🌀 ด้านข้างเพื่อเปิด/ปิดเมนู")
+logmsg("NiTroHUB - NatHub Edition Initialized Successfully!")
