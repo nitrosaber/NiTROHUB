@@ -1,6 +1,6 @@
---// 🌀 NiTroHUB PRO - Mobile Edition
---// ✨ by NiTroHUB x Gemini (ปรับปรุงสำหรับมือถือโดยเฉพาะ)
---// Description: นำ Hotkey ออกและปรับปรุง UI เพื่อให้ใช้งานบนมือถือได้ดีที่สุด
+--// 🌀 NiTroHUB PRO - Emoji Edition v3.6
+--// ✨ by NiTroHUB x Gemini (ปรับปรุงสำหรับมือถือ + Emoji Icons)
+--// Description: แทนที่ไอคอนรูปภาพด้วย Emoji เพื่อความเร็วและสไตล์ และปรับปรุงการซ่อน UI ฟักไข่
 
 -- =================================================================
 -- [[ SAFETY WAIT MECHANISM ]]
@@ -79,15 +79,16 @@ local lastCollectedChests = {}
 -- =================================================================
 -- [[ 🚀 CORE FUNCTIONS (HATCH, CHEST, ANTI-AFK) ]]
 -- =================================================================
--- [ Performance Patch: Hide Hatching UI ]
+-- [ Aggressive UI Hiding: Destroy Hatching UI ]
 pcall(function()
-    local function hideHatchGui(child)
-        if child.Name:match("Hatch") or child.Name:match("Egg") then
-            task.wait(); child.Enabled = false
+    local function destroyHatchGui(child)
+        if child and child.Parent and (child.Name:match("Hatch") or child.Name:match("Egg")) then
+            task.wait()
+            child:Destroy()
         end
     end
-    for _, v in ipairs(playerGui:GetChildren()) do hideHatchGui(v) end
-    playerGui.ChildAdded:Connect(hideHatchGui)
+    for _, v in ipairs(playerGui:GetChildren()) do destroyHatchGui(v) end
+    playerGui.ChildAdded:Connect(destroyHatchGui)
 end)
 
 -- [ Auto Hatch Module ]
@@ -173,7 +174,7 @@ task.spawn(function()
 end)
 
 -- ================================================================================
--- // SECTION: 🎨 GUI INTERFACE - MOBILE EDITION
+-- // SECTION: 🎨 GUI INTERFACE - EMOJI EDITION
 -- ================================================================================
 -- Cleanup old GUI first
 pcall(function()
@@ -192,10 +193,10 @@ local Theme = {
     Font = Enum.Font.Gotham,
     FontBold = Enum.Font.GothamBold,
     Icons = {
-        MiniIcon = "rbxassetid://6033422409",
-        Hatch = "rbxassetid://2861819515",
-        Chest = "rbxassetid://1522923338",
-        Settings = "rbxassetid://2844199238"
+        MiniIcon = "🌀",
+        Hatch = "🥚",
+        Chest = "📦",
+        Settings = "⚙️"
     }
 }
 
@@ -221,7 +222,7 @@ end
 local mainFrame = Create("Frame"){
     Name = "MainFrame",
     Size = UDim2.fromOffset(320, 300),
-    Position = UDim2.fromScale(0.5, 0.4), -- [Mobile] ปรับตำแหน่งให้สูงขึ้น
+    Position = UDim2.fromScale(0.5, 0.4),
     AnchorPoint = Vector2.new(0.5, 0.5),
     BackgroundColor3 = Theme.Background,
     BorderColor3 = Theme.Accent,
@@ -257,7 +258,18 @@ local function createToggleButton(config)
     Create("UICorner"){CornerRadius = UDim.new(0, 8), Parent = buttonFrame}
     Create("UIStroke"){Color = Theme.Accent, Transparency = 0.8, Parent = buttonFrame}
 
-    Create("ImageLabel"){ Size = UDim2.fromOffset(30, 30), Position = UDim2.fromOffset(10, 7.5), BackgroundTransparency = 1, Image = config.Icon, Parent = buttonFrame }
+    -- Changed to TextLabel for Emoji
+    Create("TextLabel"){
+        Size = UDim2.fromOffset(30, 30),
+        Position = UDim2.fromOffset(10, 7.5),
+        BackgroundTransparency = 1,
+        Font = Theme.FontBold,
+        Text = config.Icon,
+        TextColor3 = Theme.Accent,
+        TextScaled = true,
+        Parent = buttonFrame
+    }
+    
     Create("TextLabel"){ Size = UDim2.new(1, -50, 1, 0), Position = UDim2.fromOffset(45, 0), BackgroundTransparency = 1, Font = Theme.FontBold, Text = config.Text, TextColor3 = Theme.Text, TextSize = 16, TextXAlignment = Enum.TextXAlignment.Left, Parent = buttonFrame }
     
     local toggleButton = Create("TextButton"){ Size = UDim2.new(1, 0, 1, 0), Text = "", BackgroundTransparency = 1, Parent = buttonFrame }
@@ -278,45 +290,29 @@ local function createToggleButton(config)
     end
 end
 
--- Create buttons (without Hotkey text)
-createToggleButton({
-    Name = "AutoHatch", Order = 1, Text = "Auto Hatch", Icon = Theme.Icons.Hatch,
-    InitialState = State.HatchRunning,
-    Callback = function()
-        State.HatchRunning = not State.HatchRunning
-        toggleButtonUpdaters.AutoHatch(State.HatchRunning)
-    end
-})
-
-createToggleButton({
-    Name = "AutoChest", Order = 2, Text = "Auto Chest", Icon = Theme.Icons.Chest,
-    InitialState = State.ChestRunning,
-    Callback = function()
-        State.ChestRunning = not State.ChestRunning
-        toggleButtonUpdaters.AutoChest(State.ChestRunning)
-    end
-})
-
-createToggleButton({
-    Name = "AntiAFK", Order = 3, Text = "Anti-AFK", Icon = Theme.Icons.Settings,
-    InitialState = State.AntiAfkRunning,
-    Callback = function()
-        State.AntiAfkRunning = not State.AntiAfkRunning
-        toggleButtonUpdaters.AntiAFK(State.AntiAfkRunning)
-    end
-})
+-- Create buttons with Emoji Icons
+createToggleButton({ Name = "AutoHatch", Order = 1, Text = "Auto Hatch", Icon = Theme.Icons.Hatch, InitialState = State.HatchRunning,
+    Callback = function() State.HatchRunning = not State.HatchRunning; toggleButtonUpdaters.AutoHatch(State.HatchRunning) end })
+createToggleButton({ Name = "AutoChest", Order = 2, Text = "Auto Chest", Icon = Theme.Icons.Chest, InitialState = State.ChestRunning,
+    Callback = function() State.ChestRunning = not State.ChestRunning; toggleButtonUpdaters.AutoChest(State.ChestRunning) end })
+createToggleButton({ Name = "AntiAFK", Order = 3, Text = "Anti-AFK", Icon = Theme.Icons.Settings, InitialState = State.AntiAfkRunning,
+    Callback = function() State.AntiAfkRunning = not State.AntiAfkRunning; toggleButtonUpdaters.AntiAFK(State.AntiAfkRunning) end })
 
 -- [ Stats Display ]
 local statsLabel = Create("TextLabel"){ Name = "StatsLabel", Size = UDim2.new(1, 0, 0, 100), BackgroundTransparency = 1, Font = Theme.Font, RichText = true, TextColor3 = Theme.TextSecondary, TextSize = 14, TextYAlignment = Enum.TextYAlignment.Top, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 4, Parent = content }
 
--- [ Mini Icon to toggle GUI ]
-local miniIcon = Create("ImageButton"){
+-- [ Mini Icon (Emoji) to toggle GUI ]
+local miniIcon = Create("TextButton"){
     Name = "MiniIcon",
-    Size = UDim2.fromOffset(55, 55), -- [Mobile] ขยายขนาดให้ใหญ่ขึ้น
+    Size = UDim2.fromOffset(55, 55),
     Position = UDim2.new(0.02, 0, 0.5, 0),
     AnchorPoint = Vector2.new(0, 0.5),
     BackgroundColor3 = Theme.Background,
-    Image = Theme.Icons.MiniIcon,
+    BackgroundTransparency = 0.3,
+    Text = Theme.Icons.MiniIcon,
+    Font = Theme.FontBold,
+    TextColor3 = Theme.Accent,
+    TextScaled = true,
     Active = true,
     Draggable = true,
     Parent = gui
@@ -334,7 +330,7 @@ local isGuiVisible = false
 miniIcon.MouseButton1Click:Connect(function()
     isGuiVisible = not isGuiVisible
     local targetSize = isGuiVisible and UDim2.fromOffset(320, 300) or UDim2.fromOffset(320, 0)
-    local targetPos = UDim2.fromScale(0.5, 0.4) -- [Mobile] ปรับตำแหน่งให้สูงขึ้น
+    local targetPos = UDim2.fromScale(0.5, 0.4)
 
     mainFrame.Visible = true
     mainFrame:TweenSizeAndPosition(targetSize, targetPos, "Out", "Quad", 0.3, true, function(state)
@@ -361,6 +357,5 @@ end)
 -- =================================================================
 -- [[ ✨ INITIALIZATION ]]
 -- =================================================================
-logmsg("NiTroHUB PRO - Mobile Edition Loaded!")
-logmsg("แตะที่ไอคอนด้านข้างเพื่อเปิด/ปิดเมนู")
-
+logmsg("NiTroHUB PRO - Emoji Edition Loaded!")
+logmsg("แตะที่ไอคอน 🌀 ด้านข้างเพื่อเปิด/ปิดเมนู")
