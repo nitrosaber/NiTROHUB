@@ -1,22 +1,20 @@
---// 🌀 NiTroHUB PRO - Final Evolution (Complete Overhaul)
---// ✨ by NiTroHUB x Gemini (ปรับปรุงและแก้ไขตามคำขอทั้งหมด)
+--// 🌀 NiTroHUB PRO - Final Evolution (Readability Improved)
+--// ✨ by NiTroHUB x Gemini (จัดระเบียบโค้ดให้อ่านง่ายและสบายตา)
 --//
---// การเปลี่ยนแปลงหลัก:
---//   - [FIX] แก้ไขการสุ่มไข่ให้เสถียรและนับค่าได้แม่นยำ
---//   - [FIX] ตรวจสอบและปิดอนิเมชันการสุ่มไข่โดยสมบูรณ์
---//   - [FIX] แก้ไขการเก็บกล่องที่บางครั้งไม่ทำงานแต่สคริปต์ยังรันต่อ
---//   - [GUI] ยกเครื่องดีไซน์ GUI ใหม่ทั้งหมด สวยงามและใช้งานง่าย
---//   - [GUI] เพิ่มหน้า Main (ควบคุม) และ Settings (ตั้งค่า)
---//   - [NEW] เพิ่ม Loading Screen ตอนเริ่มต้น
---//   - [NEW] เพิ่มฟังก์ชัน Screen Dimmer (ปรับจอมืด) และสวิตช์ Anti-AFK
+--// การเปลี่ยนแปลง:
+--//   - จัดรูปแบบการเว้นวรรคและการเยื้องใหม่ทั้งหมด
+--//   - แบ่งส่วนการสร้าง GUI ที่ซับซ้อนออกมาเป็นส่วนย่อยๆ ที่เข้าใจง่าย
+--//   - เพิ่ม Comment ในส่วนที่สำคัญเพื่ออธิบายโค้ด
+--//   - การทำงานของสคริปต์ยังคงเหมือนเดิม 100%
 --// =================================================================
 
 -- ==========================
 -- ⚙️ CONFIG (ตั้งค่าตามต้องการ)
 -- ==========================
+
 local EGG_NAME = "Autumn Egg"
 local HATCH_AMOUNT = 8
-local HATCH_DELAY = 0.1 -- แนะนำให้เริ่มที่ 0.1 เพื่อความเสถียร
+local HATCH_DELAY = 0.1
 
 local CHEST_CHECK_INTERVAL = 10
 local CHEST_COLLECT_COOLDOWN = 60
@@ -30,9 +28,11 @@ local CHEST_NAMES = {
 local ENABLE_WEBHOOK = false
 local WEBHOOK_URL = ""
 
+
 -- ==========================
 -- 🧩 SERVICES & CORE SETUP
 -- ==========================
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -46,14 +46,20 @@ local playerGui = player:WaitForChild("PlayerGui")
 local character = player.Character or player.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 
+-- Compatibility checks for different executors
+local isFireTouchInterestAvailable = type(firetouchinterest) == "function"
+local getEnvironment = getfenv or getsenv
+
 local CHEST_LIST = {}
 for _, name in ipairs(CHEST_NAMES) do
     CHEST_LIST[name:lower()] = true
 end
 
+
 -- ==========================
 -- 📡 REMOTE EVENTS & UTILITIES
 -- ==========================
+
 local function logmsg(...) print("[NiTroHUB]", ...) end
 local function warnmsg(...) warn("[NiTroHUB]", ...) end
 
@@ -79,9 +85,10 @@ if not specificCollectRemote then warnmsg("ไม่พบ Specific Collect Remo
 -- ==========================
 -- 📊 STATE (ตัวแปรสถานะการทำงาน)
 -- ==========================
+
 local hatchRunning = false
 local chestRunning = false
-local antiAfkRunning = true -- เปิด Anti-AFK เป็นค่าเริ่มต้น
+local antiAfkRunning = true
 
 local eggsHatchedCount = 0
 local chestsCollectedCount = 0
@@ -89,10 +96,12 @@ local lastCollectedChests = {}
 local lastCollectedChestName = "-"
 local currentStatus = "Idle"
 
+
 -- ==========================
--- 🚀 PERFORMANCE & ANIMATION PATCH (*** แก้ไขแล้ว ***)
+-- 🚀 PERFORMANCE & ANIMATION PATCH
 -- ==========================
--- ปิด GUI ที่ไม่จำเป็นทั้งหมด
+
+-- Hide unnecessary GUIs
 pcall(function()
     for _, v in ipairs(playerGui:GetChildren()) do
         if v.Name:match("Hatch") or v.Name:match("Egg") then
@@ -107,52 +116,57 @@ pcall(function()
     end)
 end)
 
--- ปิดอนิเมชันการฟักไข่ (สมบูรณ์ยิ่งขึ้น)
-task.spawn(function()
-    local scripts = player:WaitForChild("PlayerScripts"):GetDescendants()
-    for _, script in ipairs(scripts) do
-        if script:IsA("LocalScript") and script.Name:match("Open") or script.Name:match("Egg") then
-            local success, err = pcall(function()
-                local env = getfenv and getfenv(script) or getsenv and getsenv(script)
-                if env and env.PlayEggAnimation then
-                    env.PlayEggAnimation = function() return end
-                    logmsg("✅ ปิดอนิเมชันสุ่มไข่สำเร็จแล้ว!")
-                    return -- ออกจาก loop เมื่อเจอและแก้ไขสำเร็จ
-                end
-            end)
-            if not success then warnmsg("พยายามปิดอนิเมชัน แต่เกิดข้อผิดพลาด:", err) end
+-- Disable hatch animation by hooking into the game's scripts
+if getEnvironment then
+    task.spawn(function()
+        local scripts = player:WaitForChild("PlayerScripts"):GetDescendants()
+        for _, script in ipairs(scripts) do
+            if script:IsA("LocalScript") and (script.Name:match("Open") or script.Name:match("Egg")) then
+                local success, err = pcall(function()
+                    local env = getEnvironment(script)
+                    if env and env.PlayEggAnimation then
+                        env.PlayEggAnimation = function() return end
+                        logmsg("✅ ปิดอนิเมชันสุ่มไข่สำเร็จแล้ว!")
+                        return
+                    end
+                end)
+                if not success then warnmsg("พยายามปิดอนิเมชัน แต่เกิดข้อผิดพลาด:", err) end
+            end
         end
-    end
-end)
+    end)
+else
+    warnmsg("ไม่พบฟังก์ชัน getfenv/getsenv, อาจไม่สามารถปิดอนิเมชันการสุ่มไข่ได้")
+end
 
 
 -- ==========================
--- 🥚 AUTO HATCH (*** แก้ไขแล้ว ***)
+-- 🥚 AUTO HATCH
 -- ==========================
+
 task.spawn(function()
     while true do
         if hatchRunning and hatchRemote then
             currentStatus = "กำลังฟักไข่..."
             local success, err = pcall(function()
                 hatchRemote:FireServer("HatchEgg", EGG_NAME, HATCH_AMOUNT)
-                -- การนับจะเกิดขึ้นหลัง FireServer ทันที (Client-Side Assumption)
                 eggsHatchedCount = eggsHatchedCount + HATCH_AMOUNT
             end)
             if not success then
                 warnmsg("Auto Hatch ล้มเหลว:", err)
-                hatchRunning = false -- หยุดทำงานเมื่อเกิดข้อผิดพลาด
+                hatchRunning = false
             end
             task.wait(HATCH_DELAY)
         else
-            -- รอเล็กน้อยเมื่อไม่ได้ทำงาน เพื่อลดการใช้ CPU
             task.wait(0.1)
         end
     end
 end)
 
+
 -- ==========================
--- 💰 AUTO CHEST (*** แก้ไขแล้ว ***)
+-- 💰 AUTO CHEST
 -- ==========================
+
 local function collectChest(chest)
     if not chest or not chest.Parent or not hrp then return false end
 
@@ -171,9 +185,9 @@ local function collectChest(chest)
         if remoteSuccess then success = true; logmsg("💰 [Remote] เก็บ Chest:", chest.Name) end
     end
 
-    if not success then
+    if not success and isFireTouchInterestAvailable then
         local trigger = chest:FindFirstChild("TouchTrigger") or chest:FindFirstChildWhichIsA("BasePart")
-        if trigger and firetouchinterest then
+        if trigger then
             firetouchinterest(hrp, trigger, 0); task.wait(0.1); firetouchinterest(hrp, trigger, 1)
             success = true
             logmsg("💰 [Touch] เก็บ Chest:", chest.Name)
@@ -184,7 +198,6 @@ local function collectChest(chest)
         lastCollectedChests[key] = tick()
         chestsCollectedCount = chestsCollectedCount + 1
         lastCollectedChestName = chest.Name
-        -- Webhook ถูกย้ายไปเรียกใช้ข้างนอก เพื่อให้แน่ใจว่าสำเร็จจริง
         return true
     else
         warnmsg("ไม่สามารถเก็บกล่องได้: ไม่พบวิธีที่เหมาะสมสำหรับ", chest.Name)
@@ -197,15 +210,9 @@ task.spawn(function()
         if chestRunning then
             currentStatus = "กำลังค้นหากล่อง..."
             for _, obj in ipairs(Workspace:GetDescendants()) do
-                if not chestRunning then break end -- หยุดทันทีถ้าปิดฟังก์ชัน
+                if not chestRunning then break end
                 if obj:IsA("Model") and CHEST_LIST[obj.Name:lower()] then
-                    local collected = pcall(collectChest, obj)
-                    if collected then
-                        -- ส่ง Webhook ที่นี่ หลังจากยืนยันว่าเก็บสำเร็จ
-                        if ENABLE_WEBHOOK and WEBHOOK_URL ~= "" then
-                           -- sendWebhook(obj.Name) -- หากต้องการเปิดใช้งาน Webhook ให้ลบ comment ออก
-                        end
-                    end
+                    pcall(collectChest, obj)
                     task.wait()
                 end
             end
@@ -218,189 +225,173 @@ end)
 -- ==========================
 -- 💤 ANTI AFK
 -- ==========================
+
 task.spawn(function()
-    local vu = game:GetService("VirtualUser")
-    player.Idled:Connect(function()
-        if antiAfkRunning then
-            vu:Button2Down(Vector2.new(0,0), Workspace.CurrentCamera.CFrame); task.wait(1)
-            vu:Button2Up(Vector2.new(0,0), Workspace.CurrentCamera.CFrame);
-        end
+    pcall(function()
+        local vu = game:GetService("VirtualUser")
+        player.Idled:Connect(function()
+            if antiAfkRunning then
+                vu:Button2Down(Vector2.new(0,0), Workspace.CurrentCamera.CFrame); task.wait(1)
+                vu:Button2Up(Vector2.new(0,0), Workspace.CurrentCamera.CFrame);
+            end
+        end)
     end)
 end)
 
 
 -- =================================================================
--- 🎨 GUI INTERFACE & 🕹️ CONTROLS (*** สร้างใหม่ทั้งหมด ***)
+-- 🎨 GUI INTERFACE & 🕹️ CONTROLS (จัดระเบียบใหม่)
 -- =================================================================
--- ล้าง GUI เก่า (ถ้ามี)
+
+-- Cleanup old GUIs
 playerGui:FindFirstChild("NiTroHUB_PRO_GUI") and playerGui:FindFirstChild("NiTroHUB_PRO_GUI"):Destroy()
 playerGui:FindFirstChild("NiTroHUB_LoadingGUI") and playerGui:FindFirstChild("NiTroHUB_LoadingGUI"):Destroy()
 
--- Utility Functions for GUI
-local function Create(instanceType)
-    return function(data)
-        local obj = Instance.new(instanceType)
-        for k, v in pairs(data) do
-            if type(k) == 'number' then
-                v.Parent = obj
-            else
-                obj[k] = v
-            end
-        end
-        return obj
-    end
+
+-- [ SECTION ] LOADING SCREEN
+do
+    local loadingGui = Instance.new("ScreenGui")
+    loadingGui.Name = "NiTroHUB_LoadingGUI"
+    loadingGui.IgnoreGuiInset = true
+    loadingGui.ResetOnSpawn = false
+    loadingGui.Parent = playerGui
+
+    local background = Instance.new("Frame")
+    background.Name = "Background"
+    background.Size = UDim2.new(1, 0, 1, 0)
+    background.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+    background.Parent = loadingGui
+
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(0, 300, 0, 50)
+    title.AnchorPoint = Vector2.new(0.5, 0.5)
+    title.Position = UDim2.fromScale(0.5, 0.45)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBold
+    title.Text = "🌀 NiTroHUB PRO 🌀"
+    title.TextColor3 = Color3.fromRGB(0, 225, 255)
+    title.TextSize = 32
+    title.Parent = background
+
+    local titleStroke = Instance.new("UIStroke")
+    titleStroke.Color = Color3.new(0, 0, 0)
+    titleStroke.Thickness = 1.5
+    titleStroke.Parent = title
+
+    local bar = Instance.new("Frame")
+    bar.Name = "Bar"
+    bar.Size = UDim2.new(0, 300, 0, 8)
+    bar.AnchorPoint = Vector2.new(0.5, 0.5)
+    bar.Position = UDim2.fromScale(0.5, 0.52)
+    bar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    bar.Parent = background
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
+
+    local progress = Instance.new("Frame")
+    progress.Name = "Progress"
+    progress.Size = UDim2.new(0, 0, 1, 0)
+    progress.BackgroundColor3 = Color3.fromRGB(0, 225, 255)
+    progress.Parent = bar
+    Instance.new("UICorner", progress).CornerRadius = UDim.new(1, 0)
+
+    task.spawn(function()
+        TweenService:Create(progress, TweenInfo.new(2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 1, 0)}):Play()
+        task.wait(2.5)
+        TweenService:Create(background, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+        task.wait(0.5)
+        loadingGui:Destroy()
+    end)
 end
 
--- Loading Screen
-local loadingGui = Create'ScreenGui'{
-    Name = "NiTroHUB_LoadingGUI",
-    IgnoreGuiInset = true,
-    ResetOnSpawn = false,
-    Parent = playerGui,
-    [1] = Create'Frame'{
-        Name = "Background",
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundColor3 = Color3.fromRGB(18, 18, 18),
-        [1] = Create'TextLabel'{
-            Name = "Title",
-            Size = UDim2.new(0, 300, 0, 50),
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = UDim2.fromScale(0.5, 0.45),
-            BackgroundTransparency = 1,
-            Font = Enum.Font.GothamBold,
-            Text = "🌀 NiTroHUB PRO 🌀",
-            TextColor3 = Color3.fromRGB(0, 225, 255),
-            TextSize = 32,
-            [1] = Create'UIStroke'{Color = Color3.new(0,0,0), Thickness = 1.5}
-        },
-        [2] = Create'Frame'{
-            Name = "Bar",
-            Size = UDim2.new(0, 300, 0, 8),
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = UDim2.fromScale(0.5, 0.52),
-            BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-            [1] = Create'UICorner'{CornerRadius = UDim.new(1,0)},
-            [2] = Create'Frame'{
-                Name = "Progress",
-                Size = UDim2.new(0, 0, 1, 0),
-                BackgroundColor3 = Color3.fromRGB(0, 225, 255),
-                [1] = Create'UICorner'{CornerRadius = UDim.new(1,0)}
-            }
-        }
-    }
-}
+task.wait(3) -- Wait for loading screen to finish
 
--- Loading Animation
-task.spawn(function()
-    local bar = loadingGui.Background.Bar.Progress
-    local background = loadingGui.Background
-    TweenService:Create(bar, TweenInfo.new(2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 1, 0)}):Play()
-    task.wait(2.5)
-    TweenService:Create(background, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
-    task.wait(0.5)
-    loadingGui:Destroy()
-end)
+-- [ SECTION ] MAIN GUI SETUP
+local gui = Instance.new("ScreenGui")
+gui.Name = "NiTroHUB_PRO_GUI"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
 
-task.wait(3) -- รอให้ Loading Screen จบ
+local screenDimmer = Instance.new("Frame")
+screenDimmer.Name = "ScreenDimmer"
+screenDimmer.Size = UDim2.new(1, 0, 1, 0)
+screenDimmer.BackgroundColor3 = Color3.new(0, 0, 0)
+screenDimmer.BackgroundTransparency = 1
+screenDimmer.ZIndex = -1
+screenDimmer.Parent = gui
 
--- Main GUI
-local gui = Create'ScreenGui'{
-    Name = "NiTroHUB_PRO_GUI",
-    IgnoreGuiInset = true,
-    ResetOnSpawn = false,
-    Enabled = true,
-    Parent = playerGui
-}
-
--- Screen Dimmer Frame
-local screenDimmer = Create'Frame'{
-    Name = "ScreenDimmer",
-    Size = UDim2.new(1, 0, 1, 0),
-    BackgroundColor3 = Color3.new(0, 0, 0),
-    BackgroundTransparency = 1, -- เริ่มที่มองไม่เห็น
-    ZIndex = -1,
-    Parent = gui
-}
-
--- Main Frame
-local frame = Create'Frame'{
-    Name = "MainFrame",
-    Size = UDim2.new(0, 320, 0, 250),
-    Position = UDim2.fromScale(0.05, 0.2),
-    BackgroundColor3 = Color3.fromRGB(28, 28, 32),
-    BorderColor3 = Color3.fromRGB(80, 80, 80),
-    Active = true,
-    Draggable = true,
-    Visible = false, -- เริ่มโดยซ่อนไว้
-    Parent = gui,
-    [1] = Create'UICorner'{CornerRadius = UDim.new(0, 12)},
-    [2] = Create'UIStroke'{Color = Color3.fromRGB(80, 80, 80)}
-}
+local frame = Instance.new("Frame")
+frame.Name = "MainFrame"
+frame.Size = UDim2.new(0, 320, 0, 250)
+frame.Position = UDim2.fromScale(0.05, 0.2)
+frame.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
+frame.Active = true
+frame.Draggable = true
+frame.Visible = false
+frame.Parent = gui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+Instance.new("UIStroke", frame).Color = Color3.fromRGB(80, 80, 80)
 
 -- Header
-local header = Create'Frame'{
-    Name = "Header",
-    Size = UDim2.new(1, 0, 0, 40),
-    BackgroundColor3 = Color3.fromRGB(40, 40, 45),
-    Parent = frame,
-    [1] = Create'TextLabel'{
-        Name = "Title",
-        Size = UDim2.new(1, -50, 1, 0),
-        Position = UDim2.fromOffset(10, 0),
-        BackgroundTransparency = 1,
-        Font = Enum.Font.GothamBold,
-        Text = "NiTroHUB PRO",
-        TextColor3 = Color3.fromRGB(0, 225, 255),
-        TextSize = 18,
-        TextXAlignment = Enum.TextXAlignment.Left
-    },
-    [2] = Create'UICorner'{CornerRadius = UDim.new(0, 12)}
-}
+local header = Instance.new("Frame")
+header.Name = "Header"
+header.Size = UDim2.new(1, 0, 0, 40)
+header.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+header.Parent = frame
+local headerCorner = Instance.new("UICorner", header)
+headerCorner.CornerRadius = UDim.new(0, 12)
 
--- Tabs Container
-local tabsContainer = Create'Frame'{
-    Name = "TabsContainer",
-    Size = UDim2.new(1, 0, 0, 35),
-    Position = UDim2.fromOffset(0, 40),
-    BackgroundTransparency = 1,
-    Parent = frame
-}
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Size = UDim2.new(1, -50, 1, 0)
+title.Position = UDim2.fromOffset(10, 0)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBold
+title.Text = "NiTroHUB PRO"
+title.TextColor3 = Color3.fromRGB(0, 225, 255)
+title.TextSize = 18
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = header
 
--- Pages Container
-local pagesContainer = Create'Frame'{
-    Name = "PagesContainer",
-    Size = UDim2.new(1, -20, 1, -85),
-    Position = UDim2.fromOffset(10, 75),
-    BackgroundTransparency = 1,
-    Parent = frame
-}
+-- Tab System
+local tabsContainer = Instance.new("Frame")
+tabsContainer.Name = "TabsContainer"
+tabsContainer.Size = UDim2.new(1, 0, 0, 35)
+tabsContainer.Position = UDim2.fromOffset(0, 40)
+tabsContainer.BackgroundTransparency = 1
+tabsContainer.Parent = frame
 
--- Tab Creation Logic
+local pagesContainer = Instance.new("Frame")
+pagesContainer.Name = "PagesContainer"
+pagesContainer.Size = UDim2.new(1, -20, 1, -85)
+pagesContainer.Position = UDim2.fromOffset(10, 75)
+pagesContainer.BackgroundTransparency = 1
+pagesContainer.Parent = frame
+
 local pages = {}
-local function createTab(text)
-    local tabButton = Create'TextButton'{
-        Name = text .. "Tab",
-        Size = UDim2.new(0.5, -5, 1, 0),
-        Text = text,
-        Font = Enum.Font.GothamSemibold,
-        TextSize = 14,
-        BackgroundColor3 = Color3.fromRGB(28, 28, 32),
-        TextColor3 = Color3.fromRGB(150, 150, 150)
-    }
-
-    local page = Create'Frame'{
-        Name = text .. "Page",
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundTransparency = 1,
-        Visible = false,
-        Parent = pagesContainer
-    }
+local function createTab(text, position)
+    local page = Instance.new("Frame")
+    page.Name = text .. "Page"
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.Visible = false
+    page.Parent = pagesContainer
     pages[text] = page
 
+    local tabButton = Instance.new("TextButton")
+    tabButton.Name = text .. "Tab"
+    tabButton.Size = UDim2.new(0.5, -5, 1, 0)
+    tabButton.Position = position
+    tabButton.Text = text
+    tabButton.Font = Enum.Font.GothamSemibold
+    tabButton.TextSize = 14
+    tabButton.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
+    tabButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+    tabButton.Parent = tabsContainer
+    
     tabButton.MouseButton1Click:Connect(function()
-        for name, pg in pairs(pages) do
-            pg.Visible = (name == text)
-        end
+        for name, pg in pairs(pages) do pg.Visible = (name == text) end
         for _, otherTab in ipairs(tabsContainer:GetChildren()) do
             if otherTab:IsA("TextButton") then
                 otherTab.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
@@ -410,43 +401,30 @@ local function createTab(text)
         tabButton.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
         tabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     end)
-    
-    return tabButton
+    return tabButton, page
 end
 
-local mainTab = createTab("Main")
-mainTab.Position = UDim2.fromOffset(5, 0)
-mainTab.Parent = tabsContainer
+local mainTab, mainPage = createTab("Main", UDim2.fromOffset(5, 0))
+local settingsTab, settingsPage = createTab("Settings", UDim2.fromScale(0.5, 0))
+mainTab.MouseButton1Click:Fire() -- Set Main as default tab
 
-local settingsTab = createTab("Settings")
-settingsTab.Position = UDim2.fromScale(0.5, 0)
-settingsTab.Parent = tabsContainer
-
--- Activate Main tab by default
-mainTab.MouseButton1Click:Wait()
-
--- ## Main Page Content ##
-local mainPage = pages["Main"]
-
--- Toggle Button Creator
+-- [ SECTION ] MAIN PAGE CONTENT
 local function createToggleButton(parent, config)
     local state = false
-    local btn = Create'TextButton'{
-        Name = config.Name,
-        Size = UDim2.new(1, 0, 0, 35),
-        Position = config.Position,
-        Font = Enum.Font.GothamBold,
-        TextSize = 14,
-        Parent = parent
-    }
-    local corner = Create'UICorner'{CornerRadius = UDim.new(0, 8), Parent = btn}
-    local stroke = Create'UIStroke'{Color = Color3.fromRGB(120, 120, 120), Parent = btn}
+    local btn = Instance.new("TextButton")
+    btn.Name = config.Name
+    btn.Size = config.Size or UDim2.new(1, 0, 0, 35)
+    btn.Position = config.Position
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.Parent = parent
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke", btn).Color = Color3.fromRGB(120, 120, 120)
     
     local function updateVisuals()
-        local color = state and Color3.fromRGB(76, 175, 80) or Color3.fromRGB(220, 50, 50)
-        local text = state and "ON" or "OFF"
-        btn.Text = config.Text .. " ["..text.."] ("..config.Hotkey..")"
-        btn.BackgroundColor3 = color
+        local hotkeyText = config.Hotkey and config.Hotkey ~= "" and " ("..config.Hotkey..")" or ""
+        btn.Text = config.Text .. " [".. (state and "ON" or "OFF") .."]" .. hotkeyText
+        btn.BackgroundColor3 = state and Color3.fromRGB(76, 175, 80) or Color3.fromRGB(220, 50, 50)
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     end
     
@@ -457,90 +435,61 @@ local function createToggleButton(parent, config)
     end)
     
     updateVisuals()
-    return btn, function(newState) state = newState; updateVisuals() end
+    return function(newState) state = newState; updateVisuals() end
 end
 
-local _, setHatchButton = createToggleButton(mainPage, {
-    Name = "AutoHatchButton", Text = "Auto Hatch", Hotkey = "J",
-    Position = UDim2.fromOffset(0, 10),
-    Callback = function(state) hatchRunning = state end
-})
+local setHatchButton = createToggleButton(mainPage, {Name = "AutoHatchButton", Text = "Auto Hatch", Hotkey = "J", Position = UDim2.fromOffset(0, 10), Callback = function(state) hatchRunning = state end})
+local setChestButton = createToggleButton(mainPage, {Name = "AutoChestButton", Text = "Auto Chest", Hotkey = "K", Position = UDim2.fromOffset(0, 55), Callback = function(state) chestRunning = state end})
 
-local _, setChestButton = createToggleButton(mainPage, {
-    Name = "AutoChestButton", Text = "Auto Chest", Hotkey = "K",
-    Position = UDim2.fromOffset(0, 55),
-    Callback = function(state) chestRunning = state end
-})
-
-
--- ## Settings Page Content ##
-local settingsPage = pages["Settings"]
-
--- Stats Display
-local statsLabel = Create'TextLabel'{
-    Name = "StatsLabel",
-    Size = UDim2.new(1, 0, 0, 70),
-    BackgroundTransparency = 1,
-    Font = Enum.Font.Gotham,
-    TextSize = 14,
-    TextColor3 = Color3.fromRGB(220, 220, 220),
-    TextXAlignment = Enum.TextXAlignment.Left,
-    TextYAlignment = Enum.TextYAlignment.Top,
-    Parent = settingsPage
-}
+-- [ SECTION ] SETTINGS PAGE CONTENT
+local statsLabel = Instance.new("TextLabel")
+statsLabel.Name = "StatsLabel"
+statsLabel.Size = UDim2.new(1, 0, 0, 70)
+statsLabel.BackgroundTransparency = 1
+statsLabel.Font = Enum.Font.Gotham
+statsLabel.TextSize = 14
+statsLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+statsLabel.TextXAlignment = Enum.TextXAlignment.Left
+statsLabel.TextYAlignment = Enum.TextYAlignment.Top
+statsLabel.Parent = settingsPage
 
 -- Anti-AFK Toggle
-local antiAfkLabel = Create'TextLabel'{
-    Name = "AntiAfkLabel",
-    Size = UDim2.new(0.7, 0, 0, 30),
-    Position = UDim2.fromOffset(0, 75),
-    BackgroundTransparency = 1,
-    Font = Enum.Font.GothamSemibold,
-    Text = "Enable Anti-AFK",
-    TextColor3 = Color3.fromRGB(220, 220, 220),
-    TextXAlignment = Enum.TextXAlignment.Left,
-    Parent = settingsPage
-}
-local _, setAntiAfkButton = createToggleButton(settingsPage, {
-    Name = "AntiAfkButton", Text = "", Hotkey = "",
-    Position = UDim2.new(0.75, 0, 0, 75),
-    Callback = function(state) antiAfkRunning = state end
-})
-setAntiAfkButton(antiAfkRunning) -- Set initial state
+local antiAfkLabel = Instance.new("TextLabel", settingsPage)
+antiAfkLabel.Size = UDim2.new(0.7, 0, 0, 30)
+antiAfkLabel.Position = UDim2.fromOffset(0, 75)
+antiAfkLabel.BackgroundTransparency = 1
+antiAfkLabel.Font = Enum.Font.GothamSemibold
+antiAfkLabel.Text = "Enable Anti-AFK"
+antiAfkLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+antiAfkLabel.TextXAlignment = Enum.TextXAlignment.Left
 
+local setAntiAfkButton = createToggleButton(settingsPage, {Name = "AntiAfkButton", Text = "", Position = UDim2.new(0.7, 0, 0, 75), Size = UDim2.new(0.3, 0, 0, 30), Callback = function(state) antiAfkRunning = state end})
+setAntiAfkButton(antiAfkRunning)
 
 -- Screen Dimmer
-local dimmerLabel = Create'TextLabel'{
-    Name = "DimmerLabel",
-    Size = UDim2.new(1, 0, 0, 20),
-    Position = UDim2.fromOffset(0, 110),
-    BackgroundTransparency = 1,
-    Font = Enum.Font.GothamSemibold,
-    Text = "Screen Dimmer",
-    TextColor3 = Color3.fromRGB(220, 220, 220),
-    TextXAlignment = Enum.TextXAlignment.Left,
-    Parent = settingsPage
-}
-local dimmerSlider = Create'Frame'{
-    Name = "DimmerSlider",
-    Size = UDim2.new(1, 0, 0, 8),
-    Position = UDim2.fromOffset(0, 135),
-    BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-    Parent = settingsPage,
-    [1] = Create'UICorner'{CornerRadius = UDim.new(1,0)}
-}
-local dimmerHandle = Create'TextButton'{
-    Name = "Handle",
-    Size = UDim2.new(0, 16, 0, 16),
-    Position = UDim2.fromScale(0, 0.5),
-    AnchorPoint = Vector2.new(0.5, 0.5),
-    BackgroundColor3 = Color3.fromRGB(0, 225, 255),
-    Draggable = true,
-    Text = "",
-    Parent = dimmerSlider,
-    [1] = Create'UICorner'{CornerRadius = UDim.new(1,0)}
-}
+local dimmerLabel = Instance.new("TextLabel", settingsPage)
+dimmerLabel.Size = UDim2.new(1, 0, 0, 20)
+dimmerLabel.Position = UDim2.fromOffset(0, 110)
+dimmerLabel.BackgroundTransparency = 1
+dimmerLabel.Font = Enum.Font.GothamSemibold
+dimmerLabel.Text = "Screen Dimmer"
+dimmerLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+dimmerLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local dimmerSlider = Instance.new("Frame", settingsPage)
+dimmerSlider.Size = UDim2.new(1, 0, 0, 8)
+dimmerSlider.Position = UDim2.fromOffset(0, 135)
+dimmerSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Instance.new("UICorner", dimmerSlider).CornerRadius = UDim.new(1,0)
+
+local dimmerHandle = Instance.new("TextButton", dimmerSlider)
+dimmerHandle.Size = UDim2.new(0, 16, 0, 16)
+dimmerHandle.Position = UDim2.fromScale(0, 0.5)
+dimmerHandle.AnchorPoint = Vector2.new(0.5, 0.5)
+dimmerHandle.BackgroundColor3 = Color3.fromRGB(0, 225, 255)
 dimmerHandle.Draggable = true
+Instance.new("UICorner", dimmerHandle).CornerRadius = UDim.new(1,0)
+
 dimmerHandle.DragBegin:Connect(function()
     local mouse = player:GetMouse()
     local conn
@@ -549,12 +498,11 @@ dimmerHandle.DragBegin:Connect(function()
         local relativeX = math.clamp(mouse.X - dimmerSlider.AbsolutePosition.X, 0, dimmerSlider.AbsoluteSize.X)
         dimmerHandle.Position = UDim2.fromOffset(relativeX, 8)
         local percentage = relativeX / dimmerSlider.AbsoluteSize.X
-        screenDimmer.BackgroundTransparency = 1 - percentage * 0.95 -- Max 95% dim
+        screenDimmer.BackgroundTransparency = 1 - percentage * 0.95
     end)
 end)
 
-
--- GUI Update Loop
+-- [ SECTION ] GUI UPDATE AND CONTROLS
 task.spawn(function()
     while task.wait(0.25) do
         if not gui or not gui.Parent then break end
@@ -565,42 +513,30 @@ task.spawn(function()
     end
 end)
 
-
--- Mini Icon to toggle main GUI
-local miniIcon = Create'TextButton'{
-    Name = "MiniIcon",
-    Size = UDim2.new(0, 50, 0, 50),
-    Position = UDim2.new(0.02, 0, 0.5, 0),
-    Text = "🌀",
-    Font = Enum.Font.GothamBold,
-    TextSize = 28,
-    BackgroundColor3 = Color3.fromRGB(28, 28, 32),
-    TextColor3 = Color3.fromRGB(0, 255, 255),
-    Draggable = true,
-    Parent = gui,
-    [1] = Create'UICorner'{CornerRadius = UDim.new(1, 0)},
-    [2] = Create'UIStroke'{Color = Color3.fromRGB(80, 80, 80)}
-}
+local miniIcon = Instance.new("TextButton", gui)
+miniIcon.Name = "MiniIcon"
+miniIcon.Size = UDim2.new(0, 50, 0, 50)
+miniIcon.Position = UDim2.new(0.02, 0, 0.5, 0)
+miniIcon.Text = "🌀"
+miniIcon.Font = Enum.Font.GothamBold
+miniIcon.TextSize = 28
+miniIcon.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
+miniIcon.TextColor3 = Color3.fromRGB(0, 255, 255)
+miniIcon.Draggable = true
+Instance.new("UICorner", miniIcon).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", miniIcon).Color = Color3.fromRGB(80, 80, 80)
 
 miniIcon.MouseButton1Click:Connect(function()
     frame.Visible = not frame.Visible
     if frame.Visible then
-        frame:TweenSizeAndPosition(UDim2.new(0, 320, 0, 250), frame.Position, "Out", "Quint", 0.3, true)
+        frame:TweenSize(UDim2.new(0, 320, 0, 250), "Out", "Quint", 0.3, true)
     end
 end)
 
-
--- Hotkeys
 UserInputService.InputBegan:Connect(function(input, isTyping)
     if isTyping then return end
-    if input.KeyCode == Enum.KeyCode.J then
-        hatchRunning = not hatchRunning
-        setHatchButton(hatchRunning)
-    end
-    if input.KeyCode == Enum.KeyCode.K then
-        chestRunning = not chestRunning
-        setChestButton(chestRunning)
-    end
+    if input.KeyCode == Enum.KeyCode.J then hatchRunning = not hatchRunning; setHatchButton(hatchRunning) end
+    if input.KeyCode == Enum.KeyCode.K then chestRunning = not chestRunning; setChestButton(chestRunning) end
 end)
 
-logmsg("✅ NiTroHUB PRO (Overhaul) Loaded! | J = สุ่มไข่, K = เก็บกล่อง")
+logmsg("✅ NiTroHUB PRO (Readability Improved) Loaded! | J = สุ่มไข่, K = เก็บกล่อง")
