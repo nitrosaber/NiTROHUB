@@ -47,14 +47,14 @@ local CoreGui = cloneref(game:GetService('CoreGui'))
 local Debris = cloneref(game:GetService('Debris'))
 
 local mouse = Players.LocalPlayer:GetMouse()
-local old_NathubUI = CoreGui:FindFirstChild('NathubUI')
+local old_NiTroUi = CoreGui:FindFirstChild('NiTroUi')
 
-if old_NathubUI then
-    Debris:AddItem(old_NathubUI, 0)
+if old_NiTroUi then
+    Debris:AddItem(old_NiTroUi, 0)
 end
 
-if not isfolder("NathubUI") then
-    makefolder("NathubUI")
+if not isfolder("NiTroUi") then
+    makefolder("NiTroUi")
 end
 
 
@@ -283,7 +283,7 @@ local Config = setmetatable({
     save = function(self: any, file_name: any, config: any)
         local success_save, result = pcall(function()
             local flags = HttpService:JSONEncode(config)
-            writefile('NathubUI/'..file_name..'.json', flags)
+            writefile('NiTroUi/'..file_name..'.json', flags)
         end)
     
         if not success_save then
@@ -292,13 +292,13 @@ local Config = setmetatable({
     end,
     load = function(self: any, file_name: any, config: any)
         local success_load, result = pcall(function()
-            if not isfile('NathubUI/'..file_name..'.json') then
+            if not isfile('NiTroUi/'..file_name..'.json') then
                 self:save(file_name, config)
         
                 return
             end
         
-            local flags = readfile('NathubUI/'..file_name..'.json')
+            local flags = readfile('NiTroUi/'..file_name..'.json')
         
             if not flags then
                 self:save(file_name, config)
@@ -502,17 +502,17 @@ function Library:remove_table_value(__table: any, table_value: string)
 end
 
 function Library:CreateWindow(text)
-    local old_NathubUI = CoreGui:FindFirstChild('NathubUI')
+    local old_NiTroUi = CoreGui:FindFirstChild('NiTroUi')
 
-    if old_NathubUI then
-        Debris:AddItem(old_NathubUI, 0)
+    if old_NiTroUi then
+        Debris:AddItem(old_NiTroUi, 0)
     end
 
-	local NathubUI = Instance.new('ScreenGui')
-    NathubUI.ResetOnSpawn = false
-    NathubUI.Name = 'NathubUI'
-    NathubUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    NathubUI.Parent = CoreGui
+	local NiTroUi = Instance.new('ScreenGui')
+    NiTroUi.ResetOnSpawn = false
+    NiTroUi.Name = 'NiTroUi'
+    NiTroUi.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    NiTroUi.Parent = CoreGui
     
     local Container = Instance.new('Frame')
     Container.ClipsDescendants = true
@@ -525,7 +525,7 @@ function Library:CreateWindow(text)
     Container.Size = UDim2.new(0, 0, 0, 0)
     Container.Active = true
     Container.BorderSizePixel = 0
-    Container.Parent = NathubUI
+    Container.Parent = NiTroUi
     
     local UICorner = Instance.new('UICorner')
     UICorner.CornerRadius = UDim.new(0, 10)
@@ -649,7 +649,7 @@ function Library:CreateWindow(text)
     local UIScale = Instance.new('UIScale')
     UIScale.Parent = Container    
     
-    self._ui = NathubUI
+    self._ui = NiTroUi
 
     local function on_drag(input: InputObject, process: boolean)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
@@ -706,7 +706,7 @@ function Library:CreateWindow(text)
     end;
 
     function self:UIVisiblity()
-        NathubUI.Enabled = not NathubUI.Enabled;
+        NiTroUi.Enabled = not NiTroUi.Enabled;
     end;
 
     function self:change_visiblity(state: boolean)
@@ -725,7 +725,7 @@ function Library:CreateWindow(text)
     function self:load()
         local content = {}
     
-        for _, object in NathubUI:GetDescendants() do
+        for _, object in NiTroUi:GetDescendants() do
             if not object:IsA('ImageLabel') then
                 continue
             end
@@ -1039,7 +1039,7 @@ function Library:CreateWindow(text)
                 ModuleName.Text = settings.Title or "Skibidi"
             else
                 ModuleName.RichText = true
-                ModuleName.Text = settings.richtext or "<font color='rgb(255,0,0)'>NathubUI</font> user"
+                ModuleName.Text = settings.richtext or "<font color='rgb(255,0,0)'>NiTroUi</font> user"
             end;
             ModuleName.Name = 'ModuleName'
             ModuleName.Size = UDim2.new(0, 205, 0, 13)
@@ -1387,7 +1387,7 @@ function Library:CreateWindow(text)
                     Body.Text = settings.text or "Skibidi"
                 else
                     Body.RichText = true
-                    Body.Text = settings.richtext or "<font color='rgb(255,0,0)'>NathubUI</font> user"
+                    Body.Text = settings.richtext or "<font color='rgb(255,0,0)'>NiTroUi</font> user"
                 end
                 
                 Body.Size = UDim2.new(1, -10, 0, 20)
@@ -1457,7 +1457,7 @@ function Library:CreateWindow(text)
                     Body.Text = settings.text or "Skibidi" -- Default text
                 else
                     Body.RichText = true
-                    Body.Text = settings.richtext or "<font color='rgb(255,0,0)'>NathubUI</font> user" -- Default rich text
+                    Body.Text = settings.richtext or "<font color='rgb(255,0,0)'>NiTroUi</font> user" -- Default rich text
                 end
             
                 Body.Size = UDim2.new(1, -10, 1, 0)
@@ -1488,7 +1488,7 @@ function Library:CreateWindow(text)
                         Body.Text = new_settings.text or "Skibidi" -- Default text
                     else
                         Body.RichText = true
-                        Body.Text = new_settings.richtext or "<font color='rgb(255,0,0)'>NathubUI</font> user" -- Default rich text
+                        Body.Text = new_settings.richtext or "<font color='rgb(255,0,0)'>NiTroUi</font> user" -- Default rich text
                     end
                 end;
             
