@@ -1,61 +1,202 @@
--- โหลด NatUI Library
-local NatUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/Uisource.lua"))()
+-- ===============================================================
+-- 🌀 NiTROHUB PRO - Final Edition (NatUI Integration)
+-- ===============================================================
 
--- 🔹 1) สร้าง Window หลัก
+-- CONFIG ---------------------------------------------------------
+local Config = {
+    EggName = "Autumn Egg",
+    HatchAmount = 3,
+    HatchDelay = 1.2,
+    AutoRebirth = true,
+    RebirthDelay = 2,
+    ChestCheckInterval = 10,
+    ChestCollectCooldown = 60,
+    ChestNames = {
+        "Royal Chest","Super Chest","Golden Chest","Ancient Chest",
+        "Dice Chest","Infinity Chest","Void Chest","Giant Chest",
+        "Ticket Chest","Easy Obby Chest","Medium Obby Chest","Hard Obby Chest"
+    }
+}
+
+local State = {
+    HatchRunning = false,
+    RebirthRunning = false,
+    ChestRunning = false,
+    RewardGift = false,
+    RewardDaily = false,
+    RewardSpin = false,
+    RewardRank = false,
+    EggsHatched = 0,
+    ChestsCollected = 0,
+    LastChest = "-",
+    Status = "Idle"
+}
+
+-- SERVICES -------------------------------------------------------
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+-- REMOTES --------------------------------------------------------
+local FrameworkRemote = ReplicatedStorage:WaitForChild("Shared")
+    :WaitForChild("Framework")
+    :WaitForChild("Network")
+    :WaitForChild("Remote")
+    :WaitForChild("RemoteEvent")
+
+-- LOG ------------------------------------------------------------
+local function logmsg(msg) print("[NiTROHUB]", msg) end
+local function warnmsg(msg) warn("[NiTROHUB]", msg) end
+
+-- LOAD NATUI (ใช้เวอร์ชันแก้ไขแล้ว)
+local NatUI = loadstring(game:HttpGet("YOUR_RAW_LINK_TO_FIXED_NATUI.lua"))()
+
+-- MAIN WINDOW ----------------------------------------------------
 NatUI:Window({
-    Title = "NatUI Library",
-    Description = "made by whidd",
-    Icon = "rbxassetid://3926305904"  -- ใช้ asset id จริง ๆ
-})
-
--- 🔹 2) ปุ่มเปิด/ปิด UI
-NatUI:OpenUI({
-    Title = "NatUI Toggle",
-    Icon = "rbxassetid://3926305904",
-    BackgroundColor = "fromrgb",
-    BorderColor = "fromrgb"
-})
-
--- 🔹 3) เพิ่มแท็บใหม่
-NatUI:AddTab({
-    Title = "Main Tab",
-    Desc = "แท็บทดสอบการใช้งาน",
+    Title = "🌀 NiTROHUB PRO",
+    Description = "Auto Hatch, Rebirth, Chest, Rewards, Status",
     Icon = "rbxassetid://3926305904"
 })
 
--- 🔹 4) เพิ่ม Section
-NatUI:Section({
-    Title = "Controls",
-    Icon = "rbxassetid://3926305904"
-})
-
--- 🔹 5) ปุ่มทดสอบ
-NatUI:Button({
-    Title = "Click Me!",
-    Callback = function()
-        print("✅ Button ถูกกดแล้ว")
-    end,
-})
-
--- 🔹 6) Toggle
+-- ===============================================================
+-- 🥚 AUTO HATCH
+-- ===============================================================
+NatUI:AddTab({ Title = "Auto Hatch", Icon = "rbxassetid://3926305904" })
 NatUI:Toggle({
-    Title = "Enable Feature",
+    Title = "เปิด Auto Hatch",
     Callback = function(state)
-        print("✅ Toggle:", state and "ON" or "OFF")
-    end,
+        State.HatchRunning = state
+        logmsg(state and "🚀 เริ่มสุ่มไข่" or "⏸️ หยุดสุ่มไข่")
+    end
 })
 
--- 🔹 7) Paragraph
-NatUI:Paragraph({
-    Title = "ℹ️ Info",
-    Desc = "ข้อความทดสอบ Paragraph"
+task.spawn(function()
+    while task.wait(0.25) do
+        if State.HatchRunning and FrameworkRemote then
+            local ok, err = pcall(function()
+                FrameworkRemote:FireServer("HatchEgg", Config.EggName, Config.HatchAmount)
+                State.EggsHatched += Config.HatchAmount
+                State.Status = "Hatching " .. Config.EggName
+            end)
+            if not ok then warnmsg("❌ Hatch Error: " .. tostring(err)) end
+            task.wait(Config.HatchDelay)
+        end
+    end
+end)
+
+-- ===============================================================
+-- ♻️ AUTO REBIRTH
+-- ===============================================================
+NatUI:AddTab({ Title = "Auto Rebirth", Icon = "rbxassetid://3926305905" })
+NatUI:Toggle({
+    Title = "เปิด Auto Rebirth",
+    Callback = function(state)
+        State.RebirthRunning = state
+        logmsg(state and "♻️ เริ่ม Rebirth" or "⏸️ หยุด Rebirth")
+    end
 })
 
--- 🔹 8) Slider
-NatUI:Slider({
-    Title = "Volume",
-    MaxValue = "100",
-    Callback = function(value)
-        print("✅ Slider Value:", value)
-    end,
+task.spawn(function()
+    while task.wait(0.25) do
+        if State.RebirthRunning and FrameworkRemote then
+            local ok, err = pcall(function()
+                FrameworkRemote:FireServer("Rebirth", 1)
+                State.Status = "Rebirthing..."
+            end)
+            if not ok then warnmsg("❌ Rebirth Error: " .. tostring(err)) end
+            task.wait(Config.RebirthDelay)
+        end
+    end
+end)
+
+-- ===============================================================
+-- 📦 AUTO CHEST
+-- ===============================================================
+NatUI:AddTab({ Title = "Auto Chest", Icon = "rbxassetid://3926305906" })
+NatUI:Toggle({
+    Title = "เปิด Auto Chest",
+    Callback = function(state)
+        State.ChestRunning = state
+        logmsg(state and "📦 เริ่มเก็บกล่อง" or "⏸️ หยุดเก็บกล่อง")
+    end
 })
+
+task.spawn(function()
+    local CHEST_LIST = {}
+    for _, n in ipairs(Config.ChestNames) do CHEST_LIST[n:lower()] = true end
+    local last = {}
+
+    local function Collect(c)
+        if not c or not c.Parent then return end
+        local key = c:GetDebugId()
+        if last[key] and tick()-last[key] < Config.ChestCollectCooldown then return end
+        local ok = pcall(function()
+            FrameworkRemote:FireServer("ClaimChest", c.Name, true)
+        end)
+        if ok then
+            State.ChestsCollected += 1
+            State.LastChest = c.Name
+            last[key] = tick()
+            logmsg("🎁 เก็บกล่อง: " .. c.Name)
+        end
+    end
+
+    while task.wait(Config.ChestCheckInterval) do
+        if State.ChestRunning and FrameworkRemote then
+            State.Status = "Collecting Chests..."
+            for _, area in ipairs({Workspace:FindFirstChild("Chests"), Workspace}) do
+                if area then
+                    for _, obj in ipairs(area:GetDescendants()) do
+                        if obj:IsA("Model") and CHEST_LIST[obj.Name:lower()] then
+                            Collect(obj)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- ===============================================================
+-- 🎁 AUTO REWARDS
+-- ===============================================================
+NatUI:AddTab({ Title = "Auto Rewards", Icon = "rbxassetid://3926307970" })
+NatUI:Toggle({ Title = "Auto Gift",  Callback = function(s) State.RewardGift  = s end })
+NatUI:Toggle({ Title = "Auto Daily", Callback = function(s) State.RewardDaily = s end })
+NatUI:Toggle({ Title = "Auto Spin",  Callback = function(s) State.RewardSpin  = s end })
+NatUI:Toggle({ Title = "Auto Rank",  Callback = function(s) State.RewardRank  = s end })
+
+task.spawn(function()
+    while task.wait(10) do
+        if FrameworkRemote then
+            if State.RewardGift then
+                pcall(function() FrameworkRemote:FireServer("ClaimReward", "GiftReward") end)
+                logmsg("🎁 AutoClaim: GiftReward")
+            end
+            if State.RewardDaily then
+                pcall(function() FrameworkRemote:FireServer("ClaimReward", "DailyReward") end)
+                logmsg("📅 AutoClaim: DailyReward")
+            end
+            if State.RewardSpin then
+                pcall(function() FrameworkRemote:FireServer("ClaimReward", "SpinReward") end)
+                logmsg("🎲 AutoClaim: SpinReward")
+            end
+            if State.RewardRank then
+                pcall(function() FrameworkRemote:FireServer("ClaimReward", "RankReward") end)
+                logmsg("🏆 AutoClaim: RankReward")
+            end
+        end
+    end
+end)
+
+-- ===============================================================
+-- 📊 STATUS
+-- ===============================================================
+NatUI:AddTab({ Title = "Status", Icon = "rbxassetid://3926307971" })
+NatUI:Paragraph({ Title = "📌 สถานะ", Desc = function() return State.Status end })
+NatUI:Paragraph({ Title = "🥚 Eggs", Desc = function() return tostring(State.EggsHatched) end })
+NatUI:Paragraph({ Title = "📦 Chests", Desc = function() return tostring(State.ChestsCollected) end })
+NatUI:Paragraph({ Title = "🎁 LastChest", Desc = function() return State.LastChest end })
+
+logmsg("✅ Loaded NiTROHUB PRO - NatUI Integration")
