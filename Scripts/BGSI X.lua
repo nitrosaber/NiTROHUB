@@ -85,6 +85,7 @@ _G.UpdateToggleButton = function(name, state)
     if toggleButtonUpdaters[name] then toggleButtonUpdaters[name](state) end
 end
 
+-- 🧹 ลบ GUI Hatch/Egg ที่โผล่มาเกะกะ
 pcall(function()
     local function destroyHatchGui(child)
         if child and child.Parent and (child.Name:match("Hatch") or child.Name:match("Egg")) then
@@ -96,12 +97,18 @@ pcall(function()
     playerGui.ChildAdded:Connect(destroyHatchGui)
 end)
 
+-- 🥚 ระบบสุ่มไข่ (แก้ไขใหม่ ใช้ args + unpack)
 task.spawn(function()
     while true do
         if State.HatchRunning and frameworkRemote then
             State.Status = "Hatching Eggs..."
             local success, err = pcall(function()
-                frameworkRemote:FireServer("HatchEgg", Config.EggName, Config.HatchAmount)
+                local args = {
+                    "HatchEgg",
+                    Config.EggName,
+                    Config.HatchAmount
+                }
+                frameworkRemote:FireServer(unpack(args))
                 State.EggsHatched = State.EggsHatched + Config.HatchAmount
             end)
             if not success then
@@ -116,6 +123,7 @@ task.spawn(function()
     end
 end)
 
+-- 📦 ฟังก์ชันเก็บกล่องอัตโนมัติ
 local function collectChest(chest)
     if not chest or not chest.Parent then return false end
     local character = player.Character
@@ -141,6 +149,7 @@ local function collectChest(chest)
     return false
 end
 
+-- 🔁 ลูปค้นหาและเก็บกล่อง
 task.spawn(function()
     while true do
         if State.ChestRunning then
@@ -162,6 +171,7 @@ task.spawn(function()
     end
 end)
 
+-- 💤 Anti-AFK
 task.spawn(function()
     pcall(function()
         local VirtualUser = game:GetService("VirtualUser")
@@ -178,6 +188,7 @@ end)
 -- ================================================================================
 -- // SECTION: 🎨 GUI INTERFACE - ELEGANT & MINIMALIST
 -- ================================================================================
+
 pcall(function()
     playerGui:FindFirstChild("NiTroHUB_PRO_GUI"):Destroy()
 end)
@@ -187,7 +198,7 @@ local Theme = {
     Primary = Color3.fromRGB(25, 25, 25),
     Secondary = Color3.fromRGB(40, 40, 40),
     Accent = Color3.fromRGB(255, 215, 0), -- Gold
-    Text = Color3.fromRGB(240, 240, 240), -- Creamy white
+    Text = Color3.fromRGB(240, 240, 240),
     TextSecondary = Color3.fromRGB(150, 150, 150),
     Green = Color3.fromRGB(76, 175, 80),
     Red = Color3.fromRGB(220, 50, 50),
@@ -220,7 +231,7 @@ end
 local defaultSize = UDim2.fromOffset(360, 420)
 local lastKnownSize = defaultSize
 
--- [ Main Frame ]
+-- 🪟 [Main Frame]
 local mainFrame = Create("Frame"){
     Name = "MainFrame",
     Size = defaultSize,
@@ -237,7 +248,7 @@ local mainFrame = Create("Frame"){
 Create("UICorner"){CornerRadius = UDim.new(0, 12), Parent = mainFrame}
 local mainFrameStroke = Create("UIStroke"){Thickness = 1, Color = Theme.Accent, Transparency = 0.8, Parent = mainFrame}
 
--- [ Header ]
+-- 🏷 Header
 local header = Create("Frame"){ Name = "Header", Size = UDim2.new(1, 0, 0, 50), BackgroundColor3 = Theme.Secondary, BorderSizePixel = 0, Parent = mainFrame }
 Create("UIGradient"){
     Color = ColorSequence.new({
@@ -249,10 +260,11 @@ Create("UIGradient"){
 Create("TextLabel"){ Name = "Title", Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Font = Theme.FontBold, Text = "NiTroHUB PRO", TextColor3 = Theme.Accent, TextSize = 22, TextXAlignment = Enum.TextXAlignment.Center, Parent = header }
 Create("UICorner"){CornerRadius = UDim.new(0, 12), Parent = header}
 
--- [ Content Area ]
+-- 📦 Content Area
 local content = Create("Frame"){ Name = "Content", Size = UDim2.new(1, -20, 1, -70), Position = UDim2.fromOffset(10, 60), BackgroundTransparency = 1, Parent = mainFrame }
 Create("UIListLayout"){ Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Parent = content }
 
+-- 🔘 สร้างปุ่ม Toggle
 local function createToggleButton(config)
     local buttonFrame = Create("Frame"){
         Name = config.Name,
@@ -322,6 +334,7 @@ createToggleButton({ Name = "AutoChest", Order = 2, Text = "Auto Chest", Icon = 
 createToggleButton({ Name = "AntiAFK", Order = 3, Text = "Anti-AFK", Icon = Theme.Icons.Settings, InitialState = State.AntiAfkRunning,
     Callback = function() State.AntiAfkRunning = not State.AntiAfkRunning; _G.UpdateToggleButton("AntiAFK", State.AntiAfkRunning) end })
 
+-- 📈 Stats Label
 local statsLabel = Create("TextLabel"){
     Name = "StatsLabel",
     Size = UDim2.new(1, 0, 0, 100),
@@ -336,6 +349,7 @@ local statsLabel = Create("TextLabel"){
     Parent = content
 }
 
+-- ✨ Mini Icon
 local miniIcon = Create("TextButton"){
     Name = "MiniIcon",
     Size = UDim2.fromOffset(60, 60),
@@ -355,10 +369,7 @@ Create("UICorner"){CornerRadius = UDim.new(1, 0), Parent = miniIcon}
 local miniIconStroke = Create("UIStroke"){Color = Theme.Accent, Thickness = 2, Transparency = 0.5, Parent = miniIcon}
 Create("UIAspectRatioConstraint"){AspectRatio = 1, Parent = miniIcon}
 
--- ================================================================================
--- // SECTION: 🖱️ GUI LOGIC & EVENTS
--- ================================================================================
-
+-- 🧭 GUI Logic
 local isGuiVisible = false
 local isTweening = false
 
@@ -411,6 +422,7 @@ miniIcon.MouseButton1Click:Connect(function()
     end
 end)
 
+-- 🔧 Resize Handle
 local isResizing = false
 local mouse = player:GetMouse()
 local resizeHandle = Create("TextButton"){
@@ -428,7 +440,7 @@ Create("UICorner"){CornerRadius = UDim.new(0, 5), Parent = resizeHandle}
 Create("UIGradient"){
     Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Theme.Accent),
-        ColorSequenceKeypoint.new(1, Theme.Accent) -- Fixed gradient to be uniform for compatibility
+        ColorSequenceKeypoint.new(1, Theme.Accent)
     }),
     Parent = resizeHandle
 }
@@ -444,33 +456,3 @@ mouse.Button1Up:Connect(function()
         mainFrame.Draggable = true
         lastKnownSize = mainFrame.Size
     end
-end)
-
-mouse.Move:Connect(function()
-    if isResizing then
-        local newWidth = math.max(mouse.X - mainFrame.AbsolutePosition.X, 250)
-        local newHeight = math.max(mouse.Y - mainFrame.AbsolutePosition.Y, 300)
-        
-        mainFrame.Size = UDim2.fromOffset(newWidth, newHeight)
-    end
-end)
-
-RunService.RenderStepped:Connect(function()
-    if not gui or not gui.Parent then return end
-    
-    if not State.HatchRunning and not State.ChestRunning then
-        State.Status = "Idle"
-    end
-
-    statsLabel.Text = string.format(
-        "<font face='SourceSansBold'><b>Status:</b></font> <font color='#%s'>%s</font>\n\n<font face='SourceSansBold'><b>Eggs Hatched:</b></font> %d\n<font face='SourceSansBold'><b>Chests Collected:</b></font> %d\n<font face='SourceSansBold'><b>Last Chest:</b></font> %s",
-        Theme.Accent:ToHex(), State.Status, State.EggsHatched, State.ChestsCollected, State.LastChest
-    )
-end)
-
--- =================================================================
--- [[ ✨ INITIALIZATION ]]
--- =================================================================
-logmsg("NiTroHUB PRO - Elegant & Minimalist Edition Loaded!")
-logmsg("แตะที่ไอคอน ✨ เพื่อเปิด/ปิด GUI")
-logmsg("ลากที่มุมขวาล่างของหน้าต่างเพื่อปรับขนาด GUI")
