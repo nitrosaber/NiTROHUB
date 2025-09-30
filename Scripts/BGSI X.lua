@@ -15,7 +15,7 @@ task.wait(1)
 -- =================================================================
 local Config = {
     EggName = "Autumn Egg",
-    HatchAmount = 10,
+    HatchAmount = 9,
     HatchDelay = 0.1,
     ChestCheckInterval = 10,
     ChestCollectCooldown = 60,
