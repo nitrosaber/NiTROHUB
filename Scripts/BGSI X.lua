@@ -5,8 +5,12 @@ local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyB
 local Window = Library:CreateWindow("Bubble Gum Hub")
 Window:load()
 
--- Tab Auto Farm
-local FarmTab = Window:AddTab("Auto Farm", "ฟาร์มหลัก")
+-- Tab Auto Farm (แก้ไขใหม่ ✅)
+local FarmTab = Window:AddTab({
+    Title = "Auto Farm",
+    Description = "ฟาร์มหลัก",
+    Icon = "rbxassetid://3926305904" -- ✅ ต้องเป็น string assetid เท่านั้น
+})
 
 -- Toggle : Auto Hatch
 FarmTab:Toggle({
