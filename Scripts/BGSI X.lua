@@ -1,66 +1,79 @@
--- โหลดไลบรารี NatLibrary
-local NatLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/NatLibrary/Source.lua"))()
+-- โหลด Library
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/NatLibrary/SourceV2.lua"))()
 
--- สร้างหน้าต่าง UI
-local Window = NatLib:Window({
-    Title = "NatHub | BGS Infinity",
-    Description = "ใช้ NatLibrary",
-    Icon = "rbxassetid://123456"
-})
+-- สร้างหน้าต่างหลัก
+local Window = Library:CreateWindow("Demo Hub")
+Window:load()
 
--- เปิด UI toggle
-NatLib:OpenUI({
-    Title = "NatUI",
-    Icon = "rbxassetid://123456",
-    BackgroundColor = Color3.fromRGB(20,20,20),
-    BorderColor = Color3.fromRGB(80,80,80)
-})
+-- เพิ่ม Tab หลัก
+local MainTab = Window:AddTab("Main Tab", "รวมตัวอย่างทั้งหมด")
 
--- เพิ่ม Tab
-local mainTab = NatLib:AddTab({
-    Title = "Main",
-    Desc = "ฟีเจอร์หลัก",
-    Icon = "rbxassetid://123456"
-})
-
--- Section
-NatLib:Section({
+-- Toggle
+MainTab:Toggle({
     Title = "Auto Hatch",
-    Icon = "rbxassetid://123456"
+    Description = "เปิด/ปิดการฟักไข่อัตโนมัติ",
+    Flag = "AutoHatch",
+    Callback = function(state)
+        print("Auto Hatch = ", state)
+    end
 })
 
--- Toggle Auto Hatch
-local autoHatch = false
-NatLib:Toggle({
-    Title = "Auto Hatch",
-    Callback = function(v)
-        autoHatch = v
-        task.spawn(function()
-            while autoHatch do
-                local args = {"HatchEgg", "Autumn Egg", 9}
-                game:GetService("ReplicatedStorage").Shared.Framework.Network.Remote.RemoteEvent:FireServer(unpack(args))
-                task.wait(2)
-            end
-        end)
-    end,
-})
-
--- Button ตัวอย่าง
-NatLib:Button({
-    Title = "Collect Chests",
-    Callback = function()
-        print("Collect Chests")
-    end,
-})
-
--- Slider ตัวอย่าง
-NatLib:Slider({
-    Title = "WalkSpeed",
-    MaxValue = 200,
-    Callback = function(val)
-        local p = game.Players.LocalPlayer
-        if p.Character and p.Character:FindFirstChildOfClass("Humanoid") then
-            p.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = val
+-- Checkbox
+MainTab:Checkbox({
+    Title = "Enable Notifications",
+    Flag = "Notify",
+    Callback = function(state)
+        if state then
+            Library.SendNotification({
+                Title = "แจ้งเตือน",
+                text = "เปิดการแจ้งเตือนแล้ว",
+                duration = 3
+            })
+        else
+            print("ปิดการแจ้งเตือน")
         end
-    end,
+    end
+})
+
+-- Paragraph
+MainTab:Paragraph({
+    Title = "คำอธิบาย",
+    Description = "นี่คือตัวอย่างการใช้ Paragraph สำหรับแสดงข้อความยาว ๆ หรืออธิบายฟีเจอร์"
+})
+
+-- Slider
+MainTab:Slider({
+    Title = "Speed",
+    Min = 1,
+    Max = 100,
+    Flag = "WalkSpeed",
+    Callback = function(value)
+        print("Walk Speed:", value)
+    end
+})
+
+-- Divider
+MainTab:Divider("เส้นแบ่ง UI")
+
+-- Text
+MainTab:Text({
+    Title = "สถานะ",
+    Description = "กำลังทำงาน..."
+})
+
+-- Input
+MainTab:Input({
+    Title = "ตั้งค่าชื่อ",
+    Placeholder = "พิมพ์ชื่อตรงนี้...",
+    Flag = "PlayerName",
+    Callback = function(text)
+        print("คุณพิมพ์ว่า:", text)
+    end
+})
+
+-- ตัวอย่าง Notification ทันทีเมื่อรัน
+Library.SendNotification({
+    Title = "Demo Hub Loaded",
+    text = "สคริปต์ตัวอย่างทำงานแล้ว!",
+    duration = 5
 })
