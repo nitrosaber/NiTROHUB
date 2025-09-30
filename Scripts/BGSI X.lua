@@ -1,89 +1,108 @@
--- Load Library
-local NatUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/Uisource.lua"))()
+-- Load the NatHub UI library
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/NatLibrary/SourceV2.lua"))()
 
--- Main Window
-NatUI:Window({
-    Title = "Bubble Gum Hub",
-    Description = "Auto Hatch & Farm",
+-- Create the main window
+local Window = Library:CreateWindow("Bubble Gum Hub")
+Window:load()
+
+-- Add a tab (library uses AddTab method)
+local FarmTab = Window:AddTab("Auto Farm", "Main Farming", "rbxassetid://3926305904")
+
+-- Section for egg operations
+FarmTab:Section({
+    Title = "Egg Controls",
     Icon = "rbxassetid://3926305904"
 })
 
--- Toggle UI button
-NatUI:OpenUI({
-    Title = "Open / Close Hub",
-    Icon = "rbxassetid://3926305904",
-    BackgroundColor = "fromrgb",
-    BorderColor = "fromrgb"
-})
-
--- Create Tab
-NatUI:AddTab({
-    Title = "Auto Farm",
-    Desc = "Main Farming Features",
-    Icon = "rbxassetid://3926305904"
-})
-
--- Section
-NatUI:Section({
-    Title = "Egg Features",
-    Icon = "rbxassetid://3926305904"
-})
-
--- Toggle : Auto Hatch Egg
-NatUI:Toggle({
-    Title = "Auto Hatch Egg (Autumn Egg x3)",
+-- Toggle for auto hatch
+FarmTab:Toggle({
+    Title = "Auto Hatch Egg",
+    Description = "Automatically hatch Autumn Egg x3",
+    Flag = "AutoHatch",
     Callback = function(state)
         getgenv().AutoHatch = state
         while getgenv().AutoHatch do
             local args = {
                 "HatchEgg",
-                "Autumn Egg", -- Egg name (can be changed)
-                3 -- hatch amount (1 / 3 / 9)
+                getgenv().EggName or "Autumn Egg",
+                3
             }
             game:GetService("ReplicatedStorage").Shared.Framework.Network.Remote.RemoteEvent:FireServer(unpack(args))
             task.wait(1)
         end
-    end,
+    end
 })
 
--- Button : Collect All Chests
-NatUI:Button({
+-- Button to collect chests
+FarmTab:Button({
     Title = "Collect All Chests",
     Callback = function()
-        print("Collecting all chests (Demo)")
-        -- If chest RemoteEvent exists, add FireServer code here
-    end,
+        print("Collecting all chests (demo)")
+        -- Insert the proper FireServer for chests if you know it
+    end
 })
 
--- Section for Settings
-NatUI:Section({
+-- Section for settings
+FarmTab:Section({
     Title = "Settings",
     Icon = "rbxassetid://3926305904"
 })
 
--- Paragraph
-NatUI:Paragraph({
+-- Paragraph showing usage instructions
+FarmTab:Paragraph({
     Title = "How to Use",
-    Desc = "1. Enable Auto Hatch to hatch eggs automatically\n2. Press Collect Chests to collect all available chests"
+    Description = "1. Toggle Auto Hatch to start auto-hatching\n2. Use Button to collect chests\n3. Set your WalkSpeed with slider"
 })
 
--- Slider : Walk Speed
-NatUI:Slider({
+-- Slider for walk speed
+FarmTab:Slider({
     Title = "Walk Speed",
-    MaxValue = "200",
+    Min = 16,
+    Max = 200,
+    Flag = "WalkSpeed",
     Callback = function(value)
-        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = tonumber(value)
-    end,
+        local plr = game.Players.LocalPlayer
+        if plr and plr.Character then
+            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.WalkSpeed = value
+            end
+        end
+    end
 })
 
--- Toggle : Notifications
-NatUI:Toggle({
+-- Toggle for notifications (just prints)
+FarmTab:Toggle({
     Title = "Enable Notifications",
+    Description = "Show demo notifications",
+    Flag = "Notifications",
     Callback = function(state)
         if state then
-            print("Notifications Enabled")
+            Library.SendNotification({
+                Title = "Notification",
+                text = "Notifications Enabled",
+                duration = 3
+            })
         else
             print("Notifications Disabled")
         end
-    end,
+    end
+})
+
+-- Input box to set which egg to hatch
+FarmTab:Input({
+    Title = "Egg Name",
+    Placeholder = "e.g. Autumn Egg",
+    Flag = "EggName",
+    Callback = function(text)
+        print("Egg set to:", text)
+        getgenv().EggName = text
+    end
+})
+
+-- Final notification when UI is ready
+Library.SendNotification({
+    Title = "Bubble Gum Hub Loaded",
+    text = "UI is ready!",
+    duration = 5
 })
