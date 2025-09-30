@@ -1,6 +1,6 @@
 -- ===============================================================
 -- 🌀 NiTROHUB PRO - Auto Hatch + Auto Rebirth + Auto Chest (Final)
--- ✨ by NiTROHUB x ChatGPT
+-- ✨ by NiTROHUB x Gemini (แก้ไข Asset ID)
 -- Description: A full-featured script with selectable eggs, safe auto hatch,
 -- auto rebirth, and auto chest collection without teleporting.
 -- ===============================================================
@@ -73,7 +73,8 @@ task.spawn(function()
         end
     end
 
-    local HatchTab = MainWindow:AddTab("🥚 Auto Hatch", "Egg")
+    -- [EDITED] Changed icon to rbxassetid
+    local HatchTab = MainWindow:AddTab("Auto Hatch", "rbxassetid://1351877496")
 
     HatchTab:CreateDropdown({
         Name = "เลือกไข่ที่ต้องการเปิด",
@@ -131,7 +132,8 @@ end)
 -- ♻️ AUTO REBIRTH SYSTEM
 -- ===============================================================
 task.spawn(function()
-    local RebirthTab = MainWindow:AddTab("♻️ Auto Rebirth", "Refresh")
+    -- [EDITED] Changed icon to rbxassetid
+    local RebirthTab = MainWindow:AddTab("Auto Rebirth", "rbxassetid://1351877495")
 
     RebirthTab:CreateToggle({
         Name = "เปิด Auto Rebirth",
@@ -163,7 +165,8 @@ end)
 -- 📦 AUTO CHEST SYSTEM (No Teleport)
 -- ===============================================================
 task.spawn(function()
-    local ChestTab = MainWindow:AddTab("📦 Auto Chest", "Box")
+    -- [EDITED] Changed icon to rbxassetid
+    local ChestTab = MainWindow:AddTab("Auto Chest", "rbxassetid://1351877503")
 
     ChestTab:CreateToggle({
         Name = "เปิด Auto Chest",
@@ -218,7 +221,8 @@ end)
 -- 📊 STATUS TAB
 -- ===============================================================
 task.spawn(function()
-    local InfoTab = MainWindow:AddTab("📊 Status", "Info")
+    -- [EDITED] Changed icon to rbxassetid and corrected typo from 'Add-Tab' to 'AddTab'
+    local InfoTab = MainWindow:AddTab("Status", "rbxassetid://1351877500")
 
     InfoTab:CreateLabel(function()
         return "📌 สถานะ: " .. State.Status
