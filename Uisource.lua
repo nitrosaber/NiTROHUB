@@ -1109,4 +1109,4 @@ local function C_8d()
 end;
 task.spawn(C_8d);
 
-return NiTroUI["1"], require;
+return NiTroUI
