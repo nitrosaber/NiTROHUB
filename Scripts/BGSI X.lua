@@ -1,5 +1,5 @@
 -- ===============================================================
--- 🌀 NiTROHUB PRO - Final Edition (NatUI Fixed Version)
+-- 🌀 NiTROHUB PRO - Final Edition (NatUI Version)
 -- ===============================================================
 
 -- ✅ CONFIG ------------------------------------------------------
@@ -52,32 +52,23 @@ local function warnmsg(msg) warn("[NiTROHUB]", msg) end
 -- ✅ LOAD NATUI LIBRARY ------------------------------------------
 local NatUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/Uisource.lua"))()
 
--- สร้างหน้าต่างหลัก
-local MainUI = NatUI({
+-- ✅ CREATE WINDOW -----------------------------------------------
+NatUI:Window({
     Title = "🌀 NiTROHUB PRO - Final Edition",
     Description = "Auto Hatch, Rebirth, Chest, Rewards, Status",
     Icon = "rbxassetid://3926305904"
 })
 
--- ✅ ICONS -------------------------------------------------------
-local icons = {
-    Egg     = "rbxassetid://3926305904",
-    Refresh = "rbxassetid://3926305905",
-    Box     = "rbxassetid://3926305906",
-    Gift    = "rbxassetid://3926307970",
-    Info    = "rbxassetid://3926307971"
-}
-
 -- ===============================================================
--- 🥚 AUTO HATCH
+-- 🥚 AUTO HATCH TAB
 -- ===============================================================
-local HatchTab = MainUI:AddTab({
+NatUI:AddTab({
     Title = "Auto Hatch",
     Desc = "สุ่มไข่อัตโนมัติ",
-    Icon = icons.Egg
+    Icon = "rbxassetid://3926305904"
 })
 
-HatchTab:Toggle({
+NatUI:Toggle({
     Title = "เปิด Auto Hatch",
     Callback = function(state)
         State.HatchRunning = state
@@ -100,15 +91,15 @@ task.spawn(function()
 end)
 
 -- ===============================================================
--- ♻️ AUTO REBIRTH
+-- ♻️ AUTO REBIRTH TAB
 -- ===============================================================
-local RebirthTab = MainUI:AddTab({
+NatUI:AddTab({
     Title = "Auto Rebirth",
     Desc = "รีเกิดอัตโนมัติ",
-    Icon = icons.Refresh
+    Icon = "rbxassetid://3926305905"
 })
 
-RebirthTab:Toggle({
+NatUI:Toggle({
     Title = "เปิด Auto Rebirth",
     Callback = function(state)
         State.RebirthRunning = state
@@ -130,15 +121,15 @@ task.spawn(function()
 end)
 
 -- ===============================================================
--- 📦 AUTO CHEST
+-- 📦 AUTO CHEST TAB
 -- ===============================================================
-local ChestTab = MainUI:AddTab({
+NatUI:AddTab({
     Title = "Auto Chest",
     Desc = "เก็บกล่องอัตโนมัติ",
-    Icon = icons.Box
+    Icon = "rbxassetid://3926305906"
 })
 
-ChestTab:Toggle({
+NatUI:Toggle({
     Title = "เปิด Auto Chest",
     Callback = function(state)
         State.ChestRunning = state
@@ -183,18 +174,18 @@ task.spawn(function()
 end)
 
 -- ===============================================================
--- 🎁 AUTO REWARDS
+-- 🎁 AUTO REWARDS TAB
 -- ===============================================================
-local RewardsTab = MainUI:AddTab({
+NatUI:AddTab({
     Title = "Auto Rewards",
     Desc = "รับของรางวัลอัตโนมัติ",
-    Icon = icons.Gift
+    Icon = "rbxassetid://3926307970"
 })
 
-RewardsTab:Toggle({ Title = "Auto Gift",  Callback = function(s) State.RewardGift  = s end })
-RewardsTab:Toggle({ Title = "Auto Daily", Callback = function(s) State.RewardDaily = s end })
-RewardsTab:Toggle({ Title = "Auto Spin",  Callback = function(s) State.RewardSpin  = s end })
-RewardsTab:Toggle({ Title = "Auto Rank",  Callback = function(s) State.RewardRank  = s end })
+NatUI:Toggle({ Title = "Auto Gift",  Callback = function(s) State.RewardGift  = s end })
+NatUI:Toggle({ Title = "Auto Daily", Callback = function(s) State.RewardDaily = s end })
+NatUI:Toggle({ Title = "Auto Spin",  Callback = function(s) State.RewardSpin  = s end })
+NatUI:Toggle({ Title = "Auto Rank",  Callback = function(s) State.RewardRank  = s end })
 
 task.spawn(function()
     while task.wait(10) do
@@ -220,32 +211,19 @@ task.spawn(function()
 end)
 
 -- ===============================================================
--- 📊 STATUS
+-- 📊 STATUS TAB
 -- ===============================================================
-local StatusTab = MainUI:AddTab({
+NatUI:AddTab({
     Title = "Status",
     Desc = "สถานะการทำงาน",
-    Icon = icons.Info
+    Icon = "rbxassetid://3926307971"
 })
 
-StatusTab:Paragraph({
-    Title = "📌 สถานะ",
-    Desc = function() return State.Status end
-})
-StatusTab:Paragraph({
-    Title = "🥚 Eggs",
-    Desc = function() return tostring(State.EggsHatched) end
-})
-StatusTab:Paragraph({
-    Title = "📦 Chests",
-    Desc = function() return tostring(State.ChestsCollected) end
-})
-StatusTab:Paragraph({
-    Title = "🎁 Last Chest",
-    Desc = function() return State.LastChest end
-})
-
-StatusTab:Paragraph({
+NatUI:Paragraph({ Title = "📌 สถานะ",     Desc = function() return State.Status end })
+NatUI:Paragraph({ Title = "🥚 Eggs",     Desc = function() return tostring(State.EggsHatched) end })
+NatUI:Paragraph({ Title = "📦 Chests",   Desc = function() return tostring(State.ChestsCollected) end })
+NatUI:Paragraph({ Title = "🎁 Last Chest", Desc = function() return State.LastChest end })
+NatUI:Paragraph({
     Title = "🎁 Rewards",
     Desc = function()
         return string.format("Gift(%s) Daily(%s) Spin(%s) Rank(%s)",
@@ -257,4 +235,4 @@ StatusTab:Paragraph({
     end
 })
 
-logmsg("✅ Loaded NiTROHUB PRO - Final Edition (NatUI Fixed Version)")
+logmsg("✅ Loaded NiTROHUB PRO - Final Edition (NatUI Version)")
