@@ -1,13 +1,12 @@
 -- ===============================================================
--- 🌀 NiTROHUB PRO - Final Edition (NatUI Version)
--- ✨ Auto Hatch (Selectable Egg), Auto Rebirth, Auto Chest, Auto Rewards, Status
+-- 🌀 NiTROHUB PRO - Final Edition (NatUI Fixed Version)
 -- ===============================================================
 
 -- ✅ CONFIG ------------------------------------------------------
 local Config = {
     EggName = "Autumn Egg",
     HatchAmount = 3,
-    HatchDelay = 1.2,
+    HatchDelay = 0.1,
     AutoRebirth = true,
     RebirthDelay = 2,
     ChestCheckInterval = 10,
@@ -53,7 +52,8 @@ local function warnmsg(msg) warn("[NiTROHUB]", msg) end
 -- ✅ LOAD NATUI LIBRARY ------------------------------------------
 local NatUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/Uisource.lua"))()
 
-NatUI:Window({
+-- สร้างหน้าต่างหลัก
+local MainUI = NatUI({
     Title = "🌀 NiTROHUB PRO - Final Edition",
     Description = "Auto Hatch, Rebirth, Chest, Rewards, Status",
     Icon = "rbxassetid://3926305904"
@@ -71,29 +71,17 @@ local icons = {
 -- ===============================================================
 -- 🥚 AUTO HATCH
 -- ===============================================================
-NatUI:AddTab({ Title = "Auto Hatch", Desc = "สุ่มไข่อัตโนมัติ", Icon = icons.Egg })
-
--- ปุ่มเปลี่ยนไข่ (แทน Dropdown)
-NatUI:Button({
-    Title = "เลือกไข่ (ตอนนี้: " .. Config.EggName .. ")",
-    Callback = function()
-        logmsg("⚠️ ต้องแก้โค้ดตรงนี้เป็น manual input/dropdown เอง")
-    end
+local HatchTab = MainUI:AddTab({
+    Title = "Auto Hatch",
+    Desc = "สุ่มไข่อัตโนมัติ",
+    Icon = icons.Egg
 })
 
--- ปุ่มเปลี่ยนจำนวนเปิดไข่
-NatUI:Button({
-    Title = "จำนวนเปิดไข่ (ตอนนี้: " .. Config.HatchAmount .. ")",
-    Callback = function()
-        logmsg("⚠️ ต้องแก้เป็น input เหมือนกัน (ตอนนี้ fix ไว้ที่ 1/3/9)")
-    end
-})
-
-NatUI:Toggle({
+HatchTab:Toggle({
     Title = "เปิด Auto Hatch",
     Callback = function(state)
         State.HatchRunning = state
-        if state then logmsg("🚀 เริ่มสุ่มไข่") else logmsg("⏸️ หยุดสุ่มไข่") end
+        logmsg(state and "🚀 เริ่มสุ่มไข่" or "⏸️ หยุดสุ่มไข่")
     end
 })
 
@@ -114,9 +102,13 @@ end)
 -- ===============================================================
 -- ♻️ AUTO REBIRTH
 -- ===============================================================
-NatUI:AddTab({ Title = "Auto Rebirth", Desc = "รีเกิดอัตโนมัติ", Icon = icons.Refresh })
+local RebirthTab = MainUI:AddTab({
+    Title = "Auto Rebirth",
+    Desc = "รีเกิดอัตโนมัติ",
+    Icon = icons.Refresh
+})
 
-NatUI:Toggle({
+RebirthTab:Toggle({
     Title = "เปิด Auto Rebirth",
     Callback = function(state)
         State.RebirthRunning = state
@@ -140,9 +132,13 @@ end)
 -- ===============================================================
 -- 📦 AUTO CHEST
 -- ===============================================================
-NatUI:AddTab({ Title = "Auto Chest", Desc = "เก็บกล่องอัตโนมัติ", Icon = icons.Box })
+local ChestTab = MainUI:AddTab({
+    Title = "Auto Chest",
+    Desc = "เก็บกล่องอัตโนมัติ",
+    Icon = icons.Box
+})
 
-NatUI:Toggle({
+ChestTab:Toggle({
     Title = "เปิด Auto Chest",
     Callback = function(state)
         State.ChestRunning = state
@@ -189,12 +185,16 @@ end)
 -- ===============================================================
 -- 🎁 AUTO REWARDS
 -- ===============================================================
-NatUI:AddTab({ Title = "Auto Rewards", Desc = "รับของรางวัลอัตโนมัติ", Icon = icons.Gift })
+local RewardsTab = MainUI:AddTab({
+    Title = "Auto Rewards",
+    Desc = "รับของรางวัลอัตโนมัติ",
+    Icon = icons.Gift
+})
 
-NatUI:Toggle({ Title = "Auto Gift",  Callback = function(s) State.RewardGift  = s end })
-NatUI:Toggle({ Title = "Auto Daily", Callback = function(s) State.RewardDaily = s end })
-NatUI:Toggle({ Title = "Auto Spin",  Callback = function(s) State.RewardSpin  = s end })
-NatUI:Toggle({ Title = "Auto Rank",  Callback = function(s) State.RewardRank  = s end })
+RewardsTab:Toggle({ Title = "Auto Gift",  Callback = function(s) State.RewardGift  = s end })
+RewardsTab:Toggle({ Title = "Auto Daily", Callback = function(s) State.RewardDaily = s end })
+RewardsTab:Toggle({ Title = "Auto Spin",  Callback = function(s) State.RewardSpin  = s end })
+RewardsTab:Toggle({ Title = "Auto Rank",  Callback = function(s) State.RewardRank  = s end })
 
 task.spawn(function()
     while task.wait(10) do
@@ -222,14 +222,30 @@ end)
 -- ===============================================================
 -- 📊 STATUS
 -- ===============================================================
-NatUI:AddTab({ Title = "Status", Desc = "สถานะการทำงาน", Icon = icons.Info })
+local StatusTab = MainUI:AddTab({
+    Title = "Status",
+    Desc = "สถานะการทำงาน",
+    Icon = icons.Info
+})
 
-NatUI:Paragraph({ Title = "📌 สถานะ", Desc = function() return State.Status end })
-NatUI:Paragraph({ Title = "🥚 Eggs",   Desc = function() return tostring(State.EggsHatched) end })
-NatUI:Paragraph({ Title = "📦 Chests", Desc = function() return tostring(State.ChestsCollected) end })
-NatUI:Paragraph({ Title = "🎁 Last Chest", Desc = function() return State.LastChest end })
+StatusTab:Paragraph({
+    Title = "📌 สถานะ",
+    Desc = function() return State.Status end
+})
+StatusTab:Paragraph({
+    Title = "🥚 Eggs",
+    Desc = function() return tostring(State.EggsHatched) end
+})
+StatusTab:Paragraph({
+    Title = "📦 Chests",
+    Desc = function() return tostring(State.ChestsCollected) end
+})
+StatusTab:Paragraph({
+    Title = "🎁 Last Chest",
+    Desc = function() return State.LastChest end
+})
 
-NatUI:Paragraph({
+StatusTab:Paragraph({
     Title = "🎁 Rewards",
     Desc = function()
         return string.format("Gift(%s) Daily(%s) Spin(%s) Rank(%s)",
@@ -241,4 +257,4 @@ NatUI:Paragraph({
     end
 })
 
-logmsg("✅ Loaded NiTROHUB PRO - Final Edition (NatUI Version)")
+logmsg("✅ Loaded NiTROHUB PRO - Final Edition (NatUI Fixed Version)")
