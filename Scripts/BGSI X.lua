@@ -1,45 +1,46 @@
--- โหลด Library
+-- Load Library
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/NatLibrary/SourceV2.lua"))()
 
--- Window หลัก
+-- Main Window
 local Window = Library:CreateWindow("Bubble Gum Hub")
 Window:load()
 
--- Tab Auto Farm
+-- Auto Farm Tab
 local FarmTab = Window:CreateTab({
     Title = "Auto Farm",
-    Description = "ฟาร์มหลัก",
+    Description = "Main Farming Features",
     Icon = "rbxassetid://3926305904"
 })
 
 -- Toggle : Auto Hatch
 FarmTab:Toggle({
     Title = "Auto Hatch Egg",
-    Description = "ฟักไข่อัตโนมัติ (Autumn Egg x3)",
+    Description = "Automatically hatch Autumn Egg (x3)",
     Flag = "AutoHatch",
     Callback = function(state)
         getgenv().AutoHatch = state
         while getgenv().AutoHatch do
             local args = {
                 "HatchEgg",
-                "Autumn Egg", -- เปลี่ยนชื่อไข่ได้
-                3 -- จำนวน 1 / 3 / 9
+                "Autumn Egg", -- Change egg name if needed
+                3 -- Hatch amount (1 / 3 / 9)
             }
             game:GetService("ReplicatedStorage").Shared.Framework.Network.Remote.RemoteEvent:FireServer(unpack(args))
-            task.wait(1) -- เว้นระยะ 1 วิ
+            task.wait(1) -- Wait 1 second between hatches
         end
     end
 })
 
--- Button : เก็บทุก Chest
+-- Button : Collect All Chests
 FarmTab:Button({
     Title = "Collect All Chests",
     Callback = function()
-        print("กำลังเก็บ Chest ทั้งหมด (Demo)")
+        print("Collecting all chests (Demo)")
+        -- Insert RemoteEvent FireServer for chests here if available
     end
 })
 
--- Checkbox : เปิดปิดการแจ้งเตือน
+-- Checkbox : Notifications
 FarmTab:Checkbox({
     Title = "Enable Notifications",
     Flag = "Notify",
@@ -47,22 +48,22 @@ FarmTab:Checkbox({
         if state then
             Library.SendNotification({
                 Title = "Notification",
-                text = "เปิดการแจ้งเตือน",
+                text = "Notifications enabled",
                 duration = 3
             })
         else
-            print("ปิดการแจ้งเตือน")
+            print("Notifications disabled")
         end
     end
 })
 
--- Paragraph : แสดงคำอธิบาย
+-- Paragraph : Instructions
 FarmTab:Paragraph({
-    Title = "วิธีใช้",
-    Description = "กด Auto Hatch เพื่อเริ่มฟักไข่อัตโนมัติ\nกด Collect Chest เพื่อเก็บกล่องทั้งหมด"
+    Title = "How to Use",
+    Description = "Press Auto Hatch to start auto hatching\nPress Collect Chests to collect all available chests"
 })
 
--- Slider : ความเร็ว
+-- Slider : Walk Speed
 FarmTab:Slider({
     Title = "Walk Speed",
     Min = 16,
@@ -74,28 +75,28 @@ FarmTab:Slider({
 })
 
 -- Divider
-FarmTab:Divider("ตั้งค่าอื่น ๆ")
+FarmTab:Divider("Other Settings")
 
--- Text : สถานะ
+-- Text : Status
 FarmTab:Text({
     Title = "Status",
-    Description = "พร้อมทำงาน"
+    Description = "Ready to work"
 })
 
--- Input : ตั้งชื่อไข่ที่ต้องการฟักเอง
+-- Input : Custom Egg Name
 FarmTab:Input({
     Title = "Egg Name",
-    Placeholder = "ใส่ชื่อไข่ตรงนี้ เช่น Autumn Egg",
+    Placeholder = "Enter egg name here, e.g. Autumn Egg",
     Flag = "EggName",
     Callback = function(text)
-        print("คุณตั้งชื่อไข่เป็น:", text)
+        print("You set egg name to:", text)
         getgenv().EggName = text
     end
 })
 
--- แจ้งเตือนเมื่อโหลดเสร็จ
+-- Notification when loaded
 Library.SendNotification({
     Title = "Bubble Gum Hub Loaded",
-    text = "ระบบพร้อมใช้งานแล้ว!",
+    text = "System is ready!",
     duration = 5
 })
