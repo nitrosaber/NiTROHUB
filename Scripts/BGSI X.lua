@@ -50,11 +50,11 @@ local FrameworkRemote = ReplicatedStorage:WaitForChild("Shared")
 local function logmsg(msg) print("[NiTROHUB]", msg) end
 local function warnmsg(msg) warn("[NiTROHUB]", msg) end
 
--- ✅ LOAD UI LIBRARY ---------------------------------------------
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/NiTroHub/UI-Library/main/Source.lua"))()
+-- ✅ LOAD UI LIBRARY (ใหม่) -------------------------------------
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/nitrosaber/NiTROHUB/refs/heads/main/NiTroUi.lua"))()
 local MainWindow = Library:CreateWindow("🌀 NiTROHUB PRO - Final Edition")
 
--- ✅ ICONS (rbxassetid จาก Roblox CoreGui) -----------------------
+-- ✅ ICONS -------------------------------------------------------
 local icons = {
     Egg     = "rbxassetid://3926305904",
     Refresh = "rbxassetid://3926305905",
@@ -113,7 +113,7 @@ task.spawn(function()
         if State.HatchRunning and FrameworkRemote then
             local ok, err = pcall(function()
                 FrameworkRemote:FireServer("HatchEgg", Config.EggName, Config.HatchAmount)
-                State.EggsHatched += Config.HatchAmount
+                State.EggsHatched = State.EggsHatched + Config.HatchAmount
                 State.Status = "Hatching " .. Config.EggName
             end)
             if not ok then warnmsg("❌ Hatch Error: " .. tostring(err)) end
@@ -170,13 +170,13 @@ task.spawn(function()
 
     local function Collect(c)
         if not c or not c.Parent then return end
-        local key = c:GetDebugId()
-        if last[key] and tick()-last[key] < Config.ChestCollectCooldown then return end
+        local key = c:GetFullName()
+        if last[key] and tick() - last[key] < Config.ChestCollectCooldown then return end
         local ok = pcall(function()
             FrameworkRemote:FireServer("ClaimChest", c.Name, true)
         end)
         if ok then
-            State.ChestsCollected += 1
+            State.ChestsCollected = State.ChestsCollected + 1
             State.LastChest = c.Name
             last[key] = tick()
             logmsg("🎁 เก็บกล่อง: " .. c.Name)
