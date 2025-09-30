@@ -1,10 +1,10 @@
--- โหลด NatUI
+-- โหลด NatUI Library
 local NatUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/Uisource.lua"))()
 
 -- สร้างหน้าต่างหลัก
 NatUI:Window({
-    Title = "🌐 NatUI - Test Script",
-    Description = "ทดสอบการใช้งาน UI Library",
+    Title = "NatUI Test Window",
+    Description = "ทดสอบการใช้งาน UI",
     Icon = "rbxassetid://3926305904"
 })
 
@@ -12,50 +12,50 @@ NatUI:Window({
 NatUI:OpenUI({
     Title = "NatUI Toggle",
     Icon = "rbxassetid://3926305904",
-    BackgroundColor = Color3.fromRGB(45, 45, 45),
-    BorderColor = Color3.fromRGB(0, 0, 0)
+    BackgroundColor = "fromrgb",
+    BorderColor = "fromrgb"
 })
 
--- เพิ่มแท็บ
+-- เพิ่มแท็บใหม่
 NatUI:AddTab({
     Title = "Test Tab",
-    Desc = "สำหรับทดสอบ",
+    Desc = "แท็บสำหรับทดสอบ",
     Icon = "rbxassetid://3926305904"
 })
 
 -- เพิ่ม Section
 NatUI:Section({
-    Title = "🎛 Controls",
+    Title = "Controls",
     Icon = "rbxassetid://3926305904"
 })
 
--- ปุ่มทดสอบ
+-- ปุ่ม
 NatUI:Button({
     Title = "Click Me!",
     Callback = function()
-        print("[NatUI Test] Button ถูกกดแล้ว ✅")
+        print("✅ Button ถูกกดแล้ว")
     end,
 })
 
--- Toggle ทดสอบ
+-- Toggle
 NatUI:Toggle({
     Title = "Enable Feature",
     Callback = function(state)
-        print("[NatUI Test] Toggle สถานะ:", state and "ON" or "OFF")
+        print("✅ Toggle State:", state and "ON" or "OFF")
     end,
 })
 
--- Paragraph แสดงข้อความ
+-- Paragraph
 NatUI:Paragraph({
     Title = "ℹ️ Info",
-    Desc = "นี่คือ Paragraph สำหรับแสดงข้อความคงที่"
+    Desc = "นี่คือข้อความทดสอบ Paragraph"
 })
 
--- Slider ทดสอบ
+-- Slider
 NatUI:Slider({
-    Title = "Volume Control",
+    Title = "Volume",
     MaxValue = "100",
     Callback = function(value)
-        print("[NatUI Test] Slider ค่า:", value)
+        print("✅ Slider Value:", value)
     end,
 })
