@@ -1,83 +1,89 @@
--- โหลด Library
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/NatLibrary/SourceV2.lua"))()
+-- Load Library
+local NatUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/Uisource.lua"))()
 
--- สร้างหน้าต่างหลัก
-local Window = Library:CreateWindow("Demo Hub")
-Window:load()
-
--- สร้าง Tab หลัก
-local MainTab = Window:AddTab({
-    Title = "Main Tab",
-    Description = "ทดสอบระบบ",
-    Icon = "rbxassetid://3926305904" -- ต้องเป็น string assetid
+-- Main Window
+NatUI:Window({
+    Title = "Bubble Gum Hub",
+    Description = "Auto Hatch & Farm",
+    Icon = "rbxassetid://3926305904"
 })
 
--- Toggle
-MainTab:Toggle({
-    Title = "Auto Hatch Egg",
-    Description = "เปิด/ปิดการฟักไข่",
-    Flag = "AutoHatch",
+-- Toggle UI button
+NatUI:OpenUI({
+    Title = "Open / Close Hub",
+    Icon = "rbxassetid://3926305904",
+    BackgroundColor = "fromrgb",
+    BorderColor = "fromrgb"
+})
+
+-- Create Tab
+NatUI:AddTab({
+    Title = "Auto Farm",
+    Desc = "Main Farming Features",
+    Icon = "rbxassetid://3926305904"
+})
+
+-- Section
+NatUI:Section({
+    Title = "Egg Features",
+    Icon = "rbxassetid://3926305904"
+})
+
+-- Toggle : Auto Hatch Egg
+NatUI:Toggle({
+    Title = "Auto Hatch Egg (Autumn Egg x3)",
     Callback = function(state)
-        print("Auto Hatch =", state)
-    end
+        getgenv().AutoHatch = state
+        while getgenv().AutoHatch do
+            local args = {
+                "HatchEgg",
+                "Autumn Egg", -- Egg name (can be changed)
+                3 -- hatch amount (1 / 3 / 9)
+            }
+            game:GetService("ReplicatedStorage").Shared.Framework.Network.Remote.RemoteEvent:FireServer(unpack(args))
+            task.wait(1)
+        end
+    end,
 })
 
--- Button
-MainTab:Button({
+-- Button : Collect All Chests
+NatUI:Button({
     Title = "Collect All Chests",
     Callback = function()
-        print("เก็บ Chest ทั้งหมดแล้ว")
-    end
+        print("Collecting all chests (Demo)")
+        -- If chest RemoteEvent exists, add FireServer code here
+    end,
 })
 
--- Checkbox
-MainTab:Checkbox({
-    Title = "Enable Notifications",
-    Flag = "Notify",
-    Callback = function(state)
-        print("Notifications =", state)
-    end
+-- Section for Settings
+NatUI:Section({
+    Title = "Settings",
+    Icon = "rbxassetid://3926305904"
 })
 
 -- Paragraph
-MainTab:Paragraph({
-    Title = "คำอธิบาย",
-    Description = "นี่คือตัวอย่าง Paragraph จาก Library"
+NatUI:Paragraph({
+    Title = "How to Use",
+    Desc = "1. Enable Auto Hatch to hatch eggs automatically\n2. Press Collect Chests to collect all available chests"
 })
 
--- Slider
-MainTab:Slider({
+-- Slider : Walk Speed
+NatUI:Slider({
     Title = "Walk Speed",
-    Min = 16,
-    Max = 200,
-    Flag = "WalkSpeed",
+    MaxValue = "200",
     Callback = function(value)
-        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = value
-    end
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = tonumber(value)
+    end,
 })
 
--- Divider
-MainTab:Divider("การตั้งค่าอื่น ๆ")
-
--- Text
-MainTab:Text({
-    Title = "Status",
-    Description = "พร้อมใช้งาน"
-})
-
--- Input
-MainTab:Input({
-    Title = "Egg Name",
-    Placeholder = "พิมพ์ชื่อไข่ เช่น Autumn Egg",
-    Flag = "EggName",
-    Callback = function(text)
-        print("คุณตั้งชื่อไข่เป็น:", text)
-    end
-})
-
--- แจ้งเตือนเมื่อโหลดเสร็จ
-Library.SendNotification({
-    Title = "Demo Hub",
-    text = "ระบบพร้อมใช้งานแล้ว!",
-    duration = 5
+-- Toggle : Notifications
+NatUI:Toggle({
+    Title = "Enable Notifications",
+    Callback = function(state)
+        if state then
+            print("Notifications Enabled")
+        else
+            print("Notifications Disabled")
+        end
+    end,
 })
