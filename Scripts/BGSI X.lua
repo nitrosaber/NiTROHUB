@@ -54,8 +54,8 @@ local NatUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBot
 
 -- ✅ CREATE WINDOW -----------------------------------------------
 NatUI:Window({
-    Title = "🌀 NiTROHUB PRO - Final Edition",
-    Description = "Auto Hatch, Rebirth, Chest, Rewards, Status",
+    Title = "NiTROHUB PRO",
+    Description = "BGSIX",
     Icon = "rbxassetid://3926305904"
 })
 
