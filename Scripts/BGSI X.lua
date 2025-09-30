@@ -1,202 +1,187 @@
 -- ===============================================================
--- 🌀 NiTROHUB PRO - Final Edition (NatUI Integration)
+-- 🌀 NatUI MegaScript (Test UI Version)
 -- ===============================================================
 
--- CONFIG ---------------------------------------------------------
-local Config = {
-    EggName = "Autumn Egg",
-    HatchAmount = 3,
-    HatchDelay = 1.2,
-    AutoRebirth = true,
-    RebirthDelay = 2,
-    ChestCheckInterval = 10,
-    ChestCollectCooldown = 60,
-    ChestNames = {
-        "Royal Chest","Super Chest","Golden Chest","Ancient Chest",
-        "Dice Chest","Infinity Chest","Void Chest","Giant Chest",
-        "Ticket Chest","Easy Obby Chest","Medium Obby Chest","Hard Obby Chest"
-    }
-}
+local NatUI = {}
+NatUI.__index = NatUI
 
-local State = {
-    HatchRunning = false,
-    RebirthRunning = false,
-    ChestRunning = false,
-    RewardGift = false,
-    RewardDaily = false,
-    RewardSpin = false,
-    RewardRank = false,
-    EggsHatched = 0,
-    ChestsCollected = 0,
-    LastChest = "-",
-    Status = "Idle"
-}
+-- ✅ Core GUI
+local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+ScreenGui.Name = "NatUI"
 
--- SERVICES -------------------------------------------------------
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
+-- ✅ Main Frame
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 550, 0, 350)
+Main.Position = UDim2.new(0.5, -275, 0.5, -175)
+Main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Main.Visible = false
 
--- REMOTES --------------------------------------------------------
-local FrameworkRemote = ReplicatedStorage:WaitForChild("Shared")
-    :WaitForChild("Framework")
-    :WaitForChild("Network")
-    :WaitForChild("Remote")
-    :WaitForChild("RemoteEvent")
+-- ✅ Tab system
+local TabButtons = Instance.new("Frame", Main)
+TabButtons.Size = UDim2.new(0, 120, 1, 0)
+TabButtons.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 
--- LOG ------------------------------------------------------------
-local function logmsg(msg) print("[NiTROHUB]", msg) end
-local function warnmsg(msg) warn("[NiTROHUB]", msg) end
+local TabContent = Instance.new("Frame", Main)
+TabContent.Position = UDim2.new(0, 120, 0, 0)
+TabContent.Size = UDim2.new(1, -120, 1, 0)
+TabContent.BackgroundTransparency = 1
 
--- LOAD NATUI (ใช้เวอร์ชันแก้ไขแล้ว)
-local NatUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/nitrosaber/NiTROHUB/refs/heads/main/FixedNatUI.lua"))()
-
--- MAIN WINDOW ----------------------------------------------------
-NatUI:Window({
-    Title = "🌀 NiTROHUB PRO",
-    Description = "Auto Hatch, Rebirth, Chest, Rewards, Status",
-    Icon = "rbxassetid://3926305904"
-})
+local Tabs = {}
 
 -- ===============================================================
--- 🥚 AUTO HATCH
+-- WINDOW
 -- ===============================================================
-NatUI:AddTab({ Title = "Auto Hatch", Icon = "rbxassetid://3926305904" })
-NatUI:Toggle({
-    Title = "เปิด Auto Hatch",
-    Callback = function(state)
-        State.HatchRunning = state
-        logmsg(state and "🚀 เริ่มสุ่มไข่" or "⏸️ หยุดสุ่มไข่")
-    end
-})
+function NatUI:Window(info)
+    local Title = Instance.new("TextLabel", Main)
+    Title.Size = UDim2.new(1, 0, 0, 30)
+    Title.Text = info.Title or "NatUI Library"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.BackgroundTransparency = 1
+    Title.Font = Enum.Font.SourceSansBold
+    Title.TextSize = 20
+end
 
-task.spawn(function()
-    while task.wait(0.25) do
-        if State.HatchRunning and FrameworkRemote then
-            local ok, err = pcall(function()
-                FrameworkRemote:FireServer("HatchEgg", Config.EggName, Config.HatchAmount)
-                State.EggsHatched += Config.HatchAmount
-                State.Status = "Hatching " .. Config.EggName
-            end)
-            if not ok then warnmsg("❌ Hatch Error: " .. tostring(err)) end
-            task.wait(Config.HatchDelay)
+-- ===============================================================
+-- OPEN UI
+-- ===============================================================
+function NatUI:OpenUI(info)
+    local Btn = Instance.new("TextButton", ScreenGui)
+    Btn.Size = UDim2.new(0, 130, 0, 40)
+    Btn.Position = UDim2.new(0, 20, 0, 200)
+    Btn.Text = info.Title or "Open UI"
+    Btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.MouseButton1Click:Connect(function()
+        Main.Visible = not Main.Visible
+    end)
+end
+
+-- ===============================================================
+-- ADD TAB
+-- ===============================================================
+function NatUI:AddTab(info)
+    local Button = Instance.new("TextButton", TabButtons)
+    Button.Size = UDim2.new(1, 0, 0, 30)
+    Button.Text = info.Title or "Tab"
+    Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    local TabPage = Instance.new("Frame", TabContent)
+    TabPage.Size = UDim2.new(1, 0, 1, 0)
+    TabPage.BackgroundTransparency = 1
+    TabPage.Visible = false
+
+    Tabs[info.Title] = TabPage
+
+    Button.MouseButton1Click:Connect(function()
+        for _, tab in pairs(Tabs) do tab.Visible = false end
+        TabPage.Visible = true
+    end)
+
+    return TabPage
+end
+
+-- ===============================================================
+-- SECTION
+-- ===============================================================
+function NatUI:Section(tab, info)
+    local Label = Instance.new("TextLabel", tab)
+    Label.Text = info.Title or "Section"
+    Label.Size = UDim2.new(1, 0, 0, 25)
+    Label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Label.BackgroundTransparency = 1
+end
+
+-- ===============================================================
+-- BUTTON
+-- ===============================================================
+function NatUI:Button(tab, info)
+    local Btn = Instance.new("TextButton", tab)
+    Btn.Size = UDim2.new(0, 120, 0, 30)
+    Btn.Text = info.Title or "Button"
+    Btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.MouseButton1Click:Connect(function()
+        if info.Callback then info.Callback() end
+    end)
+end
+
+-- ===============================================================
+-- TOGGLE
+-- ===============================================================
+function NatUI:Toggle(tab, info)
+    local Btn = Instance.new("TextButton", tab)
+    Btn.Size = UDim2.new(0, 140, 0, 30)
+    Btn.Text = "[OFF] " .. (info.Title or "Toggle")
+    Btn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    local state = false
+    Btn.MouseButton1Click:Connect(function()
+        state = not state
+        Btn.Text = (state and "[ON] " or "[OFF] ") .. (info.Title or "Toggle")
+        if info.Callback then info.Callback(state) end
+    end)
+end
+
+-- ===============================================================
+-- PARAGRAPH
+-- ===============================================================
+function NatUI:Paragraph(tab, info)
+    local Text = Instance.new("TextLabel", tab)
+    Text.Size = UDim2.new(1, -10, 0, 30)
+    Text.Text = (info.Title or "") .. ": " .. (info.Desc or "")
+    Text.TextColor3 = Color3.fromRGB(180, 180, 180)
+    Text.BackgroundTransparency = 1
+end
+
+-- ===============================================================
+-- SLIDER
+-- ===============================================================
+function NatUI:Slider(tab, info)
+    local Frame = Instance.new("Frame", tab)
+    Frame.Size = UDim2.new(0, 200, 0, 30)
+    Frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+
+    local Bar = Instance.new("Frame", Frame)
+    Bar.Size = UDim2.new(0, 0, 1, 0)
+    Bar.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+
+    local dragging = false
+    Frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
+    end)
+    Frame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    end)
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local ratio = math.clamp((input.Position.X - Frame.AbsolutePosition.X) / Frame.AbsoluteSize.X, 0, 1)
+            Bar.Size = UDim2.new(ratio, 0, 1, 0)
+            local value = math.floor(ratio * (tonumber(info.MaxValue) or 100))
+            if info.Callback then info.Callback(value) end
         end
-    end
+    end)
+end
+
+-- ===============================================================
+-- ✅ TEST UI EXAMPLE
+-- ===============================================================
+task.spawn(function()
+    local ui = NatUI
+    ui:Window({ Title = "NatUI Mega Test" })
+    ui:OpenUI({ Title = "Open NatUI" })
+
+    local Tab1 = ui:AddTab({ Title = "Main" })
+    ui:Section(Tab1, { Title = "Main Section" })
+    ui:Button(Tab1, { Title = "Click Me", Callback = function() print("Button Pressed") end })
+    ui:Toggle(Tab1, { Title = "Enable Feature", Callback = function(s) print("Toggle:", s) end })
+    ui:Paragraph(Tab1, { Title = "Info", Desc = "This is a paragraph" })
+    ui:Slider(Tab1, { Title = "Volume", MaxValue = 100, Callback = function(v) print("Slider:", v) end })
+
+    local Tab2 = ui:AddTab({ Title = "Second" })
+    ui:Section(Tab2, { Title = "Second Section" })
+    ui:Button(Tab2, { Title = "Another Btn", Callback = function() print("Another Button!") end })
 end)
 
--- ===============================================================
--- ♻️ AUTO REBIRTH
--- ===============================================================
-NatUI:AddTab({ Title = "Auto Rebirth", Icon = "rbxassetid://3926305905" })
-NatUI:Toggle({
-    Title = "เปิด Auto Rebirth",
-    Callback = function(state)
-        State.RebirthRunning = state
-        logmsg(state and "♻️ เริ่ม Rebirth" or "⏸️ หยุด Rebirth")
-    end
-})
-
-task.spawn(function()
-    while task.wait(0.25) do
-        if State.RebirthRunning and FrameworkRemote then
-            local ok, err = pcall(function()
-                FrameworkRemote:FireServer("Rebirth", 1)
-                State.Status = "Rebirthing..."
-            end)
-            if not ok then warnmsg("❌ Rebirth Error: " .. tostring(err)) end
-            task.wait(Config.RebirthDelay)
-        end
-    end
-end)
-
--- ===============================================================
--- 📦 AUTO CHEST
--- ===============================================================
-NatUI:AddTab({ Title = "Auto Chest", Icon = "rbxassetid://3926305906" })
-NatUI:Toggle({
-    Title = "เปิด Auto Chest",
-    Callback = function(state)
-        State.ChestRunning = state
-        logmsg(state and "📦 เริ่มเก็บกล่อง" or "⏸️ หยุดเก็บกล่อง")
-    end
-})
-
-task.spawn(function()
-    local CHEST_LIST = {}
-    for _, n in ipairs(Config.ChestNames) do CHEST_LIST[n:lower()] = true end
-    local last = {}
-
-    local function Collect(c)
-        if not c or not c.Parent then return end
-        local key = c:GetDebugId()
-        if last[key] and tick()-last[key] < Config.ChestCollectCooldown then return end
-        local ok = pcall(function()
-            FrameworkRemote:FireServer("ClaimChest", c.Name, true)
-        end)
-        if ok then
-            State.ChestsCollected += 1
-            State.LastChest = c.Name
-            last[key] = tick()
-            logmsg("🎁 เก็บกล่อง: " .. c.Name)
-        end
-    end
-
-    while task.wait(Config.ChestCheckInterval) do
-        if State.ChestRunning and FrameworkRemote then
-            State.Status = "Collecting Chests..."
-            for _, area in ipairs({Workspace:FindFirstChild("Chests"), Workspace}) do
-                if area then
-                    for _, obj in ipairs(area:GetDescendants()) do
-                        if obj:IsA("Model") and CHEST_LIST[obj.Name:lower()] then
-                            Collect(obj)
-                        end
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- ===============================================================
--- 🎁 AUTO REWARDS
--- ===============================================================
-NatUI:AddTab({ Title = "Auto Rewards", Icon = "rbxassetid://3926307970" })
-NatUI:Toggle({ Title = "Auto Gift",  Callback = function(s) State.RewardGift  = s end })
-NatUI:Toggle({ Title = "Auto Daily", Callback = function(s) State.RewardDaily = s end })
-NatUI:Toggle({ Title = "Auto Spin",  Callback = function(s) State.RewardSpin  = s end })
-NatUI:Toggle({ Title = "Auto Rank",  Callback = function(s) State.RewardRank  = s end })
-
-task.spawn(function()
-    while task.wait(10) do
-        if FrameworkRemote then
-            if State.RewardGift then
-                pcall(function() FrameworkRemote:FireServer("ClaimReward", "GiftReward") end)
-                logmsg("🎁 AutoClaim: GiftReward")
-            end
-            if State.RewardDaily then
-                pcall(function() FrameworkRemote:FireServer("ClaimReward", "DailyReward") end)
-                logmsg("📅 AutoClaim: DailyReward")
-            end
-            if State.RewardSpin then
-                pcall(function() FrameworkRemote:FireServer("ClaimReward", "SpinReward") end)
-                logmsg("🎲 AutoClaim: SpinReward")
-            end
-            if State.RewardRank then
-                pcall(function() FrameworkRemote:FireServer("ClaimReward", "RankReward") end)
-                logmsg("🏆 AutoClaim: RankReward")
-            end
-        end
-    end
-end)
-
--- ===============================================================
--- 📊 STATUS
--- ===============================================================
-NatUI:AddTab({ Title = "Status", Icon = "rbxassetid://3926307971" })
-NatUI:Paragraph({ Title = "📌 สถานะ", Desc = function() return State.Status end })
-NatUI:Paragraph({ Title = "🥚 Eggs", Desc = function() return tostring(State.EggsHatched) end })
-NatUI:Paragraph({ Title = "📦 Chests", Desc = function() return tostring(State.ChestsCollected) end })
-NatUI:Paragraph({ Title = "🎁 LastChest", Desc = function() return State.LastChest end })
-
-logmsg("✅ Loaded NiTROHUB PRO - NatUI Integration")
+return NatUI
