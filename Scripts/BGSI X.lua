@@ -50,7 +50,7 @@ local function logmsg(msg) print("[NiTROHUB]", msg) end
 local function warnmsg(msg) warn("[NiTROHUB]", msg) end
 
 -- LOAD NATUI (ใช้เวอร์ชันแก้ไขแล้ว)
-local NatUI = loadstring(game:HttpGet("YOUR_RAW_LINK_TO_FIXED_NATUI.lua"))()
+local NatUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/nitrosaber/NiTROHUB/refs/heads/main/FixedNatUI.lua"))()
 
 -- MAIN WINDOW ----------------------------------------------------
 NatUI:Window({
