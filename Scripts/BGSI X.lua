@@ -1,23 +1,21 @@
 -- ===============================================================
--- 🌀 NiTROHUB PRO - Auto Hatch + Auto Rebirth + Auto Chest (Final)
--- ✨ by NiTROHUB x Gemini (แก้ไข Asset ID)
--- Description: A full-featured script with selectable eggs, safe auto hatch,
--- auto rebirth, and auto chest collection without teleporting.
+-- 🌀 NiTROHUB PRO - Final Edition (Icons + Rewards Toggles)
+-- ✨ Auto Hatch (Selectable Egg), Auto Rebirth, Auto Chest, Auto Rewards, Status
 -- ===============================================================
 
 -- ✅ CONFIG ------------------------------------------------------
 local Config = {
-    EggName = "Autumn Egg",    -- 🥚 ไข่เริ่มต้น
-    HatchAmount = 3,           -- 🎲 จำนวนที่เปิด (1 / 3 / 9)
-    HatchDelay = 1.2,          -- ⏱️ เวลาระหว่างการเปิดแต่ละรอบ
-    AutoRebirth = true,        -- ♻️ เปิด Rebirth อัตโนมัติ
-    RebirthDelay = 2,          -- ⏱️ เวลาระหว่าง Rebirth
-    ChestCheckInterval = 10,   -- 🔍 ตรวจหากล่องทุกๆ n วินาที
-    ChestCollectCooldown = 60, -- ⏱️ หน่วงเวลาเก็บกล่องแต่ละกล่อง
-    ChestNames = {             -- 📦 รายชื่อกล่องที่ต้องการเก็บ
-        "Royal Chest", "Super Chest", "Golden Chest", "Ancient Chest",
-        "Dice Chest", "Infinity Chest", "Void Chest", "Giant Chest",
-        "Ticket Chest", "Easy Obby Chest", "Medium Obby Chest", "Hard Obby Chest"
+    EggName = "Autumn Egg",
+    HatchAmount = 3,
+    HatchDelay = 1.2,
+    AutoRebirth = true,
+    RebirthDelay = 2,
+    ChestCheckInterval = 10,
+    ChestCollectCooldown = 60,
+    ChestNames = {
+        "Royal Chest","Super Chest","Golden Chest","Ancient Chest",
+        "Dice Chest","Infinity Chest","Void Chest","Giant Chest",
+        "Ticket Chest","Easy Obby Chest","Medium Obby Chest","Hard Obby Chest"
     }
 }
 
@@ -25,6 +23,10 @@ local State = {
     HatchRunning = false,
     RebirthRunning = false,
     ChestRunning = false,
+    RewardGift = false,
+    RewardDaily = false,
+    RewardSpin = false,
+    RewardRank = false,
     EggsHatched = 0,
     ChestsCollected = 0,
     LastChest = "-",
@@ -38,43 +40,45 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
 -- ✅ REMOTES -----------------------------------------------------
-local frameworkRemote = ReplicatedStorage:WaitForChild("Shared")
+local FrameworkRemote = ReplicatedStorage:WaitForChild("Shared")
     :WaitForChild("Framework")
     :WaitForChild("Network")
     :WaitForChild("Remote")
     :WaitForChild("RemoteEvent")
 
--- ✅ UI LIBRARY --------------------------------------------------
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/NiTroHub/UI-Library/main/Source.lua"))()
-local MainWindow = Library:CreateWindow("🌀 NiTROHUB PRO - Final Edition")
-
--- ✅ LOG FUNCTION ------------------------------------------------
+-- ✅ LOG ---------------------------------------------------------
 local function logmsg(msg) print("[NiTROHUB]", msg) end
 local function warnmsg(msg) warn("[NiTROHUB]", msg) end
 
--- ✅ CHEST LIST LOOKUP -------------------------------------------
-local CHEST_LIST = {}
-for _, name in ipairs(Config.ChestNames) do
-    CHEST_LIST[name:lower()] = true
-end
+-- ✅ LOAD UI LIBRARY ---------------------------------------------
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/NiTroHub/UI-Library/main/Source.lua"))()
+local MainWindow = Library:CreateWindow("🌀 NiTROHUB PRO - Final Edition")
+
+-- ✅ ICONS (rbxassetid จาก Roblox CoreGui) -----------------------
+local icons = {
+    Egg     = "rbxassetid://3926305904",
+    Refresh = "rbxassetid://3926305905",
+    Box     = "rbxassetid://3926305906",
+    Gift    = "rbxassetid://3926307970",
+    Info    = "rbxassetid://3926307971"
+}
 
 -- ===============================================================
--- 🥚 AUTO HATCH SYSTEM (Selectable Egg)
+-- 🥚 AUTO HATCH
 -- ===============================================================
 task.spawn(function()
     local EggFolder = Workspace:FindFirstChild("Eggs")
     local EggNames = {}
 
     if EggFolder then
-        for _, egg in pairs(EggFolder:GetChildren()) do
+        for _, egg in ipairs(EggFolder:GetChildren()) do
             if egg:IsA("Model") or egg:IsA("Folder") then
                 table.insert(EggNames, egg.Name)
             end
         end
     end
 
-    -- [EDITED] Changed icon to rbxassetid
-    local HatchTab = MainWindow:AddTab("Auto Hatch", "rbxassetid://1351877496")
+    local HatchTab = MainWindow:AddTab("Auto Hatch", icons.Egg)
 
     HatchTab:CreateDropdown({
         Name = "เลือกไข่ที่ต้องการเปิด",
@@ -88,7 +92,7 @@ task.spawn(function()
 
     HatchTab:CreateDropdown({
         Name = "จำนวนการเปิดไข่",
-        Options = {"1", "3", "9"},
+        Options = {"1","3","9"},
         Default = tostring(Config.HatchAmount),
         Callback = function(selected)
             Config.HatchAmount = tonumber(selected)
@@ -101,144 +105,167 @@ task.spawn(function()
         Default = false,
         Callback = function(state)
             State.HatchRunning = state
-            if state then
-                logmsg("🚀 เริ่มสุ่มไข่: " .. Config.EggName)
-            else
-                logmsg("⏸️ หยุดสุ่มไข่")
-            end
+            if state then logmsg("🚀 เริ่มสุ่มไข่") else logmsg("⏸️ หยุดสุ่มไข่") end
         end
     })
 
-    while true do
-        if State.HatchRunning and frameworkRemote then
-            State.Status = "Hatching Eggs..."
-            local success, err = pcall(function()
-                local args = {"HatchEgg", Config.EggName, Config.HatchAmount}
-                frameworkRemote:FireServer(unpack(args))
+    while task.wait(0.25) do
+        if State.HatchRunning and FrameworkRemote then
+            local ok, err = pcall(function()
+                FrameworkRemote:FireServer("HatchEgg", Config.EggName, Config.HatchAmount)
                 State.EggsHatched += Config.HatchAmount
+                State.Status = "Hatching " .. Config.EggName
             end)
-            if not success then
-                warnmsg("Auto Hatch failed: " .. tostring(err))
-                State.HatchRunning = false
-            end
+            if not ok then warnmsg("❌ Hatch Error: " .. tostring(err)) end
             task.wait(Config.HatchDelay)
-        else
-            task.wait(0.25)
         end
     end
 end)
 
 -- ===============================================================
--- ♻️ AUTO REBIRTH SYSTEM
+-- ♻️ AUTO REBIRTH
 -- ===============================================================
 task.spawn(function()
-    -- [EDITED] Changed icon to rbxassetid
-    local RebirthTab = MainWindow:AddTab("Auto Rebirth", "rbxassetid://1351877495")
+    local RebirthTab = MainWindow:AddTab("Auto Rebirth", icons.Refresh)
 
     RebirthTab:CreateToggle({
         Name = "เปิด Auto Rebirth",
         Default = Config.AutoRebirth,
         Callback = function(state)
             State.RebirthRunning = state
-            logmsg(state and "♻️ เริ่ม Auto Rebirth" or "⏸️ หยุด Auto Rebirth")
+            logmsg(state and "♻️ เริ่ม Rebirth" or "⏸️ หยุด Rebirth")
         end
     })
 
-    while true do
-        if State.RebirthRunning then
-            local success, err = pcall(function()
-                local args = {"Rebirth", 1}
-                frameworkRemote:FireServer(unpack(args))
+    while task.wait(0.25) do
+        if State.RebirthRunning and FrameworkRemote then
+            local ok, err = pcall(function()
+                FrameworkRemote:FireServer("Rebirth", 1)
+                State.Status = "Rebirthing..."
             end)
-            if not success then
-                warnmsg("Rebirth Error: " .. tostring(err))
-                State.RebirthRunning = false
-            end
+            if not ok then warnmsg("❌ Rebirth Error: " .. tostring(err)) end
             task.wait(Config.RebirthDelay)
-        else
-            task.wait(0.25)
         end
     end
 end)
 
 -- ===============================================================
--- 📦 AUTO CHEST SYSTEM (No Teleport)
+-- 📦 AUTO CHEST
 -- ===============================================================
 task.spawn(function()
-    -- [EDITED] Changed icon to rbxassetid
-    local ChestTab = MainWindow:AddTab("Auto Chest", "rbxassetid://1351877503")
+    local ChestTab = MainWindow:AddTab("Auto Chest", icons.Box)
 
     ChestTab:CreateToggle({
         Name = "เปิด Auto Chest",
         Default = false,
         Callback = function(state)
             State.ChestRunning = state
-            logmsg(state and "📦 เริ่มค้นหาและเก็บกล่อง" or "⏸️ หยุดเก็บกล่อง")
+            logmsg(state and "📦 เริ่มเก็บกล่อง" or "⏸️ หยุดเก็บกล่อง")
         end
     })
 
-    local lastCollected = {}
+    local CHEST_LIST = {}
+    for _, n in ipairs(Config.ChestNames) do CHEST_LIST[n:lower()] = true end
+    local last = {}
 
-    local function collectChest(chest)
-        if not chest or not chest.Parent then return end
-        local key = chest:GetDebugId()
-        if lastCollected[key] and tick() - lastCollected[key] < Config.ChestCollectCooldown then
-            return
-        end
-
-        local success = pcall(function()
-            frameworkRemote:FireServer("ClaimChest", chest.Name, true)
+    local function Collect(c)
+        if not c or not c.Parent then return end
+        local key = c:GetDebugId()
+        if last[key] and tick()-last[key] < Config.ChestCollectCooldown then return end
+        local ok = pcall(function()
+            FrameworkRemote:FireServer("ClaimChest", c.Name, true)
         end)
-
-        if success then
+        if ok then
             State.ChestsCollected += 1
-            State.LastChest = chest.Name
-            lastCollected[key] = tick()
-            logmsg("🎁 เก็บกล่อง: " .. chest.Name)
+            State.LastChest = c.Name
+            last[key] = tick()
+            logmsg("🎁 เก็บกล่อง: " .. c.Name)
         end
     end
 
-    while true do
-        if State.ChestRunning then
+    while task.wait(Config.ChestCheckInterval) do
+        if State.ChestRunning and FrameworkRemote then
             State.Status = "Collecting Chests..."
-            local areas = {Workspace:FindFirstChild("Chests"), Workspace:FindFirstChild("Areas"), Workspace}
-            for _, area in ipairs(areas) do
+            for _, area in ipairs({Workspace:FindFirstChild("Chests"), Workspace}) do
                 if area then
                     for _, obj in ipairs(area:GetDescendants()) do
                         if obj:IsA("Model") and CHEST_LIST[obj.Name:lower()] then
-                            collectChest(obj)
-                            task.wait()
+                            Collect(obj)
                         end
                     end
                 end
             end
         end
-        task.wait(Config.ChestCheckInterval)
     end
 end)
 
 -- ===============================================================
--- 📊 STATUS TAB
+-- 🎁 AUTO REWARDS (แยก Toggle)
 -- ===============================================================
 task.spawn(function()
-    -- [EDITED] Changed icon to rbxassetid and corrected typo from 'Add-Tab' to 'AddTab'
-    local InfoTab = MainWindow:AddTab("Status", "rbxassetid://1351877500")
+    local RewardsTab = MainWindow:AddTab("Auto Rewards", icons.Gift)
 
-    InfoTab:CreateLabel(function()
-        return "📌 สถานะ: " .. State.Status
-    end)
+    RewardsTab:CreateToggle({
+        Name = "Auto Gift",
+        Default = false,
+        Callback = function(state) State.RewardGift = state end
+    })
+    RewardsTab:CreateToggle({
+        Name = "Auto Daily",
+        Default = false,
+        Callback = function(state) State.RewardDaily = state end
+    })
+    RewardsTab:CreateToggle({
+        Name = "Auto Spin",
+        Default = false,
+        Callback = function(state) State.RewardSpin = state end
+    })
+    RewardsTab:CreateToggle({
+        Name = "Auto Rank",
+        Default = false,
+        Callback = function(state) State.RewardRank = state end
+    })
 
-    InfoTab:CreateLabel(function()
-        return "🥚 Eggs Hatched: " .. tostring(State.EggsHatched)
-    end)
+    while task.wait(10) do
+        if FrameworkRemote then
+            if State.RewardGift then
+                pcall(function() FrameworkRemote:FireServer("ClaimReward", "GiftReward") end)
+                logmsg("🎁 AutoClaim: GiftReward")
+            end
+            if State.RewardDaily then
+                pcall(function() FrameworkRemote:FireServer("ClaimReward", "DailyReward") end)
+                logmsg("📅 AutoClaim: DailyReward")
+            end
+            if State.RewardSpin then
+                pcall(function() FrameworkRemote:FireServer("ClaimReward", "SpinReward") end)
+                logmsg("🎲 AutoClaim: SpinReward")
+            end
+            if State.RewardRank then
+                pcall(function() FrameworkRemote:FireServer("ClaimReward", "RankReward") end)
+                logmsg("🏆 AutoClaim: RankReward")
+            end
+        end
+    end
+end)
 
-    InfoTab:CreateLabel(function()
-        return "📦 Chests Collected: " .. tostring(State.ChestsCollected)
-    end)
+-- ===============================================================
+-- 📊 STATUS
+-- ===============================================================
+task.spawn(function()
+    local InfoTab = MainWindow:AddTab("Status", icons.Info)
 
+    InfoTab:CreateLabel(function() return "📌 สถานะ: " .. State.Status end)
+    InfoTab:CreateLabel(function() return "🥚 Eggs: " .. State.EggsHatched end)
+    InfoTab:CreateLabel(function() return "📦 Chests: " .. State.ChestsCollected end)
+    InfoTab:CreateLabel(function() return "🎁 Last Chest: " .. State.LastChest end)
     InfoTab:CreateLabel(function()
-        return "🎁 Last Chest: " .. tostring(State.LastChest)
+        return string.format("🎁 Rewards: Gift(%s) Daily(%s) Spin(%s) Rank(%s)",
+            State.RewardGift and "ON" or "OFF",
+            State.RewardDaily and "ON" or "OFF",
+            State.RewardSpin and "ON" or "OFF",
+            State.RewardRank and "ON" or "OFF"
+        )
     end)
 end)
 
-logmsg("✅ NiTROHUB PRO - Final Edition Loaded Successfully!")
+logmsg("✅ Loaded NiTROHUB PRO - Final Edition (Icons + Rewards Toggles)")
