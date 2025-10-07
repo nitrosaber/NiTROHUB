@@ -244,6 +244,10 @@ do
 end
 
 -- ✅ BACKGROUND TASKS -------------------------------------------
+-- รอ GUI สร้างเสร็จก่อนเริ่มระบบทำงาน
+repeat task.wait() until pages and pages:FindFirstChild("Hatch") and pages:FindFirstChild("Rebirth") and pages:FindFirstChild("Chest")
+task.wait(1) -- เพิ่มเวลาสำรองอีกนิดเพื่อความชัวร์
+
 task.spawn(function()
     while true do
         if State.HatchRunning then
