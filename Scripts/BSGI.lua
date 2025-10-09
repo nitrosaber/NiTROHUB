@@ -87,7 +87,9 @@ local function BlowBubbleLoop()
 end
 
 local function UnlockRiftChestLoop()
-    RemoteEvent:FireServer("UnlockRiftChest", "royal-chest", "golden-chest", false)
+    RemoteEvent:FireServer("UnlockRiftChest", "Royal Chest", "Super Chest", "Golden Chest", "Ancient Chest",
+        "Dice Chest", "Infinity Chest", "Void Chest", "Giant Chest",
+        "Ticket Chest", "Easy Obby Chest", "Medium Obby Chest", "Hard Obby Chest", false)
     task.wait(1)
 end
 
