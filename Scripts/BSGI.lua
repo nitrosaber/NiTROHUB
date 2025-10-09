@@ -1,9 +1,9 @@
--- 🌌 BGSI HUB - Deluxe Edition (BGS Infinite / Final Fixed)
--- ✅ Permanent Hatch Animation Disable (Fixed for ModuleScript)
--- ✅ Auto Claim All Chests (ClaimChest)
--- ✅ Sirius Rayfield (https://sirius.menu/rayfield)
+-- 🌌 BGSI HUB - Deluxe Edition (Final Fixed v3 for Bubble Gum Simulator Infinite)
+-- ✅ Hatch Animation Disable (ModuleScript Safe)
+-- ✅ Auto Claim All Chests
+-- ✅ Stable Rayfield UI
 
--- // Load Rayfield
+-- // Load Rayfield Library
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 -- // Services
@@ -30,7 +30,7 @@ if RemoteEvent then
 end
 
 if not RemoteEvent then
-    warn("❌ Missing RemoteEvent; core features may not work.")
+    warn("❌ Missing RemoteEvent; some features may not work.")
 end
 
 -- === FLAGS & SETTINGS ===
@@ -48,7 +48,7 @@ local settings = {
 
 local tasks, conns = {}, {}
 
--- === 🔪 Disable Hatch Animation (BGS Infinite Specific) ===
+-- === 🧩 Final Fix: Disable Hatch Animation (Safe for ModuleScript) ===
 local function DisableHatchAnimation()
     local client = ReplicatedStorage:FindFirstChild("Client")
     if not client then return end
@@ -65,18 +65,16 @@ local function DisableHatchAnimation()
     if hatchModule:IsA("ModuleScript") or hatchModule:IsA("LocalScript") then
         pcall(function()
             hatchModule.Name = "HatchEgg_Disabled"
-        end)
-        print("[BGSI] Hatch animation module disabled successfully.")
-    elseif hatchModule:IsA("RemoteEvent") then
-        if typeof(getconnections) == "function" then
-            for _, c in ipairs(getconnections(hatchModule.OnClientEvent)) do
-                pcall(function()
-                    if c.Disable then c:Disable() else c:Disconnect() end
-                end)
+            if hatchModule.Source then
+                hatchModule.Source = "-- Hatch animation disabled by BGSI HUB"
             end
-        end
-        hatchModule.OnClientEvent:Connect(function() end)
-        print("[BGSI] Hatch animation remote blocked.")
+        end)
+        print("[BGSI] Hatch animation module safely disabled.")
+    else
+        pcall(function()
+            hatchModule:Destroy()
+        end)
+        print("[BGSI] Hatch animation object removed.")
     end
 end
 
@@ -86,14 +84,12 @@ local function BlowBubbleLoop()
     task.wait(0.2)
 end
 
--- 🏆 Auto Claim Chest System
 local function AutoClaimChestLoop()
     local chests = {
         "Royal Chest","Super Chest","Golden Chest","Ancient Chest",
         "Dice Chest","Infinity Chest","Void Chest","Giant Chest",
         "Ticket Chest","Easy Obby Chest","Medium Obby Chest","Hard Obby Chest"
     }
-
     for _, chest in ipairs(chests) do
         pcall(function()
             RemoteEvent:FireServer("ClaimChest", chest, true)
@@ -102,7 +98,6 @@ local function AutoClaimChestLoop()
     task.wait(3)
 end
 
--- 🥚 Auto Hatch Egg Loop
 local function AutoHatchEggLoop()
     pcall(function()
         RemoteEvent:FireServer("HatchEgg", settings.EggName, settings.HatchAmount)
@@ -128,7 +123,7 @@ local function startLoop(name, fn, delay)
     end)
 end
 
--- === UI Window ===
+-- === UI ===
 local Window = Rayfield:CreateWindow({
     Name = "🌌 BGSI HUB - Deluxe Edition",
     LoadingTitle = "Loading NiTroHub...",
@@ -144,7 +139,7 @@ local Window = Rayfield:CreateWindow({
 
 Rayfield:Notify({
     Title = "✅ BGSI HUB Ready",
-    Content = "Hatch Animation Disabled | Auto Systems Ready",
+    Content = "Hatch Animation Disabled | Systems Loaded",
     Duration = 4
 })
 
@@ -177,9 +172,7 @@ Controls:CreateToggle({
     Callback = function(v)
         flags.AutoHatchEgg = v
         if v then
-            if flags.DisableAnimation then
-                DisableHatchAnimation()
-            end
+            if flags.DisableAnimation then DisableHatchAnimation() end
             startLoop("AutoHatchEgg", AutoHatchEggLoop, 0.15)
         else
             stopLoop("AutoHatchEgg")
@@ -196,13 +189,13 @@ Controls:CreateToggle({
             DisableHatchAnimation()
             Rayfield:Notify({
                 Title = "🎬 Hatch Animation Disabled",
-                Content = "HatchEgg script/module renamed & blocked.",
+                Content = "ModuleScript HatchEgg disabled safely.",
                 Duration = 3
             })
         else
             Rayfield:Notify({
-                Title = "⚙️ Animation Restored",
-                Content = "Rejoin the game to reload animations.",
+                Title = "⚙️ Rejoin Required",
+                Content = "Rejoin the game to restore animations.",
                 Duration = 3
             })
         end
@@ -259,6 +252,7 @@ Safety:CreateButton({
                 TeleportService:Teleport(game.PlaceId)
             end
         end)
+        Rayfield:Notify({Title="🌐 Auto Reconnect",Content="Enabled",Duration=3})
     end
 })
 
