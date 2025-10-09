@@ -105,7 +105,7 @@ end
 -- === Core Loops ===
 local function BlowBubbleLoop()
     pcall(function() RemoteEvent:FireServer("BlowBubble") end)
-    task.wait(smartDelay(0.2))
+    task.wait(smartDelay(0.1))
 end
 
 local function UnlockRiftChestLoop()
