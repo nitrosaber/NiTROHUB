@@ -1,8 +1,7 @@
--- 🌌 BGSI HUB Deluxe Edition
--- 🔧 Sirius Rayfield Stable | Last Updated: 2025
--- ⚙️ All-in-One Automation, Cosmetic & Safety System
+-- 🌌 BGSI HUB - Deluxe Edition
+-- ⚙️ Sirius Rayfield Stable | Optimized & Cosmetic Fixed Edition
 
--- // Load Library
+-- // Load Sirius Rayfield Library
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 -- // Services
@@ -13,7 +12,7 @@ local TeleportService = game:GetService("TeleportService")
 local Stats = game:GetService("Stats")
 local LocalPlayer = Players.LocalPlayer
 
--- Safe Wait
+-- === Safe Wait ===
 local function safeWait(parent, childName, timeout)
 	local obj = parent:WaitForChild(childName, timeout or 10)
 	if not obj then warn("Missing:", childName) end
@@ -45,7 +44,7 @@ local flags = {
 	UnlockRiftChest = false,
 	AutoHatchEgg = false,
 	DisableAnimation = true,
-	AutoCollect = false,
+	AutoCollect = false
 }
 
 local settings = {
@@ -53,7 +52,9 @@ local settings = {
 	HatchAmount = 6
 }
 
+-- === LOOP HANDLER ===
 local tasks = {}
+
 local function stopLoop(name)
 	flags[name] = false
 	if tasks[name] then
@@ -74,7 +75,7 @@ local function startLoop(name, func, delay)
 	end)
 end
 
--- === SMART WAIT ===
+-- === SMART DELAY (Ping Adaptive) ===
 local function smartDelay(base)
 	local ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
 	return base + (ping / 1000)
@@ -119,8 +120,8 @@ end
 -- === WINDOW ===
 local Window = Rayfield:CreateWindow({
 	Name = "🌌 BGSI HUB - Deluxe Edition",
-	LoadingTitle = "Initializing NiTroHub Deluxe...",
-	LoadingSubtitle = "⚙️ Sirius Rayfield Stable Build",
+	LoadingTitle = "Loading NiTroHub Deluxe...",
+	LoadingSubtitle = "Fully Fixed for Sirius Rayfield",
 	ConfigurationSaving = {
 		Enabled = true,
 		FolderName = "NiTroHub",
@@ -130,10 +131,9 @@ local Window = Rayfield:CreateWindow({
 	}
 })
 
--- === NOTIFY ===
 Rayfield:Notify({
-	Title = "✅ BGSI HUB Loaded",
-	Content = "Welcome to Deluxe Edition",
+	Title = "✅ BGSI HUB Ready",
+	Content = "Welcome to Deluxe Edition!",
 	Duration = 5
 })
 
@@ -183,10 +183,18 @@ Controls:CreateToggle({
 		flags.DisableAnimation = v
 		if v then
 			pcall(function() hatcheggRemote:FireServer(false, false) end)
-			Rayfield:Notify({Title = "🎬 Animation Disabled", Content = "Cutscene fully disabled.", Duration = 4})
+			Rayfield:Notify({
+				Title = "🎬 Animation Disabled",
+				Content = "Cutscene fully disabled.",
+				Duration = 4
+			})
 		else
 			pcall(function() hatcheggRemote:FireServer(true, true) end)
-			Rayfield:Notify({Title = "🎬 Animation Enabled", Content = "Cutscene enabled again.", Duration = 4})
+			Rayfield:Notify({
+				Title = "🎬 Animation Enabled",
+				Content = "Cutscene enabled again.",
+				Duration = 4
+			})
 		end
 	end
 })
@@ -220,32 +228,61 @@ Controls:CreateInput({
 	end
 })
 
--- === COSMETIC TAB ===
+-- === COSMETIC TAB (Fixed for Sirius Rayfield) ===
 local Cosmetic = Window:CreateTab("🎨 Cosmetic")
 
-Cosmetic:CreateButton({
-	Name = "🌈 Enable Gradient Accent",
-	Callback = function()
-		task.spawn(function()
-			local hue = 0
-			while true do
-				hue = (hue + 0.003) % 1
-				Rayfield:SetUIColor(Color3.fromHSV(hue, 0.8, 1))
-				task.wait(0.05)
-			end
-		end)
-		Rayfield:Notify({Title = "🌈 Gradient Accent", Content = "Activated animated color accent!", Duration = 4})
+Cosmetic:CreateColorPicker({
+	Name = "🎨 Change UI Accent Color",
+	Color = Color3.fromRGB(255, 120, 120),
+	Callback = function(color)
+		Rayfield:SetThemeColor(color)
+		Rayfield:Notify({
+			Title = "🎨 Accent Updated",
+			Content = "Changed accent color successfully!",
+			Duration = 3
+		})
 	end
 })
 
 Cosmetic:CreateButton({
-	Name = "🎵 Play Click Sound",
+	Name = "🌈 Enable Animated Gradient Accent",
+	Callback = function()
+		Rayfield:Notify({
+			Title = "🌈 Gradient Accent Active",
+			Content = "Animated UI color is now running!",
+			Duration = 4
+		})
+		task.spawn(function()
+			local hue = 0
+			while true do
+				hue = (hue + 0.002) % 1
+				Rayfield:SetThemeColor(Color3.fromHSV(hue, 0.8, 1))
+				task.wait(0.05)
+			end
+		end)
+	end
+})
+
+Cosmetic:CreateButton({
+	Name = "🎵 Play UI Click Sound",
 	Callback = function()
 		local sound = Instance.new("Sound", workspace)
 		sound.SoundId = "rbxassetid://9118823106"
 		sound.Volume = 1
 		sound:Play()
 		game.Debris:AddItem(sound, 3)
+	end
+})
+
+Cosmetic:CreateButton({
+	Name = "💾 Save Theme Settings",
+	Callback = function()
+		Rayfield:SaveConfiguration()
+		Rayfield:Notify({
+			Title = "✅ Theme Saved",
+			Content = "Your cosmetic settings have been saved.",
+			Duration = 3
+		})
 	end
 })
 
@@ -262,6 +299,11 @@ Safety:CreateToggle({
 				task.wait(1)
 				VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 			end)
+			Rayfield:Notify({
+				Title = "💤 Anti-AFK",
+				Content = "You will no longer be kicked for inactivity.",
+				Duration = 3
+			})
 		end
 	end
 })
@@ -288,7 +330,11 @@ Safety:CreateButton({
 				end
 			end
 		end)
-		Rayfield:Notify({Title = "🛡️ Anti-Admin", Content = "Monitoring new joins for staff.", Duration = 4})
+		Rayfield:Notify({
+			Title = "🛡️ Anti-Admin Enabled",
+			Content = "Monitoring for staff users.",
+			Duration = 4
+		})
 	end
 })
 
@@ -301,7 +347,11 @@ Safety:CreateButton({
 				TeleportService:Teleport(game.PlaceId)
 			end
 		end)
-		Rayfield:Notify({Title = "🌐 Auto Reconnect", Content = "Enabled auto reconnect.", Duration = 4})
+		Rayfield:Notify({
+			Title = "🌐 Auto Reconnect Enabled",
+			Content = "Will rejoin automatically if disconnected.",
+			Duration = 4
+		})
 	end
 })
 
