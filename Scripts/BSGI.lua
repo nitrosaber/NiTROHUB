@@ -21,6 +21,12 @@ local function safeWait(parent, childName, timeout)
 end
 
 -- === REMOTES ===
+local RemoteEvent = safeWait(ReplicatedStorage, "Client")
+if RemoteEvent then
+    RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "Effects")
+    RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "HatchEgg")
+end
+
 local RemoteEvent = safeWait(ReplicatedStorage, "Shared")
 if RemoteEvent then
     RemoteEvent = safeWait(RemoteEvent, "Framework")
