@@ -72,7 +72,7 @@ local function BlowBubbleLoop()
     pcall(function()
         RemoteEvent:FireServer("BlowBubble")
     end)
-    task.wait(0.6)
+    task.wait(0.01)
 end
 
 local function UnlockRiftChestLoop()
@@ -91,7 +91,7 @@ local function AutoHatchEggLoop()
     pcall(function()
         RemoteEvent:FireServer("HatchEgg", settings.EggName, settings.HatchAmount)
     end)
-    task.wait(0.15)
+    task.wait(0.05)
 end
 
 -- === WINDOW ===
@@ -229,19 +229,6 @@ Cosmetic:CreateDropdown({
             Title = "🎨 Theme Changed",
             Content = "Switched to " .. theme .. " theme successfully!",
             Duration = 4
-        })
-    end
-})
-
-Cosmetic:CreateButton({
-    Name = "✨ Randomize Theme Accent",
-    Callback = function()
-        local color = Color3.fromHSV(math.random(), 1, 1)
-        Rayfield:SetUIColor(color)
-        Rayfield:Notify({
-            Title = "🌈 Accent Changed",
-            Content = "New accent color applied!",
-            Duration = 3
         })
     end
 })
