@@ -1,5 +1,5 @@
 -- 🌌 BGSI HUB - Deluxe Edition (BGS Infinite Version)
--- ✅ Permanent Hatch Animation Disable
+-- ✅ Permanent Hatch Animation Block
 -- ✅ Auto Claim All Chests (ClaimChest)
 -- ✅ Sirius Rayfield (https://sirius.menu/rayfield)
 
@@ -29,7 +29,7 @@ if RemoteEvent then
     RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "RemoteEvent")
 end
 
--- HatchEgg RemoteEvent (เฉพาะเกม BGS Infinite)
+-- HatchEgg RemoteEvent (ของ BGS Infinite)
 local HatchEggRemote = safeWait(ReplicatedStorage, "Client")
 if HatchEggRemote then
     HatchEggRemote = safeWait(HatchEggRemote, "Effects")
@@ -55,44 +55,50 @@ local settings = {
 
 local tasks, conns = {}, {}
 
--- === 🔪 Kill Hatch Animation (เฉพาะ HatchEgg) ===
-local function KillHatchAnimation()
-    if typeof(getconnections) ~= "function" then return end
-    for _, c in ipairs(getconnections(HatchEggRemote.OnClientEvent)) do
-        pcall(function()
-            if c.Disable then c:Disable() else c:Disconnect() end
-        end)
+-- === 🧱 BLOCK HatchEggRemote ===
+local function BlockHatchEggRemote()
+    if not HatchEggRemote then return end
+
+    -- ตัดการเชื่อมต่อทั้งหมดจาก OnClientEvent
+    if typeof(getconnections) == "function" then
+        for _, conn in ipairs(getconnections(HatchEggRemote.OnClientEvent)) do
+            pcall(function()
+                if conn.Disable then conn:Disable() else conn:Disconnect() end
+            end)
+        end
     end
+
+    -- ดูด event ทิ้ง (prevent animation / remote firing)
     HatchEggRemote.OnClientEvent:Connect(function() end)
 end
 
-local function WatchHatchEvent()
+local function StartHatchBlockWatcher()
     local effects = ReplicatedStorage:FindFirstChild("Client") and ReplicatedStorage.Client:FindFirstChild("Effects")
     if not effects then return end
 
-    if conns.HatchWatch then conns.HatchWatch:Disconnect() end
-    conns.HatchWatch = effects.DescendantAdded:Connect(function(obj)
-        if obj.Name == "HatchEgg" and obj:IsA("RemoteEvent") then
-            KillHatchAnimation()
+    if conns.HatchWatcher then conns.HatchWatcher:Disconnect() end
+    conns.HatchWatcher = effects.DescendantAdded:Connect(function(obj)
+        if obj:IsA("RemoteEvent") and (obj.Name == "HatchEgg" or obj.Name == "HatchEggs") then
+            BlockHatchEggRemote()
         end
     end)
 end
 
 local function SetHatchAnimationDisabled(disabled)
     if disabled then
-        KillHatchAnimation()
-        WatchHatchEvent()
-        if not tasks.__NoCutsceneWatch then
-            tasks.__NoCutsceneWatch = task.spawn(function()
+        BlockHatchEggRemote()
+        StartHatchBlockWatcher()
+        if not tasks.__HatchBlockLoop then
+            tasks.__HatchBlockLoop = task.spawn(function()
                 while flags.DisableAnimation do
-                    KillHatchAnimation()
+                    BlockHatchEggRemote()
                     task.wait(1)
                 end
-                tasks.__NoCutsceneWatch = nil
+                tasks.__HatchBlockLoop = nil
             end)
         end
     else
-        if conns.HatchWatch then conns.HatchWatch:Disconnect(); conns.HatchWatch=nil end
+        if conns.HatchWatcher then conns.HatchWatcher:Disconnect() conns.HatchWatcher=nil end
     end
 end
 
@@ -102,7 +108,6 @@ local function BlowBubbleLoop()
     task.wait(0.2)
 end
 
--- 🏆 New Auto Claim Chest System
 local function AutoClaimChestLoop()
     local chests = {
         "Royal Chest","Super Chest","Golden Chest","Ancient Chest",
@@ -118,7 +123,6 @@ local function AutoClaimChestLoop()
     task.wait(3)
 end
 
--- 🥚 Auto Hatch Egg Loop
 local function AutoHatchEggLoop()
     pcall(function()
         RemoteEvent:FireServer("HatchEgg", settings.EggName, settings.HatchAmount)
@@ -160,7 +164,7 @@ local Window = Rayfield:CreateWindow({
 
 Rayfield:Notify({
     Title = "✅ BGSI HUB Ready",
-    Content = "Hatch Animation Permanently Disabled!",
+    Content = "HatchEggRemote permanently blocked.",
     Duration = 4
 })
 
@@ -203,14 +207,14 @@ Controls:CreateToggle({
 })
 
 Controls:CreateToggle({
-    Name = "Disable Hatch Animation (Permanent)",
+    Name = "Block Hatch Animation (Permanent)",
     CurrentValue = flags.DisableAnimation,
     Callback = function(v)
         flags.DisableAnimation = v
         SetHatchAnimationDisabled(v)
         Rayfield:Notify({
-            Title = v and "🎬 Disabled" or "🎬 Enabled",
-            Content = v and "Cutscene fully blocked." or "Rejoin may be required.",
+            Title = v and "🎬 Hatch Blocked" or "🎬 Hatch Enabled",
+            Content = v and "HatchEggRemote is now blocked." or "You may need to rejoin.",
             Duration = 3
         })
     end
