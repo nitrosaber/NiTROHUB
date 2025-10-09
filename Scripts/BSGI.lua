@@ -1,5 +1,6 @@
 -- 🌌 BGSI HUB - Deluxe Edition (BGS Infinite Version)
--- ✅ Fixed Permanent Hatch Animation Disable
+-- ✅ Permanent Hatch Animation Disable
+-- ✅ Auto Claim All Chests (ClaimChest)
 -- ✅ Sirius Rayfield (https://sirius.menu/rayfield)
 
 -- // Load Rayfield
@@ -10,7 +11,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 local TeleportService = game:GetService("TeleportService")
-local Stats = game:GetService("Stats")
 local LocalPlayer = Players.LocalPlayer
 
 -- === Safe Wait ===
@@ -29,7 +29,7 @@ if RemoteEvent then
     RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "RemoteEvent")
 end
 
--- HatchEgg RemoteEvent (จาก BGS Infinite)
+-- HatchEgg RemoteEvent (เฉพาะเกม BGS Infinite)
 local HatchEggRemote = safeWait(ReplicatedStorage, "Client")
 if HatchEggRemote then
     HatchEggRemote = safeWait(HatchEggRemote, "Effects")
@@ -43,7 +43,7 @@ end
 -- === FLAGS & SETTINGS ===
 local flags = {
     BlowBubble = false,
-    UnlockRiftChest = false,
+    AutoClaimChest = false,
     AutoHatchEgg = false,
     DisableAnimation = true
 }
@@ -54,12 +54,6 @@ local settings = {
 }
 
 local tasks, conns = {}, {}
-
--- === Smart Delay ===
-local function smartDelay(base)
-    local ping = Stats.Network.ServerStatsItem["Data Ping"] and Stats.Network.ServerStatsItem["Data Ping"]:GetValue() or 0
-    return base + (ping / 1000)
-end
 
 -- === 🔪 Kill Hatch Animation (เฉพาะ HatchEgg) ===
 local function KillHatchAnimation()
@@ -105,24 +99,31 @@ end
 -- === Core Loops ===
 local function BlowBubbleLoop()
     pcall(function() RemoteEvent:FireServer("BlowBubble") end)
-    task.wait(smartDelay(0.1))
+    task.wait(0.2)
 end
 
-local function UnlockRiftChestLoop()
-    pcall(function()
-        RemoteEvent:FireServer("UnlockRiftChest",
-            "Royal Chest","Super Chest","Golden Chest","Ancient Chest",
-            "Dice Chest","Infinity Chest","Void Chest","Giant Chest",
-            "Ticket Chest","Easy Obby Chest","Medium Obby Chest","Hard Obby Chest",false)
-    end)
-    task.wait(1)
+-- 🏆 New Auto Claim Chest System
+local function AutoClaimChestLoop()
+    local chests = {
+        "Royal Chest","Super Chest","Golden Chest","Ancient Chest",
+        "Dice Chest","Infinity Chest","Void Chest","Giant Chest",
+        "Ticket Chest","Easy Obby Chest","Medium Obby Chest","Hard Obby Chest"
+    }
+
+    for _, chest in ipairs(chests) do
+        pcall(function()
+            RemoteEvent:FireServer("ClaimChest", chest, true)
+        end)
+    end
+    task.wait(3)
 end
 
+-- 🥚 Auto Hatch Egg Loop
 local function AutoHatchEggLoop()
     pcall(function()
         RemoteEvent:FireServer("HatchEgg", settings.EggName, settings.HatchAmount)
     end)
-    task.wait(smartDelay(0.1))
+    task.wait(0.1)
 end
 
 -- === Loop Manager ===
@@ -159,7 +160,7 @@ local Window = Rayfield:CreateWindow({
 
 Rayfield:Notify({
     Title = "✅ BGSI HUB Ready",
-    Content = "Permanent Hatch Animation Disabled!",
+    Content = "Hatch Animation Permanently Disabled!",
     Duration = 4
 })
 
@@ -176,11 +177,12 @@ Controls:CreateToggle({
 })
 
 Controls:CreateToggle({
-    Name = "Unlock AutoChest",
+    Name = "Auto Claim All Chests",
     CurrentValue = false,
     Callback = function(v)
-        flags.UnlockRiftChest = v
-        if v then startLoop("UnlockRiftChest", UnlockRiftChestLoop, 1) else stopLoop("UnlockRiftChest") end
+        flags.AutoClaimChest = v
+        if v then startLoop("AutoClaimChest", AutoClaimChestLoop, 3)
+        else stopLoop("AutoClaimChest") end
     end
 })
 
@@ -208,7 +210,7 @@ Controls:CreateToggle({
         SetHatchAnimationDisabled(v)
         Rayfield:Notify({
             Title = v and "🎬 Disabled" or "🎬 Enabled",
-            Content = v and "Cutscene fully blocked." or "You may need to rejoin.",
+            Content = v and "Cutscene fully blocked." or "Rejoin may be required.",
             Duration = 3
         })
     end
@@ -292,9 +294,9 @@ Safety:CreateButton({
 })
 
 -- === Settings Tab ===
-local Settings = Window:CreateTab("⚙️ Settings")
+local SettingsTab = Window:CreateTab("⚙️ Settings")
 
-Settings:CreateButton({
+SettingsTab:CreateButton({
     Name = "Destroy UI",
     Callback = function()
         for k in pairs(flags) do stopLoop(k) end
