@@ -1,6 +1,6 @@
--- 🌌 BGSI HUB - Deluxe Edition (No Cosmetic, No Auto Collect)
+-- 🌌 BGSI HUB - Deluxe Edition (BGS Infinite Version)
+-- ✅ Fixed Permanent Hatch Animation Disable
 -- ✅ Sirius Rayfield (https://sirius.menu/rayfield)
--- ⚙️ Stable automation build with permanent Hatch Animation disable
 
 -- // Load Rayfield
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -29,14 +29,15 @@ if RemoteEvent then
     RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "RemoteEvent")
 end
 
-local hatcheggRemote = safeWait(ReplicatedStorage, "Client")
-if hatcheggRemote then
-    hatcheggRemote = safeWait(hatcheggRemote, "Effects")
-    hatcheggRemote = hatcheggRemote and safeWait(hatcheggRemote, "HatchEgg")
+-- HatchEgg RemoteEvent (จาก BGS Infinite)
+local HatchEggRemote = safeWait(ReplicatedStorage, "Client")
+if HatchEggRemote then
+    HatchEggRemote = safeWait(HatchEggRemote, "Effects")
+    HatchEggRemote = HatchEggRemote and safeWait(HatchEggRemote, "HatchEgg")
 end
 
-if not (RemoteEvent and hatcheggRemote) then
-    warn("❌ Missing Remote objects. Some features may not work.")
+if not (RemoteEvent and HatchEggRemote) then
+    warn("❌ Missing required remotes. Some features may not work.")
 end
 
 -- === FLAGS & SETTINGS ===
@@ -52,8 +53,7 @@ local settings = {
     HatchAmount = 6
 }
 
-local tasks = {}
-local conns = {}
+local tasks, conns = {}, {}
 
 -- === Smart Delay ===
 local function smartDelay(base)
@@ -61,52 +61,51 @@ local function smartDelay(base)
     return base + (ping / 1000)
 end
 
--- === Hatch Cutscene Killer ===
-local function KillHatchCutsceneOnce()
-    local client = ReplicatedStorage:FindFirstChild("Client")
-    if not client then return end
-    local effects = client:FindFirstChild("Effects")
+-- === 🔪 Kill Hatch Animation (เฉพาะ HatchEgg) ===
+local function KillHatchAnimation()
+    if typeof(getconnections) ~= "function" then return end
+    for _, c in ipairs(getconnections(HatchEggRemote.OnClientEvent)) do
+        pcall(function()
+            if c.Disable then c:Disable() else c:Disconnect() end
+        end)
+    end
+    HatchEggRemote.OnClientEvent:Connect(function() end)
+end
+
+local function WatchHatchEvent()
+    local effects = ReplicatedStorage:FindFirstChild("Client") and ReplicatedStorage.Client:FindFirstChild("Effects")
     if not effects then return end
 
-    local targets = {}
-    for _, name in ipairs({"HatchEgg","HatchEggs","HatchReveal","OpenEgg","OpenEggs"}) do
-        local ev = effects:FindFirstChild(name)
-        if ev and ev:IsA("RemoteEvent") then
-            table.insert(targets, ev)
+    if conns.HatchWatch then conns.HatchWatch:Disconnect() end
+    conns.HatchWatch = effects.DescendantAdded:Connect(function(obj)
+        if obj.Name == "HatchEgg" and obj:IsA("RemoteEvent") then
+            KillHatchAnimation()
         end
-    end
-
-    for _, ev in ipairs(targets) do
-        if typeof(getconnections) == "function" then
-            for _, cn in ipairs(getconnections(ev.OnClientEvent)) do
-                pcall(function()
-                    if cn.Disable then cn:Disable() else cn:Disconnect() end
-                end)
-            end
-        end
-        ev.OnClientEvent:Connect(function() end)
-    end
+    end)
 end
 
 local function SetHatchAnimationDisabled(disabled)
     if disabled then
-        KillHatchCutsceneOnce()
+        KillHatchAnimation()
+        WatchHatchEvent()
         if not tasks.__NoCutsceneWatch then
             tasks.__NoCutsceneWatch = task.spawn(function()
                 while flags.DisableAnimation do
-                    KillHatchCutsceneOnce()
-                    task.wait(0.005)
+                    KillHatchAnimation()
+                    task.wait(1)
                 end
                 tasks.__NoCutsceneWatch = nil
             end)
         end
+    else
+        if conns.HatchWatch then conns.HatchWatch:Disconnect(); conns.HatchWatch=nil end
     end
 end
 
 -- === Core Loops ===
 local function BlowBubbleLoop()
     pcall(function() RemoteEvent:FireServer("BlowBubble") end)
-    task.wait(smartDelay(0.1))
+    task.wait(smartDelay(0.2))
 end
 
 local function UnlockRiftChestLoop()
@@ -123,16 +122,13 @@ local function AutoHatchEggLoop()
     pcall(function()
         RemoteEvent:FireServer("HatchEgg", settings.EggName, settings.HatchAmount)
     end)
-    task.wait(smartDelay(0.05))
+    task.wait(smartDelay(0.1))
 end
 
 -- === Loop Manager ===
 local function stopLoop(name)
     flags[name] = false
-    if tasks[name] then
-        task.cancel(tasks[name])
-        tasks[name] = nil
-    end
+    if tasks[name] then task.cancel(tasks[name]); tasks[name] = nil end
 end
 
 local function startLoop(name, fn, delay)
@@ -150,8 +146,8 @@ end
 -- === UI Window ===
 local Window = Rayfield:CreateWindow({
     Name = "🌌 BGSI HUB - Deluxe Edition",
-    LoadingTitle = "Initializing NiTroHub...",
-    LoadingSubtitle = "By NiTroHub)",
+    LoadingTitle = "Loading NiTroHub...",
+    LoadingSubtitle = "BGS Infinite Edition",
     ConfigurationSaving = {
         Enabled = true,
         FolderName = "NiTroHub",
@@ -163,11 +159,11 @@ local Window = Rayfield:CreateWindow({
 
 Rayfield:Notify({
     Title = "✅ BGSI HUB Ready",
-    Content = "By NiTroHub...",
+    Content = "Permanent Hatch Animation Disabled!",
     Duration = 4
 })
 
--- === Controls ===
+-- === Controls Tab ===
 local Controls = Window:CreateTab("⚙️ Controls")
 
 Controls:CreateToggle({
@@ -212,7 +208,7 @@ Controls:CreateToggle({
         SetHatchAnimationDisabled(v)
         Rayfield:Notify({
             Title = v and "🎬 Disabled" or "🎬 Enabled",
-            Content = v and "Cutscene permanently disabled client-side." or "May require rejoin to restore.",
+            Content = v and "Cutscene fully blocked." or "You may need to rejoin.",
             Duration = 3
         })
     end
@@ -236,7 +232,7 @@ Controls:CreateInput({
         if n and (n==1 or n==3 or n==6 or n==8 or n==9 or n==10 or n==11 or n==12) then
             settings.HatchAmount = n
         else
-            warn("⚠️ Invalid hatch amount. Use 1,3,6,8,9,10,11,12 only.")
+            warn("⚠️ Invalid hatch amount.")
         end
     end
 })
@@ -248,16 +244,13 @@ Safety:CreateToggle({
     Name = "Anti-AFK",
     CurrentValue = true,
     Callback = function(v)
-        if conns.AFK then conns.AFK:Disconnect() conns.AFK=nil end
+        if conns.AFK then conns.AFK:Disconnect(); conns.AFK=nil end
         if v then
             conns.AFK = LocalPlayer.Idled:Connect(function()
                 VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
                 task.wait(1)
                 VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
             end)
-            Rayfield:Notify({Title="💤 Anti-AFK", Content="Enabled.", Duration=3})
-        else
-            Rayfield:Notify({Title="💤 Anti-AFK", Content="Disabled.", Duration=3})
         end
     end
 })
@@ -271,14 +264,13 @@ Safety:CreateButton({
                 TeleportService:Teleport(game.PlaceId)
             end
         end)
-        Rayfield:Notify({Title="🌐 Auto Reconnect", Content="Enabled.", Duration=3})
     end
 })
 
 Safety:CreateButton({
     Name = "🕵️ Anti-Admin Detector",
     Callback = function()
-        local keywords = {"admin", "mod", "dev", "staff"}
+        local keywords = {"admin","mod","dev","staff"}
         Players.PlayerAdded:Connect(function(p)
             for _, word in ipairs(keywords) do
                 if string.find(p.Name:lower(), word) then
@@ -288,7 +280,6 @@ Safety:CreateButton({
                 end
             end
         end)
-        Rayfield:Notify({Title="🛡️ Anti-Admin", Content="Enabled.", Duration=3})
     end
 })
 
