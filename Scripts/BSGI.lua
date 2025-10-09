@@ -1,133 +1,135 @@
 -- Load Rayfield Library
-local success, Rayfield = pcall(function()
-    return loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local success, RayfieldLib = pcall(function()
+    return loadstring(game:HttpGet("https://sirius.menu/rayfield", true))()
 end)
 
-if not success or not Rayfield then
-    warn("Failed to load Rayfield Library. Please check the URL or your internet connection.")
+if not success or not RayfieldLib then
+    warn("❌ Failed to load Rayfield Library.")
     return
 end
-print("Rayfield Library loaded successfully.")
 
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Shared = ReplicatedStorage:WaitForChild("Shared", 10)
-local Framework = Shared and Shared:WaitForChild("Framework", 10)
-local Network = Framework and Framework:WaitForChild("Network", 10)
-local Remote = Network and Network:WaitForChild("Remote", 10)
 
--- Validate remote objects
-local RemoteEvent = Remote and Remote:FindFirstChild("Event")
-local RemoteFunction = Remote and Remote:FindFirstChild("Function")
+-- Safe Wait Function
+local function safeWait(parent, childName, timeout)
+    local obj = parent:WaitForChild(childName, timeout or 10)
+    if not obj then
+        warn("Missing object:", childName)
+    end
+    return obj
+end
 
--- Exit if critical services are missing
-if not (Shared and Framework and Network and Remote and RemoteEvent and RemoteFunction) then
-    warn("Failed to initialize: Critical services or remotes not found.")
+-- === REMOTES ===
+-- hatcheggRemote = ปิด/เปิดอนิเมชันตอนสุ่มไข่
+local hatcheggRemote = safeWait(ReplicatedStorage, "Client")
+if hatcheggRemote then
+    hatcheggRemote = safeWait(hatcheggRemote, "Effects")
+    hatcheggRemote = hatcheggRemote and safeWait(hatcheggRemote, "HatchEgg")
+end
+
+-- frameworkRemote = ใช้สุ่มไข่จริง
+local frameworkRemote = safeWait(ReplicatedStorage, "Shared")
+if frameworkRemote then
+    frameworkRemote = safeWait(frameworkRemote, "Framework")
+    frameworkRemote = frameworkRemote and safeWait(frameworkRemote, "Network")
+    frameworkRemote = frameworkRemote and safeWait(frameworkRemote, "Remote")
+    frameworkRemote = frameworkRemote and safeWait(frameworkRemote, "RemoteEvent")
+end
+
+if not (hatcheggRemote and frameworkRemote) then
+    warn("❌ Missing required Remote objects.")
     return
 end
-print("All critical services successfully loaded.")
 
--- Flags to control loops
-local BlowBubbleEnabled = false
-local UnlockRiftChestEnabled = false
-local MainLoopEnabled = false
-local AutoHatchEggEnabled = false
+-- === FLAGS & SETTINGS ===
+local flags = {
+    BlowBubble = false,
+    UnlockRiftChest = false,
+    MainLoop = false,
+    AutoHatchEgg = false,
+    DisableAnimation = true -- ค่าเริ่มต้น: ปิดอนิเมชัน
+}
 
--- Variables for user selections
-local SelectedEgg = "Common Egg" -- Default selected egg
-local SelectedQuantity = 3 -- Default quantity
+local settings = {
+    EggName = "Infinity Egg",
+    HatchAmount = 6
+}
 
--- Task references for loop cancellation
-local BlowBubbleTask, UnlockRiftChestTask, MainLoopTask, AutoHatchEggTask
+-- === TASKS ===
+local tasks = {}
 
--- Function to safely start tasks
-local function StartTask(ref, taskFunc)
-    if ref then return end
-    return task.spawn(taskFunc)
-end
-
--- Function to safely stop tasks
-local function StopTask(ref)
-    if ref then
-        task.cancel(ref)
-        ref = nil
-    end
-    return ref
-end
-
--- BlowBubble Loop
-local function StartBlowBubbleLoop()
-    BlowBubbleTask = StartTask(BlowBubbleTask, function()
-        while BlowBubbleEnabled do
-            pcall(function()
-                RemoteEvent:FireServer("BlowBubble")
-            end)
-            task.wait(0.6)
-        end
-        BlowBubbleTask = nil
-    end)
-end
-
--- UnlockRiftChest Loop
-local function StartUnlockRiftChestLoop()
-    UnlockRiftChestTask = StartTask(UnlockRiftChestTask, function()
-        while UnlockRiftChestEnabled do
-            pcall(function()
-                RemoteEvent:FireServer("UnlockRiftChest", "royal-chest", "golden-chest", false)
-            end)
-            task.wait(1)
-        end
-        UnlockRiftChestTask = nil
-    end)
-end
-
--- Main Loop
-local function StartMainLoop()
-    MainLoopTask = StartTask(MainLoopTask, function()
-        while MainLoopEnabled do
-            pcall(function()
-                RemoteEvent:FireServer("ClaimFreeWheelSpin")
-            end)
-
-            for i = 1, 9 do
-                if not MainLoopEnabled then break end
-                pcall(function()
-                    RemoteFunction:InvokeServer("ClaimPlaytime", i)
-                end)
-                task.wait(3.5)
+local function startLoop(flagName, loopFunc, delay)
+    if tasks[flagName] then return end
+    tasks[flagName] = task.spawn(function()
+        while flags[flagName] do
+            local ok, err = pcall(loopFunc)
+            if not ok then
+                warn("[Loop Error - " .. flagName .. "]", err)
             end
-
-            pcall(function()
-                RemoteEvent:FireServer("ClaimChest", "Void Chest", "Giant Chest", true)
-            end)
-            task.wait(1.5)
+            task.wait(delay or 0.3)
         end
-        MainLoopTask = nil
+        tasks[flagName] = nil
     end)
 end
 
--- Auto Hatch Egg Loop
-local function StartAutoHatchEggLoop()
-    AutoHatchEggTask = StartTask(AutoHatchEggTask, function()
-        while AutoHatchEggEnabled do
-            pcall(function()
-                -- Use the selected egg and quantity from user input
-                RemoteEvent:FireServer("HatchEgg", SelectedEgg, SelectedQuantity)
-            end)
-            task.wait(0.1) -- Adjust the delay as needed
-        end
-        AutoHatchEggTask = nil
-    end)
+local function stopLoop(flagName)
+    flags[flagName] = false
+    if tasks[flagName] then
+        task.cancel(tasks[flagName])
+        tasks[flagName] = nil
+    end
 end
 
--- Stop Functions
-local function StopBlowBubbleLoop() BlowBubbleTask = StopTask(BlowBubbleTask) end
-local function StopUnlockRiftChestLoop() UnlockRiftChestTask = StopTask(UnlockRiftChestTask) end
-local function StopMainLoop() MainLoopTask = StopTask(MainLoopTask) end
-local function StopAutoHatchEggLoop() AutoHatchEggTask = StopTask(AutoHatchEggTask) end
+-- === LOOPS ===
+local function BlowBubbleLoop()
+    RemoteEvent:FireServer("BlowBubble")
+    task.wait(0.6)
+end
 
--- Create Rayfield UI
-local Window = Rayfield:CreateWindow({
+local function UnlockRiftChestLoop()
+    RemoteEvent:FireServer("UnlockRiftChest", "royal-chest", "golden-chest", false)
+    task.wait(1)
+end
+
+local function MainLoop()
+    frameworkRemote:FireServer("ClaimFreeWheelSpin")
+
+    for i = 1, 9 do
+        if not flags.MainLoop then break end
+        frameworkRemote:FireServer("ClaimPlaytime", i)
+        task.wait(3.5)
+    end
+
+    frameworkRemote:FireServer("ClaimChest", "Void Chest", "Giant Chest", true)
+    task.wait(2)
+end
+
+-- ✅ Auto Hatch Egg + ปิดอนิเมชันแบบแน่นอน
+local function AutoHatchEggLoop()
+    -- ถ้าเลือกให้ปิดอนิเมชัน
+    if flags.DisableAnimation then
+        pcall(function()
+            -- ปิดอนิเมชัน (บางเกมต้องส่ง false, false เพื่อปิดทั้งหมด)
+            hatcheggRemote:FireServer(false, false)
+        end)
+    else
+        -- เปิดอนิเมชันกลับ
+        pcall(function()
+            hatcheggRemote:FireServer(true, true)
+        end)
+    end
+
+    -- สุ่มไข่จริง
+    pcall(function()
+        frameworkRemote:FireServer("HatchEgg", settings.EggName, settings.HatchAmount)
+    end)
+
+    task.wait(0.15)
+end
+
+-- === RAYFIELD UI ===
+local Window = RayfieldLib:CreateWindow({
     Name = "BGSI FARM",
     LoadingTitle = "Loading BGSI Scripts",
     LoadingSubtitle = "by NiTroHub",
@@ -138,116 +140,138 @@ local Window = Rayfield:CreateWindow({
     }
 })
 
-if not Window then
-    warn("Failed to create Rayfield Window")
-    return
-end
-print("Rayfield Window created successfully.")
+RayfieldLib:LoadConfiguration()
 
--- Controls Tab
-local ControlsTab = Window:CreateTab("Controls")
-if not ControlsTab then
-    warn("Failed to create Controls Tab")
-else
-    print("Controls Tab created successfully!")
-end
+local Controls = Window:CreateTab("Controls")
 
--- Toggles
-ControlsTab:CreateToggle({
+Controls:CreateToggle({
     Name = "Blow Bubble",
-    CurrentValue = false,
+    CurrentValue = flags.BlowBubble,
     Flag = "BlowBubbleToggle",
-    Callback = function(Value)
-        BlowBubbleEnabled = Value
-        if Value then StartBlowBubbleLoop() else StopBlowBubbleLoop() end
+    Callback = function(v)
+        flags.BlowBubble = v
+        if v then startLoop("BlowBubble", BlowBubbleLoop, 0.6)
+        else stopLoop("BlowBubble") end
+        RayfieldLib:SaveConfiguration()
     end
 })
 
-ControlsTab:CreateToggle({
+Controls:CreateToggle({
     Name = "Unlock Golden Chest",
-    CurrentValue = false,
+    CurrentValue = flags.UnlockRiftChest,
     Flag = "UnlockRiftChestToggle",
-    Callback = function(Value)
-        UnlockRiftChestEnabled = Value
-        if Value then StartUnlockRiftChestLoop() else StopUnlockRiftChestLoop() end
+    Callback = function(v)
+        flags.UnlockRiftChest = v
+        if v then startLoop("UnlockRiftChest", UnlockRiftChestLoop, 1)
+        else stopLoop("UnlockRiftChest") end
+        RayfieldLib:SaveConfiguration()
     end
 })
 
-ControlsTab:CreateToggle({
+Controls:CreateToggle({
     Name = "Main Loop (Spin, Playtime, Chests)",
-    CurrentValue = false,
+    CurrentValue = flags.MainLoop,
     Flag = "MainLoopToggle",
-    Callback = function(Value)
-        MainLoopEnabled = Value
-        if Value then StartMainLoop() else StopMainLoop() end
+    Callback = function(v)
+        flags.MainLoop = v
+        if v then startLoop("MainLoop", MainLoop, 4)
+        else stopLoop("MainLoop") end
+        RayfieldLib:SaveConfiguration()
     end
 })
 
-ControlsTab:CreateToggle({
-    Name = "Fast Hatch Egg",
-    CurrentValue = false,
+Controls:CreateToggle({
+    Name = "Auto Hatch (Custom Egg)",
+    CurrentValue = flags.AutoHatchEgg,
     Flag = "AutoHatchEggToggle",
-    Callback = function(Value)
-        AutoHatchEggEnabled = Value
-        if Value then StartAutoHatchEggLoop() else StopAutoHatchEggLoop() end
+    Callback = function(v)
+        flags.AutoHatchEgg = v
+        if v then startLoop("AutoHatchEgg", AutoHatchEggLoop, 0.15)
+        else stopLoop("AutoHatchEgg") end
+        RayfieldLib:SaveConfiguration()
     end
 })
 
--- Dropdown for Egg Selection
-ControlsTab:CreateDropdown({
-    Name = "Select Egg to Hatch",
-    Options = {
-        "Common Egg", "Spotted Egg", "Iceshard Egg", "Spikey Egg", "Magma Egg",
-        "Crystal Egg", "Lunar Egg", "Void Egg", "Hell Egg", "Nightmare Egg",
-        "Rainbow Egg", "Infinity Egg", "100M Egg"
-    },
-    CurrentOption = "Common Egg",
-    Flag = "EggDropdown",
-    Callback = function(Value)
-        SelectedEgg = Value
-        print("Selected Egg: " .. SelectedEgg)
+Controls:CreateToggle({
+    Name = "Disable Hatch Animation",
+    CurrentValue = flags.DisableAnimation,
+    Flag = "DisableAnimationToggle",
+    Callback = function(v)
+        flags.DisableAnimation = v
+        if v then
+            print("[BGSI] Hatch animation disabled (no cutscene)")
+            pcall(function()
+                hatcheggRemote:FireServer(false, false)
+            end)
+        else
+            print("[BGSI] Hatch animation enabled")
+            pcall(function()
+                hatcheggRemote:FireServer(true, true)
+            end)
+        end
+        RayfieldLib:SaveConfiguration()
     end
 })
 
--- Slider for Egg Quantity
-ControlsTab:CreateSlider({
-    Name = "Select Quantity (1-6)",
-    Range = {1, 6},
-    Increment = 1,
-    Suffix = " Egg(s)",
-    CurrentValue = 3,
-    Flag = "EggQuantitySlider",
-    Callback = function(Value)
-        SelectedQuantity = Value
-        print("Selected Quantity: " .. SelectedQuantity)
+Controls:CreateInput({
+    Name = "Egg Name",
+    PlaceholderText = "Enter egg name (e.g. Infinity Egg)",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(text)
+        if text ~= "" then
+            settings.EggName = text
+            print("[BGSI] Egg name set to:", text)
+            RayfieldLib:SaveConfiguration()
+        end
     end
 })
 
--- Settings Tab
-local SettingsTab = Window:CreateTab("Settings")
-if not SettingsTab then
-    warn("Failed to create Settings Tab")
-else
-    print("Settings Tab created successfully!")
-end
+Controls:CreateInput({
+    Name = "Hatch Amount (1 / 3 / 6 / 8 / 9)",
+    PlaceholderText = "Enter amount to hatch at once",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(text)
+        local number = tonumber(text)
+        if number and (number == 1 or number == 3 or number == 6 or number == 8 or number == 9) then
+            settings.HatchAmount = number
+            print("[BGSI] Hatch amount set to:", number)
+            RayfieldLib:SaveConfiguration()
+        else
+            warn("⚠️ Invalid hatch amount. Please use 1, 3, 6, 8 or 9.")
+        end
+    end
+})
 
--- Destroy UI Button
-SettingsTab:CreateButton({
+local Settings = Window:CreateTab("Settings")
+
+Settings:CreateButton({
+    Name = "💾 Save Configuration Now",
+    Callback = function()
+        RayfieldLib:SaveConfiguration()
+        RayfieldLib:Notify({
+            Title = "✅ Settings Saved",
+            Content = "Your current configuration has been saved!",
+            Duration = 4
+        })
+    end
+})
+
+Settings:CreateButton({
+    Name = "📂 Load Configuration Now",
+    Callback = function()
+        RayfieldLib:LoadConfiguration()
+        RayfieldLib:Notify({
+            Title = "📦 Settings Loaded",
+            Content = "Configuration loaded successfully!",
+            Duration = 4
+        })
+    end
+})
+
+Settings:CreateButton({
     Name = "Destroy UI",
     Callback = function()
-        StopBlowBubbleLoop()
-        StopUnlockRiftChestLoop()
-        StopMainLoop()
-        StopAutoHatchEggLoop()
-        Rayfield:Destroy()
-        print("UI destroyed successfully!")
+        for k in pairs(flags) do stopLoop(k) end
+        RayfieldLib:Destroy()
     end
 })
-
-
-warn("Anti afk running")
-game:GetService("Players").LocalPlayer.Idled:connect(function()
-warn("Anti afk ran")
-game:GetService("VirtualUser"):CaptureController()
-game:GetService("VirtualUser"):ClickButton2(Vector2.new())
-end)
