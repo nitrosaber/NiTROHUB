@@ -1,245 +1,316 @@
--- // Load Sirius Rayfield
+-- 🌌 BGSI HUB Deluxe Edition
+-- 🔧 Sirius Rayfield Stable | Last Updated: 2025
+-- ⚙️ All-in-One Automation, Cosmetic & Safety System
+
+-- // Load Library
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 -- // Services
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualUser = game:GetService("VirtualUser")
+local TeleportService = game:GetService("TeleportService")
+local Stats = game:GetService("Stats")
+local LocalPlayer = Players.LocalPlayer
 
--- === Safe Wait ===
+-- Safe Wait
 local function safeWait(parent, childName, timeout)
-    local obj = parent:WaitForChild(childName, timeout or 10)
-    if not obj then warn("Missing:", childName) end
-    return obj
+	local obj = parent:WaitForChild(childName, timeout or 10)
+	if not obj then warn("Missing:", childName) end
+	return obj
 end
 
 -- === REMOTES ===
 local RemoteEvent = safeWait(ReplicatedStorage, "Shared")
 if RemoteEvent then
-    RemoteEvent = safeWait(RemoteEvent, "Framework")
-    RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "Network")
-    RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "Remote")
-    RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "RemoteEvent")
+	RemoteEvent = safeWait(RemoteEvent, "Framework")
+	RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "Network")
+	RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "Remote")
+	RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "RemoteEvent")
 end
 
 local hatcheggRemote = safeWait(ReplicatedStorage, "Client")
 if hatcheggRemote then
-    hatcheggRemote = safeWait(hatcheggRemote, "Effects")
-    hatcheggRemote = hatcheggRemote and safeWait(hatcheggRemote, "HatchEgg")
+	hatcheggRemote = safeWait(hatcheggRemote, "Effects")
+	hatcheggRemote = hatcheggRemote and safeWait(hatcheggRemote, "HatchEgg")
 end
 
 if not (RemoteEvent and hatcheggRemote) then
-    warn("❌ Missing required Remote objects.")
-    return
+	warn("❌ Missing Remote objects. Some features may not work.")
 end
 
 -- === FLAGS & SETTINGS ===
 local flags = {
-    BlowBubble = false,
-    UnlockRiftChest = false,
-    AutoHatchEgg = false,
-    DisableAnimation = true
+	BlowBubble = false,
+	UnlockRiftChest = false,
+	AutoHatchEgg = false,
+	DisableAnimation = true,
+	AutoCollect = false,
 }
 
 local settings = {
-    EggName = "Infinity Egg",
-    HatchAmount = 6
+	EggName = "Infinity Egg",
+	HatchAmount = 6
 }
 
--- === TASK HANDLER ===
 local tasks = {}
-
-local function startLoop(flagName, func, delay)
-    if tasks[flagName] then return end
-    tasks[flagName] = task.spawn(function()
-        while flags[flagName] do
-            local ok, err = pcall(func)
-            if not ok then warn("[Loop Error - " .. flagName .. "]", err) end
-            task.wait(delay or 0.3)
-        end
-        tasks[flagName] = nil
-    end)
+local function stopLoop(name)
+	flags[name] = false
+	if tasks[name] then
+		task.cancel(tasks[name])
+		tasks[name] = nil
+	end
 end
 
-local function stopLoop(flagName)
-    flags[flagName] = false
-    if tasks[flagName] then
-        task.cancel(tasks[flagName])
-        tasks[flagName] = nil
-    end
+local function startLoop(name, func, delay)
+	if tasks[name] then return end
+	tasks[name] = task.spawn(function()
+		while flags[name] do
+			local ok, err = pcall(func)
+			if not ok then warn("[Loop Error: "..name.."]", err) end
+			task.wait(delay or 0.3)
+		end
+		tasks[name] = nil
+	end)
 end
 
--- === LOOPS ===
+-- === SMART WAIT ===
+local function smartDelay(base)
+	local ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+	return base + (ping / 1000)
+end
+
+-- === CORE LOOPS ===
 local function BlowBubbleLoop()
-    pcall(function()
-        RemoteEvent:FireServer("BlowBubble")
-    end)
-    task.wait(0.01)
+	pcall(function()
+		RemoteEvent:FireServer("BlowBubble")
+	end)
+	task.wait(smartDelay(0.5))
 end
 
 local function UnlockRiftChestLoop()
-    pcall(function()
-        RemoteEvent:FireServer("UnlockRiftChest",
-            "Royal Chest", "Super Chest", "Golden Chest", "Ancient Chest",
-            "Dice Chest", "Infinity Chest", "Void Chest", "Giant Chest",
-            "Ticket Chest", "Easy Obby Chest", "Medium Obby Chest", "Hard Obby Chest", false
-        )
-    end)
-    task.wait(1)
+	pcall(function()
+		RemoteEvent:FireServer("UnlockRiftChest",
+			"Royal Chest", "Super Chest", "Golden Chest", "Ancient Chest",
+			"Dice Chest", "Infinity Chest", "Void Chest", "Giant Chest",
+			"Ticket Chest", "Easy Obby Chest", "Medium Obby Chest", "Hard Obby Chest", false
+		)
+	end)
+	task.wait(1)
 end
 
 local function AutoHatchEggLoop()
-    -- ไม่ต้องปิดอนิเมชันใน loop แล้ว เพราะเราจะจัดการตอน toggle เท่านั้น
-    pcall(function()
-        RemoteEvent:FireServer("HatchEgg", settings.EggName, settings.HatchAmount)
-    end)
-    task.wait(0.05)
+	pcall(function()
+		RemoteEvent:FireServer("HatchEgg", settings.EggName, settings.HatchAmount)
+	end)
+	task.wait(smartDelay(0.15))
+end
+
+local function AutoCollectLoop()
+	for _, obj in ipairs(workspace:GetChildren()) do
+		if obj:IsA("Part") and obj.Name:lower():find("gem") then
+			firetouchinterest(LocalPlayer.Character.HumanoidRootPart, obj, 0)
+			firetouchinterest(LocalPlayer.Character.HumanoidRootPart, obj, 1)
+		end
+	end
+	task.wait(1)
 end
 
 -- === WINDOW ===
 local Window = Rayfield:CreateWindow({
-    Name = "🌌 BGSI FARM - Stable Cosmetic Fix",
-    LoadingTitle = "Loading NiTroHub...",
-    LoadingSubtitle = "Optimized for Sirius Rayfield",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "NiTroHub",
-        FileName = "BGSI-Farm-Config",
-        Autosave = true,
-        Autoload = true
-    }
+	Name = "🌌 BGSI HUB - Deluxe Edition",
+	LoadingTitle = "Initializing NiTroHub Deluxe...",
+	LoadingSubtitle = "⚙️ Sirius Rayfield Stable Build",
+	ConfigurationSaving = {
+		Enabled = true,
+		FolderName = "NiTroHub",
+		FileName = "BGSI-Deluxe",
+		Autosave = true,
+		Autoload = true
+	}
 })
 
--- === STARTUP MESSAGE ===
+-- === NOTIFY ===
 Rayfield:Notify({
-    Title = "✅ BGSI FARM Ready",
-    Content = "Configuration loaded successfully!",
-    Duration = 4
+	Title = "✅ BGSI HUB Loaded",
+	Content = "Welcome to Deluxe Edition",
+	Duration = 5
 })
 
 -- === CONTROLS TAB ===
-local Controls = Window:CreateTab("Controls")
+local Controls = Window:CreateTab("⚙️ Controls")
 
 Controls:CreateToggle({
-    Name = "Blow Bubble",
-    CurrentValue = flags.BlowBubble,
-    Callback = function(v)
-        flags.BlowBubble = v
-        if v then startLoop("BlowBubble", BlowBubbleLoop, 0.6)
-        else stopLoop("BlowBubble") end
-    end
+	Name = "Blow Bubble",
+	CurrentValue = false,
+	Callback = function(v)
+		flags.BlowBubble = v
+		if v then startLoop("BlowBubble", BlowBubbleLoop)
+		else stopLoop("BlowBubble") end
+	end
 })
 
 Controls:CreateToggle({
-    Name = "Unlock AutoChest",
-    CurrentValue = flags.UnlockRiftChest,
-    Callback = function(v)
-        flags.UnlockRiftChest = v
-        if v then startLoop("UnlockRiftChest", UnlockRiftChestLoop, 1)
-        else stopLoop("UnlockRiftChest") end
-    end
+	Name = "Unlock AutoChest",
+	CurrentValue = false,
+	Callback = function(v)
+		flags.UnlockRiftChest = v
+		if v then startLoop("UnlockRiftChest", UnlockRiftChestLoop)
+		else stopLoop("UnlockRiftChest") end
+	end
 })
 
 Controls:CreateToggle({
-    Name = "Auto Hatch (Custom Egg)",
-    CurrentValue = flags.AutoHatchEgg,
-    Callback = function(v)
-        flags.AutoHatchEgg = v
-        if v then
-            -- ถ้าเปิด Auto Hatch และ Disable Animation เปิดอยู่ => ตัดอนิเมชันทันที
-            if flags.DisableAnimation then
-                pcall(function()
-                    hatcheggRemote:FireServer(false, false)
-                    print("[BGSI] Hatch animation forcibly disabled.")
-                end)
-            end
-            startLoop("AutoHatchEgg", AutoHatchEggLoop, 0.15)
-        else
-            stopLoop("AutoHatchEgg")
-        end
-    end
+	Name = "Auto Hatch (Custom Egg)",
+	CurrentValue = false,
+	Callback = function(v)
+		flags.AutoHatchEgg = v
+		if v then
+			if flags.DisableAnimation then
+				pcall(function() hatcheggRemote:FireServer(false, false) end)
+			end
+			startLoop("AutoHatchEgg", AutoHatchEggLoop)
+		else
+			stopLoop("AutoHatchEgg")
+		end
+	end
 })
 
--- ✅ แก้ระบบ Disable Hatch Animation ให้ “ปิดถาวร” ทันทีเมื่อกด
 Controls:CreateToggle({
-    Name = "Disable Hatch Animation (Permanent)",
-    CurrentValue = flags.DisableAnimation,
-    Callback = function(v)
-        flags.DisableAnimation = v
-        if v then
-            pcall(function()
-                hatcheggRemote:FireServer(false, false)
-            end)
-            Rayfield:Notify({
-                Title = "🎬 Hatch Animation Disabled",
-                Content = "Cutscene has been fully disabled until restart.",
-                Duration = 5
-            })
-        else
-            pcall(function()
-                hatcheggRemote:FireServer(true, true)
-            end)
-            Rayfield:Notify({
-                Title = "🎬 Hatch Animation Enabled",
-                Content = "Cutscene re-enabled manually.",
-                Duration = 4
-            })
-        end
-    end
+	Name = "Disable Hatch Animation",
+	CurrentValue = true,
+	Callback = function(v)
+		flags.DisableAnimation = v
+		if v then
+			pcall(function() hatcheggRemote:FireServer(false, false) end)
+			Rayfield:Notify({Title = "🎬 Animation Disabled", Content = "Cutscene fully disabled.", Duration = 4})
+		else
+			pcall(function() hatcheggRemote:FireServer(true, true) end)
+			Rayfield:Notify({Title = "🎬 Animation Enabled", Content = "Cutscene enabled again.", Duration = 4})
+		end
+	end
 })
 
--- === INPUTS ===
-Controls:CreateInput({
-    Name = "Egg Name",
-    PlaceholderText = "Enter egg name (e.g. Infinity Egg)",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(text)
-        if text ~= "" then
-            settings.EggName = text
-            print("[BGSI] Egg name set to:", text)
-        end
-    end
+Controls:CreateToggle({
+	Name = "Auto Collect (Gems/Coins)",
+	CurrentValue = false,
+	Callback = function(v)
+		flags.AutoCollect = v
+		if v then startLoop("AutoCollect", AutoCollectLoop)
+		else stopLoop("AutoCollect") end
+	end
 })
 
 Controls:CreateInput({
-    Name = "Hatch Amount (1 / 3 / 6 / 8 / 9)",
-    PlaceholderText = "Enter amount to hatch at once",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(text)
-        local number = tonumber(text)
-        if number and (number == 1 or number == 3 or number == 6 or number == 8 or number == 9) then
-            settings.HatchAmount = number
-            print("[BGSI] Hatch amount set to:", number)
-        else
-            warn("⚠️ Invalid hatch amount. Please use 1, 3, 6, 8 or 9.")
-        end
-    end
+	Name = "Egg Name",
+	PlaceholderText = "Infinity Egg",
+	RemoveTextAfterFocusLost = false,
+	Callback = function(text)
+		settings.EggName = text
+	end
 })
 
--- === COSMETIC TAB (Fixed Theme System) ===
+Controls:CreateInput({
+	Name = "Hatch Amount (1/3/6/8/9)",
+	PlaceholderText = "6",
+	RemoveTextAfterFocusLost = false,
+	Callback = function(t)
+		local n = tonumber(t)
+		if n then settings.HatchAmount = n end
+	end
+})
+
+-- === COSMETIC TAB ===
 local Cosmetic = Window:CreateTab("🎨 Cosmetic")
 
-local availableThemes = {"Default", "Dark", "Light", "Neon", "Aqua"}
+Cosmetic:CreateButton({
+	Name = "🌈 Enable Gradient Accent",
+	Callback = function()
+		task.spawn(function()
+			local hue = 0
+			while true do
+				hue = (hue + 0.003) % 1
+				Rayfield:SetUIColor(Color3.fromHSV(hue, 0.8, 1))
+				task.wait(0.05)
+			end
+		end)
+		Rayfield:Notify({Title = "🌈 Gradient Accent", Content = "Activated animated color accent!", Duration = 4})
+	end
+})
 
-Cosmetic:CreateDropdown({
-    Name = "Select UI Theme",
-    Options = availableThemes,
-    CurrentOption = "Default",
-    Callback = function(theme)
-        Rayfield:LoadConfiguration()  -- Sirius จะโหลดธีมจาก config
-        Rayfield:Notify({
-            Title = "🎨 Theme Changed",
-            Content = "Switched to " .. theme .. " theme successfully!",
-            Duration = 4
-        })
-    end
+Cosmetic:CreateButton({
+	Name = "🎵 Play Click Sound",
+	Callback = function()
+		local sound = Instance.new("Sound", workspace)
+		sound.SoundId = "rbxassetid://9118823106"
+		sound.Volume = 1
+		sound:Play()
+		game.Debris:AddItem(sound, 3)
+	end
+})
+
+-- === SAFETY TAB ===
+local Safety = Window:CreateTab("🛡️ Safety")
+
+Safety:CreateToggle({
+	Name = "Anti-AFK",
+	CurrentValue = true,
+	Callback = function(v)
+		if v then
+			LocalPlayer.Idled:Connect(function()
+				VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+				task.wait(1)
+				VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+			end)
+		end
+	end
+})
+
+Safety:CreateButton({
+	Name = "🔴 Panic (Stop Everything)",
+	Callback = function()
+		for k in pairs(flags) do stopLoop(k) end
+		Rayfield:Destroy()
+		warn("[BGSI HUB] Panic mode activated. UI closed.")
+	end
+})
+
+Safety:CreateButton({
+	Name = "🕵️ Anti-Admin Detector",
+	Callback = function()
+		local keywords = {"admin", "mod", "dev", "staff"}
+		Players.PlayerAdded:Connect(function(p)
+			for _, word in ipairs(keywords) do
+				if string.find(p.Name:lower(), word) then
+					for k in pairs(flags) do stopLoop(k) end
+					Rayfield:Destroy()
+					LocalPlayer:Kick("⚠️ Admin detected. Script terminated.")
+				end
+			end
+		end)
+		Rayfield:Notify({Title = "🛡️ Anti-Admin", Content = "Monitoring new joins for staff.", Duration = 4})
+	end
+})
+
+Safety:CreateButton({
+	Name = "♻️ Auto Reconnect",
+	Callback = function()
+		LocalPlayer.OnTeleport:Connect(function(state)
+			if state == Enum.TeleportState.Failed then
+				task.wait(3)
+				TeleportService:Teleport(game.PlaceId)
+			end
+		end)
+		Rayfield:Notify({Title = "🌐 Auto Reconnect", Content = "Enabled auto reconnect.", Duration = 4})
+	end
 })
 
 -- === SETTINGS TAB ===
-local Settings = Window:CreateTab("Settings")
-
+local Settings = Window:CreateTab("⚙️ Settings")
 Settings:CreateButton({
-    Name = "Destroy UI",
-    Callback = function()
-        for k in pairs(flags) do stopLoop(k) end
-        Rayfield:Destroy()
-    end
+	Name = "Destroy UI",
+	Callback = function()
+		for k in pairs(flags) do stopLoop(k) end
+		Rayfield:Destroy()
+	end
 })
