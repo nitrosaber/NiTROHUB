@@ -1,17 +1,10 @@
--- Load Rayfield Library
-local success, RayfieldLib = pcall(function()
-    return loadstring(game:HttpGet("https://sirius.menu/rayfield", true))()
-end)
+-- // Load Rayfield (Sirius Edition)
+local RayfieldLib = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-if not success or not RayfieldLib then
-    warn("❌ Failed to load Rayfield Library.")
-    return
-end
-
--- Services
+-- // Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Safe Wait Function
+-- // Safe Wait Function
 local function safeWait(parent, childName, timeout)
     local obj = parent:WaitForChild(childName, timeout or 10)
     if not obj then
@@ -21,23 +14,21 @@ local function safeWait(parent, childName, timeout)
 end
 
 -- === REMOTES ===
--- hatcheggRemote = ปิด/เปิดอนิเมชันตอนสุ่มไข่
+local RemoteEvent = safeWait(ReplicatedStorage, "Shared")
+if RemoteEvent then
+    RemoteEvent = safeWait(RemoteEvent, "Framework")
+    RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "Network")
+    RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "Remote")
+    RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "RemoteEvent")
+end
+
 local hatcheggRemote = safeWait(ReplicatedStorage, "Client")
 if hatcheggRemote then
     hatcheggRemote = safeWait(hatcheggRemote, "Effects")
     hatcheggRemote = hatcheggRemote and safeWait(hatcheggRemote, "HatchEgg")
 end
 
--- frameworkRemote = ใช้สุ่มไข่จริง
-local frameworkRemote = safeWait(ReplicatedStorage, "Shared")
-if frameworkRemote then
-    frameworkRemote = safeWait(frameworkRemote, "Framework")
-    frameworkRemote = frameworkRemote and safeWait(frameworkRemote, "Network")
-    frameworkRemote = frameworkRemote and safeWait(frameworkRemote, "Remote")
-    frameworkRemote = frameworkRemote and safeWait(frameworkRemote, "RemoteEvent")
-end
-
-if not (hatcheggRemote and frameworkRemote) then
+if not (RemoteEvent and hatcheggRemote) then
     warn("❌ Missing required Remote objects.")
     return
 end
@@ -47,7 +38,7 @@ local flags = {
     BlowBubble = false,
     UnlockRiftChest = false,
     AutoHatchEgg = false,
-    DisableAnimation = true -- ค่าเริ่มต้น: ปิดอนิเมชัน
+    DisableAnimation = true
 }
 
 local settings = {
@@ -82,39 +73,41 @@ end
 
 -- === LOOPS ===
 local function BlowBubbleLoop()
-    RemoteEvent:FireServer("BlowBubble")
+    pcall(function()
+        RemoteEvent:FireServer("BlowBubble")
+    end)
     task.wait(0.6)
 end
 
 local function UnlockRiftChestLoop()
-    RemoteEvent:FireServer("UnlockRiftChest", "Royal Chest", "Super Chest", "Golden Chest", "Ancient Chest",
-        "Dice Chest", "Infinity Chest", "Void Chest", "Giant Chest",
-        "Ticket Chest", "Easy Obby Chest", "Medium Obby Chest", "Hard Obby Chest", false)
+    pcall(function()
+        RemoteEvent:FireServer("UnlockRiftChest",
+            "Royal Chest", "Super Chest", "Golden Chest", "Ancient Chest",
+            "Dice Chest", "Infinity Chest", "Void Chest", "Giant Chest",
+            "Ticket Chest", "Easy Obby Chest", "Medium Obby Chest", "Hard Obby Chest", false
+        )
+    end)
     task.wait(1)
 end
 
--- ✅ Auto Hatch Egg + ปิดอนิเมชันแบบแน่นอน
+-- ✅ Auto Hatch Egg + ผูก Disable Animation ให้ทำงานร่วมกัน
 local function AutoHatchEggLoop()
-    -- ปิดหรือเปิดอนิเมชันตาม toggle
+    -- ถ้าปิดอนิเมชันไว้ จะส่งสัญญาณให้หยุด cutscene ทุกครั้ง
     if flags.DisableAnimation then
         pcall(function()
             hatcheggRemote:FireServer(false, false)
-        end)
-    else
-        pcall(function()
-            hatcheggRemote:FireServer(true, true)
         end)
     end
 
     -- สุ่มไข่จริง
     pcall(function()
-        frameworkRemote:FireServer("HatchEgg", settings.EggName, settings.HatchAmount)
+        RemoteEvent:FireServer("HatchEgg", settings.EggName, settings.HatchAmount)
     end)
 
     task.wait(0.15)
 end
 
--- === RAYFIELD UI ===
+-- === UI (Sirius Rayfield) ===
 local Window = RayfieldLib:CreateWindow({
     Name = "BGSI FARM",
     LoadingTitle = "Loading BGSI Scripts",
@@ -122,15 +115,16 @@ local Window = RayfieldLib:CreateWindow({
     ConfigurationSaving = {
         Enabled = true,
         FolderName = "NiTroHub",
-        FileName = "Script-BGSI-Settings"
+        FileName = "Script-BGSI-Settings",
+        Autosave = true,
+        Autoload = true,
     }
 })
 
-RayfieldLib:LoadConfiguration()
-
+-- === CONTROLS TAB ===
 local Controls = Window:CreateTab("Controls")
 
--- Blow Bubble
+-- ✅ Blow Bubble
 Controls:CreateToggle({
     Name = "Blow Bubble",
     CurrentValue = flags.BlowBubble,
@@ -139,11 +133,10 @@ Controls:CreateToggle({
         flags.BlowBubble = v
         if v then startLoop("BlowBubble", BlowBubbleLoop, 0.6)
         else stopLoop("BlowBubble") end
-        RayfieldLib:SaveConfiguration()
     end
 })
 
--- Unlock Chest
+-- ✅ Unlock Chest
 Controls:CreateToggle({
     Name = "Unlock AutoChest",
     CurrentValue = flags.UnlockRiftChest,
@@ -152,24 +145,31 @@ Controls:CreateToggle({
         flags.UnlockRiftChest = v
         if v then startLoop("UnlockRiftChest", UnlockRiftChestLoop, 1)
         else stopLoop("UnlockRiftChest") end
-        RayfieldLib:SaveConfiguration()
     end
 })
 
--- Auto Hatch
+-- ✅ Auto Hatch Egg
 Controls:CreateToggle({
     Name = "Auto Hatch (Custom Egg)",
     CurrentValue = flags.AutoHatchEgg,
     Flag = "AutoHatchEggToggle",
     Callback = function(v)
         flags.AutoHatchEgg = v
-        if v then startLoop("AutoHatchEgg", AutoHatchEggLoop, 0.15)
-        else stopLoop("AutoHatchEgg") end
-        RayfieldLib:SaveConfiguration()
+        if v then
+            -- เมื่อเริ่ม Auto Hatch ถ้ามี Disable Animation ก็ปิดอนิเมชันทันที
+            if flags.DisableAnimation then
+                pcall(function()
+                    hatcheggRemote:FireServer(false, false)
+                end)
+            end
+            startLoop("AutoHatchEgg", AutoHatchEggLoop, 0.15)
+        else
+            stopLoop("AutoHatchEgg")
+        end
     end
 })
 
--- Disable Hatch Animation
+-- ✅ Disable Hatch Animation (ผูกกับ Auto Hatch)
 Controls:CreateToggle({
     Name = "Disable Hatch Animation",
     CurrentValue = flags.DisableAnimation,
@@ -178,20 +178,25 @@ Controls:CreateToggle({
         flags.DisableAnimation = v
         if v then
             print("[BGSI] Hatch animation disabled (no cutscene)")
-            pcall(function()
-                hatcheggRemote:FireServer(false, false)
-            end)
+            -- ถ้าเปิด Auto Hatch อยู่ จะปิดอนิเมชันทันที
+            if flags.AutoHatchEgg then
+                pcall(function()
+                    hatcheggRemote:FireServer(false, false)
+                end)
+            end
         else
             print("[BGSI] Hatch animation enabled")
-            pcall(function()
-                hatcheggRemote:FireServer(true, true)
-            end)
+            -- ถ้าเปิด Auto Hatch อยู่ จะเปิดอนิเมชันกลับ
+            if flags.AutoHatchEgg then
+                pcall(function()
+                    hatcheggRemote:FireServer(true, true)
+                end)
+            end
         end
-        RayfieldLib:SaveConfiguration()
     end
 })
 
--- Textbox for Egg Name
+-- ✅ Textbox for Egg Name
 Controls:CreateInput({
     Name = "Egg Name",
     PlaceholderText = "Enter egg name (e.g. Infinity Egg)",
@@ -200,12 +205,11 @@ Controls:CreateInput({
         if text ~= "" then
             settings.EggName = text
             print("[BGSI] Egg name set to:", text)
-            RayfieldLib:SaveConfiguration()
         end
     end
 })
 
--- Textbox for Hatch Amount
+-- ✅ Textbox for Hatch Amount
 Controls:CreateInput({
     Name = "Hatch Amount (1 / 3 / 6 / 8 / 9)",
     PlaceholderText = "Enter amount to hatch at once",
@@ -215,7 +219,6 @@ Controls:CreateInput({
         if number and (number == 1 or number == 3 or number == 6 or number == 8 or number == 9) then
             settings.HatchAmount = number
             print("[BGSI] Hatch amount set to:", number)
-            RayfieldLib:SaveConfiguration()
         else
             warn("⚠️ Invalid hatch amount. Please use 1, 3, 6, 8 or 9.")
         end
@@ -224,30 +227,6 @@ Controls:CreateInput({
 
 -- === SETTINGS TAB ===
 local Settings = Window:CreateTab("Settings")
-
-Settings:CreateButton({
-    Name = "💾 Save Configuration Now",
-    Callback = function()
-        RayfieldLib:SaveConfiguration()
-        RayfieldLib:Notify({
-            Title = "✅ Settings Saved",
-            Content = "Your current configuration has been saved!",
-            Duration = 4
-        })
-    end
-})
-
-Settings:CreateButton({
-    Name = "📂 Load Configuration Now",
-    Callback = function()
-        RayfieldLib:LoadConfiguration()
-        RayfieldLib:Notify({
-            Title = "📦 Settings Loaded",
-            Content = "Configuration loaded successfully!",
-            Duration = 4
-        })
-    end
-})
 
 Settings:CreateButton({
     Name = "Destroy UI",
