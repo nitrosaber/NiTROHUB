@@ -1,5 +1,5 @@
--- 🌌 BGSI HUB - Deluxe Edition (BGS Infinite Version)
--- ✅ Permanent Hatch Animation Block
+-- 🌌 BGSI HUB - Deluxe Edition (BGS Infinite / Final Fixed)
+-- ✅ Permanent Hatch Animation Disable (Fixed for ModuleScript)
 -- ✅ Auto Claim All Chests (ClaimChest)
 -- ✅ Sirius Rayfield (https://sirius.menu/rayfield)
 
@@ -29,15 +29,8 @@ if RemoteEvent then
     RemoteEvent = RemoteEvent and safeWait(RemoteEvent, "RemoteEvent")
 end
 
--- HatchEgg RemoteEvent (ของ BGS Infinite)
-local HatchEggRemote = safeWait(ReplicatedStorage, "Client")
-if HatchEggRemote then
-    HatchEggRemote = safeWait(HatchEggRemote, "Effects")
-    HatchEggRemote = HatchEggRemote and safeWait(HatchEggRemote, "HatchEgg")
-end
-
-if not (RemoteEvent and HatchEggRemote) then
-    warn("❌ Missing required remotes. Some features may not work.")
+if not RemoteEvent then
+    warn("❌ Missing RemoteEvent; core features may not work.")
 end
 
 -- === FLAGS & SETTINGS ===
@@ -55,50 +48,35 @@ local settings = {
 
 local tasks, conns = {}, {}
 
--- === 🧱 BLOCK HatchEggRemote ===
-local function BlockHatchEggRemote()
-    if not HatchEggRemote then return end
+-- === 🔪 Disable Hatch Animation (BGS Infinite Specific) ===
+local function DisableHatchAnimation()
+    local client = ReplicatedStorage:FindFirstChild("Client")
+    if not client then return end
 
-    -- ตัดการเชื่อมต่อทั้งหมดจาก OnClientEvent
-    if typeof(getconnections) == "function" then
-        for _, conn in ipairs(getconnections(HatchEggRemote.OnClientEvent)) do
-            pcall(function()
-                if conn.Disable then conn:Disable() else conn:Disconnect() end
-            end)
-        end
-    end
-
-    -- ดูด event ทิ้ง (prevent animation / remote firing)
-    HatchEggRemote.OnClientEvent:Connect(function() end)
-end
-
-local function StartHatchBlockWatcher()
-    local effects = ReplicatedStorage:FindFirstChild("Client") and ReplicatedStorage.Client:FindFirstChild("Effects")
+    local effects = client:FindFirstChild("Effects")
     if not effects then return end
 
-    if conns.HatchWatcher then conns.HatchWatcher:Disconnect() end
-    conns.HatchWatcher = effects.DescendantAdded:Connect(function(obj)
-        if obj:IsA("RemoteEvent") and (obj.Name == "HatchEgg" or obj.Name == "HatchEggs") then
-            BlockHatchEggRemote()
-        end
-    end)
-end
+    local hatchModule = effects:FindFirstChild("HatchEgg")
+    if not hatchModule then
+        warn("[BGSI] HatchEgg not found in Effects.")
+        return
+    end
 
-local function SetHatchAnimationDisabled(disabled)
-    if disabled then
-        BlockHatchEggRemote()
-        StartHatchBlockWatcher()
-        if not tasks.__HatchBlockLoop then
-            tasks.__HatchBlockLoop = task.spawn(function()
-                while flags.DisableAnimation do
-                    BlockHatchEggRemote()
-                    task.wait(1)
-                end
-                tasks.__HatchBlockLoop = nil
-            end)
+    if hatchModule:IsA("ModuleScript") or hatchModule:IsA("LocalScript") then
+        pcall(function()
+            hatchModule.Name = "HatchEgg_Disabled"
+        end)
+        print("[BGSI] Hatch animation module disabled successfully.")
+    elseif hatchModule:IsA("RemoteEvent") then
+        if typeof(getconnections) == "function" then
+            for _, c in ipairs(getconnections(hatchModule.OnClientEvent)) do
+                pcall(function()
+                    if c.Disable then c:Disable() else c:Disconnect() end
+                end)
+            end
         end
-    else
-        if conns.HatchWatcher then conns.HatchWatcher:Disconnect() conns.HatchWatcher=nil end
+        hatchModule.OnClientEvent:Connect(function() end)
+        print("[BGSI] Hatch animation remote blocked.")
     end
 end
 
@@ -108,6 +86,7 @@ local function BlowBubbleLoop()
     task.wait(0.2)
 end
 
+-- 🏆 Auto Claim Chest System
 local function AutoClaimChestLoop()
     local chests = {
         "Royal Chest","Super Chest","Golden Chest","Ancient Chest",
@@ -123,6 +102,7 @@ local function AutoClaimChestLoop()
     task.wait(3)
 end
 
+-- 🥚 Auto Hatch Egg Loop
 local function AutoHatchEggLoop()
     pcall(function()
         RemoteEvent:FireServer("HatchEgg", settings.EggName, settings.HatchAmount)
@@ -164,7 +144,7 @@ local Window = Rayfield:CreateWindow({
 
 Rayfield:Notify({
     Title = "✅ BGSI HUB Ready",
-    Content = "HatchEggRemote permanently blocked.",
+    Content = "Hatch Animation Disabled | Auto Systems Ready",
     Duration = 4
 })
 
@@ -176,7 +156,8 @@ Controls:CreateToggle({
     CurrentValue = false,
     Callback = function(v)
         flags.BlowBubble = v
-        if v then startLoop("BlowBubble", BlowBubbleLoop, 0.5) else stopLoop("BlowBubble") end
+        if v then startLoop("BlowBubble", BlowBubbleLoop, 0.5)
+        else stopLoop("BlowBubble") end
     end
 })
 
@@ -197,7 +178,7 @@ Controls:CreateToggle({
         flags.AutoHatchEgg = v
         if v then
             if flags.DisableAnimation then
-                SetHatchAnimationDisabled(true)
+                DisableHatchAnimation()
             end
             startLoop("AutoHatchEgg", AutoHatchEggLoop, 0.15)
         else
@@ -207,16 +188,24 @@ Controls:CreateToggle({
 })
 
 Controls:CreateToggle({
-    Name = "Block Hatch Animation (Permanent)",
+    Name = "Disable Hatch Animation (Permanent)",
     CurrentValue = flags.DisableAnimation,
     Callback = function(v)
         flags.DisableAnimation = v
-        SetHatchAnimationDisabled(v)
-        Rayfield:Notify({
-            Title = v and "🎬 Hatch Blocked" or "🎬 Hatch Enabled",
-            Content = v and "HatchEggRemote is now blocked." or "You may need to rejoin.",
-            Duration = 3
-        })
+        if v then
+            DisableHatchAnimation()
+            Rayfield:Notify({
+                Title = "🎬 Hatch Animation Disabled",
+                Content = "HatchEgg script/module renamed & blocked.",
+                Duration = 3
+            })
+        else
+            Rayfield:Notify({
+                Title = "⚙️ Animation Restored",
+                Content = "Rejoin the game to reload animations.",
+                Duration = 3
+            })
+        end
     end
 })
 
