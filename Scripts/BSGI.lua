@@ -46,7 +46,6 @@ end
 local flags = {
     BlowBubble = false,
     UnlockRiftChest = false,
-    MainLoop = false,
     AutoHatchEgg = false,
     DisableAnimation = true -- ค่าเริ่มต้น: ปิดอนิเมชัน
 }
@@ -92,29 +91,14 @@ local function UnlockRiftChestLoop()
     task.wait(1)
 end
 
-local function MainLoop()
-    frameworkRemote:FireServer("ClaimFreeWheelSpin")
-
-    for i = 1, 9 do
-        if not flags.MainLoop then break end
-        frameworkRemote:FireServer("ClaimPlaytime", i)
-        task.wait(3.5)
-    end
-
-    frameworkRemote:FireServer("ClaimChest", "Void Chest", "Giant Chest", true)
-    task.wait(2)
-end
-
 -- ✅ Auto Hatch Egg + ปิดอนิเมชันแบบแน่นอน
 local function AutoHatchEggLoop()
-    -- ถ้าเลือกให้ปิดอนิเมชัน
+    -- ปิดหรือเปิดอนิเมชันตาม toggle
     if flags.DisableAnimation then
         pcall(function()
-            -- ปิดอนิเมชัน (บางเกมต้องส่ง false, false เพื่อปิดทั้งหมด)
             hatcheggRemote:FireServer(false, false)
         end)
     else
-        -- เปิดอนิเมชันกลับ
         pcall(function()
             hatcheggRemote:FireServer(true, true)
         end)
@@ -144,6 +128,7 @@ RayfieldLib:LoadConfiguration()
 
 local Controls = Window:CreateTab("Controls")
 
+-- Blow Bubble
 Controls:CreateToggle({
     Name = "Blow Bubble",
     CurrentValue = flags.BlowBubble,
@@ -156,8 +141,9 @@ Controls:CreateToggle({
     end
 })
 
+-- Unlock Chest
 Controls:CreateToggle({
-    Name = "Unlock Golden Chest",
+    Name = "Unlock AutoChest",
     CurrentValue = flags.UnlockRiftChest,
     Flag = "UnlockRiftChestToggle",
     Callback = function(v)
@@ -168,18 +154,7 @@ Controls:CreateToggle({
     end
 })
 
-Controls:CreateToggle({
-    Name = "Main Loop (Spin, Playtime, Chests)",
-    CurrentValue = flags.MainLoop,
-    Flag = "MainLoopToggle",
-    Callback = function(v)
-        flags.MainLoop = v
-        if v then startLoop("MainLoop", MainLoop, 4)
-        else stopLoop("MainLoop") end
-        RayfieldLib:SaveConfiguration()
-    end
-})
-
+-- Auto Hatch
 Controls:CreateToggle({
     Name = "Auto Hatch (Custom Egg)",
     CurrentValue = flags.AutoHatchEgg,
@@ -192,6 +167,7 @@ Controls:CreateToggle({
     end
 })
 
+-- Disable Hatch Animation
 Controls:CreateToggle({
     Name = "Disable Hatch Animation",
     CurrentValue = flags.DisableAnimation,
@@ -213,6 +189,7 @@ Controls:CreateToggle({
     end
 })
 
+-- Textbox for Egg Name
 Controls:CreateInput({
     Name = "Egg Name",
     PlaceholderText = "Enter egg name (e.g. Infinity Egg)",
@@ -226,6 +203,7 @@ Controls:CreateInput({
     end
 })
 
+-- Textbox for Hatch Amount
 Controls:CreateInput({
     Name = "Hatch Amount (1 / 3 / 6 / 8 / 9)",
     PlaceholderText = "Enter amount to hatch at once",
@@ -242,6 +220,7 @@ Controls:CreateInput({
     end
 })
 
+-- === SETTINGS TAB ===
 local Settings = Window:CreateTab("Settings")
 
 Settings:CreateButton({
