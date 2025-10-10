@@ -430,7 +430,7 @@ local Window = Rayfield:CreateWindow({
     Name="🌌 BGSI HUB / By NiTroHub",
     LoadingTitle="Loading NiTroHub...",
     LoadingSubtitle="By NiTroHub",
-    ConfigurationSaving={Enabled=true,FolderName="NiTroHub",FileName="BGSI-Deluxe",Autosave=true,Autoload=true}
+    ConfigurationSaving={Enabled=true,FolderName="NiTroHub",FileName="BGSI-Default",Autosave=false,Autoload=false}
 })
 Rayfield:Notify({Title="✅ BGSI HUB Ready", Content="By NiTroHub | Systems Loaded", Duration=3})
 
@@ -550,6 +550,167 @@ Safety:CreateButton({
 ---------------------------------------------------------------------
 local SettingsTab = Window:CreateTab("⚙️ Settings")
 
+---------------------------------------------------------------------
+-- 🗂️ Profile Manager (Multi-Profile Save & Load System)
+---------------------------------------------------------------------
+
+SettingsTab:CreateParagraph({
+    Title = "🗂️ Profile Manager",
+    Content = "บันทึก, โหลด, ลบ และเลือกโปรไฟล์การตั้งค่าหลายชุด เช่น Hatch / AFK / Performance"
+})
+
+-- 🧱 โฟลเดอร์เก็บไฟล์โปรไฟล์
+local PROFILE_FOLDER = "NiTroHub"
+
+if not isfolder(PROFILE_FOLDER) then
+    makefolder(PROFILE_FOLDER)
+end
+
+-- 🧰 ฟังก์ชันช่วย
+local function listProfiles()
+    local profiles = {}
+    for _, file in ipairs(listfiles(PROFILE_FOLDER)) do
+        if file:match("BGSI%-(.+)%.json") then
+            local name = file:match("BGSI%-(.+)%.json")
+            table.insert(profiles, name)
+        end
+    end
+    if #profiles == 0 then
+        table.insert(profiles, "ไม่มีโปรไฟล์ที่บันทึกไว้")
+    end
+    return profiles
+end
+
+local function refreshDropdown(dropdown)
+    local options = listProfiles()
+    dropdown:Set({ Options = options })
+end
+
+-- 🟩 SAVE PROFILE
+SettingsTab:CreateInput({
+    Name = "💾 Save Profile As...",
+    PlaceholderText = "ใส่ชื่อ เช่น Hatch-Fast",
+    RemoveTextAfterFocusLost = true,
+    Callback = function(name)
+        if not name or name == "" then
+            Rayfield:Notify({
+                Title = "⚠️ ไม่สามารถบันทึกได้",
+                Content = "กรุณาใส่ชื่อโปรไฟล์ก่อน",
+                Duration = 3
+            })
+            return
+        end
+
+        local path = PROFILE_FOLDER .. "/BGSI-" .. name .. ".json"
+        local ok, err = pcall(function()
+            Rayfield:SaveConfiguration(path)
+        end)
+
+        if ok then
+            Rayfield:Notify({
+                Title = "💾 บันทึกโปรไฟล์สำเร็จ",
+                Content = "ชื่อไฟล์: " .. name,
+                Duration = 3
+            })
+            dbg("Info: Saved profile → " .. path)
+        else
+            Rayfield:Notify({
+                Title = "❌ บันทึกล้มเหลว",
+                Content = tostring(err),
+                Duration = 3
+            })
+        end
+    end
+})
+
+-- 🟦 LOAD PROFILE (พร้อม Dropdown รายชื่อ)
+local ProfileDropdown = SettingsTab:CreateDropdown({
+    Name = "📂 เลือกโปรไฟล์เพื่อโหลด",
+    Options = listProfiles(),
+    CurrentOption = "เลือกโปรไฟล์...",
+    Callback = function(option)
+        if type(option) == "table" then option = option[1] end
+        if not option or option == "ไม่มีโปรไฟล์ที่บันทึกไว้" then
+            Rayfield:Notify({
+                Title = "⚠️ โหลดไม่สำเร็จ",
+                Content = "ไม่มีโปรไฟล์ที่สามารถโหลดได้",
+                Duration = 3
+            })
+            return
+        end
+
+        local file = PROFILE_FOLDER .. "/BGSI-" .. option .. ".json"
+
+        if not isfile(file) then
+            Rayfield:Notify({
+                Title = "❌ ไม่พบไฟล์โปรไฟล์",
+                Content = "ไม่มีไฟล์ชื่อ " .. option,
+                Duration = 3
+            })
+            return
+        end
+
+        local ok, err = pcall(function()
+            Rayfield:LoadConfiguration(file)
+        end)
+
+        if ok then
+            Rayfield:Notify({
+                Title = "📂 โหลดโปรไฟล์แล้ว",
+                Content = "ชื่อไฟล์: " .. option,
+                Duration = 3
+            })
+            dbg("Info: Loaded profile → " .. file)
+        else
+            Rayfield:Notify({
+                Title = "❌ โหลดไม่สำเร็จ",
+                Content = tostring(err),
+                Duration = 3
+            })
+        end
+    end
+})
+
+-- 🔄 ปุ่มรีเฟรชรายชื่อโปรไฟล์
+SettingsTab:CreateButton({
+    Name = "🔄 Refresh Profile List",
+    Callback = function()
+        refreshDropdown(ProfileDropdown)
+        Rayfield:Notify({
+            Title = "🔄 รายชื่อโปรไฟล์อัปเดตแล้ว",
+            Content = "โหลดรายชื่อไฟล์โปรไฟล์ล่าสุดจากโฟลเดอร์",
+            Duration = 3
+        })
+    end
+})
+
+-- 🧹 DELETE PROFILE
+SettingsTab:CreateInput({
+    Name = "🧹 Delete Profile",
+    PlaceholderText = "ใส่ชื่อโปรไฟล์ที่ต้องการลบ",
+    RemoveTextAfterFocusLost = true,
+    Callback = function(name)
+        local file = PROFILE_FOLDER .. "/BGSI-" .. name .. ".json"
+        if isfile(file) then
+            delfile(file)
+            refreshDropdown(ProfileDropdown)
+            Rayfield:Notify({
+                Title = "🧹 ลบโปรไฟล์สำเร็จ",
+                Content = name,
+                Duration = 3
+            })
+            dbg("Cleaner: Deleted profile → " .. file)
+        else
+            Rayfield:Notify({
+                Title = "❌ ไม่พบไฟล์",
+                Content = name,
+                Duration = 3
+            })
+        end
+    end
+})
+
+--Performance Booster
 local lighting = game:GetService("Lighting")
 local terrain = workspace:FindFirstChildOfClass("Terrain")
 
@@ -621,6 +782,7 @@ SettingsTab:CreateToggle({
     end
 })
 
+--Fps Unlocker
 local currentFPS = 60
 
 SettingsTab:CreateDropdown({
