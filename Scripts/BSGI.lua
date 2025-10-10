@@ -109,31 +109,35 @@ function dbg(...)
 end
 
 ---------------------------------------------------------------------
--- 🎬 Disable Hatch Animation (Ultra-Safe)
+-- 🎬 Disable Hatch Animation (No GUI Clean)
 ---------------------------------------------------------------------
 local function makeStub()
     local function noop(...) return nil end
     return setmetatable({
-        Play=noop,Hatch=noop,Open=noop,Init=noop,
-        Animate=noop,Create=noop,Show=noop,Hide=noop
-    }, { __call=noop, __index=function() return noop end })
+        Play = noop, Hatch = noop, Open = noop, Init = noop,
+        Animate = noop, Create = noop, Show = noop, Hide = noop
+    }, { __call = noop, __index = function() return noop end })
 end
 
 local function patchModuleNoop(tbl)
     if type(tbl) ~= "table" then return end
-    for k,v in pairs(tbl) do
-        if type(v)=="function" then tbl[k] = function(...) return nil end end
+    for k, v in pairs(tbl) do
+        if type(v) == "function" then
+            tbl[k] = function(...) return nil end
+        elseif type(v) == "table" then
+            patchModuleNoop(v)
+        end
     end
 end
 
 local function tryPatchLoadedModules(target)
     if typeof(getloadedmodules) ~= "function" then return false end
-    for _,m in ipairs(getloadedmodules()) do
-        if m==target or (m.Name=="HatchEgg" and m.Parent and m.Parent.Name=="Effects") then
-            local ok,lib = pcall(require, m)
-            if ok and type(lib)=="table" then
+    for _, m in ipairs(getloadedmodules()) do
+        if m == target or (m.Name == "HatchEgg" and m.Parent and m.Parent.Name == "Effects") then
+            local ok, lib = pcall(require, m)
+            if ok and type(lib) == "table" then
                 patchModuleNoop(lib)
-                dbg("Patched loaded HatchEgg table.")
+                dbg("Patch: HatchEgg module functions disabled.")
                 return true
             end
         end
@@ -141,49 +145,26 @@ local function tryPatchLoadedModules(target)
     return false
 end
 
-local function cleanHatchGUI()
-    local pg = LocalPlayer:FindFirstChild("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
-    local removed, hidden = 0, 0
-    local allowed = {
-        ["hatchegg"]=true,["hatchanimation"]=true,["hatching"]=true,
-        ["eggopen"]=true,["egg_ui"]=true,["hatch_ui"]=true,["eggpopup"]=true
-    }
-
-    for _, d in ipairs(pg:GetDescendants()) do
-        if d:IsA("ScreenGui") or d:IsA("Frame") or d:IsA("Folder") then
-            local n = (d.Name or ""):lower()
-            if allowed[n] then
-                local ok = pcall(function()
-                    d.Visible = false
-                    d.Enabled = false
-                end)
-                if ok then hidden += 1 else pcall(function() d:Destroy() end) removed += 1 end
-            end
-        end
-    end
-    dbg(("Cleaner: Hidden %d | Removed %d Hatch GUI nodes."):format(hidden, removed))
-end
-
 local function patchHatchEgg()
-    local client = ReplicatedStorage:FindFirstChild("Client")
-    local effects = client and client:FindFirstChild("Effects")
-    if not effects then dbg("Effects folder not found."); return end
+    local client = ReplicatedStorage:FindFirstChild("Client") or safeWait(ReplicatedStorage, "Client", 10)
+    local effects = client and client:FindFirstChild("Effects") or safeWait(client, "Effects", 10)
+    if not effects then dbg("Warn: Effects folder not found."); return end
 
     local target = effects:FindFirstChild("HatchEgg")
-    if not target then dbg("HatchEgg module not found yet."); return end
+    if not target then dbg("Warn: HatchEgg module not found yet."); return end
 
     local stub = makeStub()
     pcall(function() tryPatchLoadedModules(target) end)
 
     local env = (pcall(function() return getrenv() end) and getrenv()) or _G
-    local req = (rawget(env or {}, "require") or require)
+    local req = (rawget(env, "require") or require)
 
-    if typeof(req)=="function" and hookfunction and not _G.HatchReqHooked then
+    if typeof(req) == "function" and hookfunction and not _G.HatchReqHooked then
         _G.HatchReqHooked = true
         local old
         old = hookfunction(req, function(mod, ...)
-            if typeof(mod)=="Instance" and mod:IsA("ModuleScript") then
-                if mod==target or (mod.Name=="HatchEgg" and mod.Parent and mod.Parent.Name=="Effects") then
+            if typeof(mod) == "Instance" and mod:IsA("ModuleScript") then
+                if mod == target or (mod.Name == "HatchEgg" and mod.Parent and mod.Parent.Name == "Effects") then
                     dbg("Stubbed require(HatchEgg).")
                     return stub
                 end
@@ -193,29 +174,36 @@ local function patchHatchEgg()
         dbg("Hooked require() for HatchEgg.")
     end
 
+    -- Auto re-patch (no GUI cleaning)
     if conns.HatchAuto then pcall(function() conns.HatchAuto:Disconnect() end) end
     conns.HatchAuto = effects.ChildAdded:Connect(function(child)
         if child.Name == "HatchEgg" then
             task.wait(0.5)
             pcall(function()
                 tryPatchLoadedModules(child)
-                cleanHatchGUI()
-                dbg("Auto-rehook on HatchEgg ChildAdded.")
+                dbg("Auto-rehook on HatchEgg ChildAdded (no GUI cleaning).")
             end)
         end
     end)
-    dbg("patchHatchEgg completed.")
+
+    dbg("patchHatchEgg completed (GUI untouched).")
 end
 
 local function DisableHatchAnimation()
-    if hatchPatched then dbg("DisableHatchAnimation: already applied."); return end
+    if hatchPatched then dbg("Info: DisableHatchAnimation already applied."); return end
     hatchPatched = true
-    pcall(patchHatchEgg)
-    pcall(cleanHatchGUI)
-    Rayfield:Notify({Title="🎬 Hatch Animation Disabled", Content="Delta Auto-Rehook Active ✅", Duration=3})
-    dbg("Hatch animation disabled.")
+    task.spawn(function()
+        pcall(patchHatchEgg)
+        Rayfield:Notify({
+            Title = "🎬 Hatch Animation Disabled",
+            Content = "Delta Auto-Rehook Active ✅",
+            Duration = 3
+        })
+        dbg("Info: Hatch animation disabled successfully (GUI untouched).")
+    end)
 end
 
+-- Auto-run after load
 task.defer(function()
     task.wait(1)
     if flags.DisableAnimation then
