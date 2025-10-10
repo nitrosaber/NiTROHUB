@@ -1,6 +1,6 @@
 -- 🌌 BGSI HUB - Deluxe Edition (v8.3 Full Clean + AutoLoad + Debug UI)
--- ✅ Rayfield UI | Auto Hatch | Hatch Disable | Safety | Auto-Rehook | Smart Autosave | Debug Console
--- ✨ By NiTroHub x ChatGPT
+-- ✅ Rayfield UI | Auto Hatch | Hatch Disable | Safety | Auto-Rehook | Smart Autosave | Colored Debug Console
+-- ✨ By NiTroHub x ChatGPT (Rayfield Integrated Debug Edition)
 
 ---------------------------------------------------------------------
 -- 🧱 Load Rayfield
@@ -53,27 +53,59 @@ local tasks, conns = {}, {}
 local hatchPatched = false
 
 ---------------------------------------------------------------------
--- 🧰 Debug Console (UI + Logger)
+-- 🧰 Debug Console (Core)
 ---------------------------------------------------------------------
-local DEBUG_MAX = 200          -- เก็บได้สูงสุดกี่บรรทัด
-local DebugLog = {}            -- เก็บข้อความ
-local DebugLabel               -- Label ใน UI สำหรับแสดง log
+local DEBUG_MAX = 200
+local DebugLog = {}
+local DebugParagraph
 local function ts() return os.date("%H:%M:%S") end
+
+-- สีข้อความ
+local colors = {
+    ["loop"] = "#5AC8FA",
+    ["patch"] = "#4CD964",
+    ["cleaner"] = "#FFD60A",
+    ["safety"] = "#A2845E",
+    ["error"] = "#FF3B30",
+    ["warn"] = "#FF9500",
+    ["info"] = "#FFFFFF",
+}
+
+local function getColorForLog(msg)
+    msg = msg:lower()
+    for key, hex in pairs(colors) do
+        if msg:find(key) then
+            return hex
+        end
+    end
+    return "#FFFFFF"
+end
+
+local function renderColoredLogs()
+    if not DebugParagraph then return end
+    local start = math.max(1, #DebugLog - 80 + 1)
+    local buf = {}
+    for i = start, #DebugLog do
+        local msg = DebugLog[i]
+        local hex = getColorForLog(msg)
+        buf[#buf+1] = string.format("<font color='%s'>%s</font>", hex, msg)
+    end
+    DebugParagraph:Set({
+        Title = "📋 Debug Output",
+        Content = table.concat(buf, "\n")
+    })
+end
+
 local function pushLog(text)
     table.insert(DebugLog, ("[%s] %s"):format(ts(), tostring(text)))
     if #DebugLog > DEBUG_MAX then table.remove(DebugLog, 1) end
+    renderColoredLogs()
 end
-local function dbg(...)
+
+function dbg(...)
     local msg = table.concat(table.pack(...), " ")
     print("[BGSI]", msg)
     pushLog(msg)
-    if DebugLabel and DebugLabel.Set then
-        -- แสดงเฉพาะ 60 บรรทัดล่าสุดให้อ่านง่าย
-        local start = math.max(1, #DebugLog - 60 + 1)
-        local slice = {}
-        for i = start, #DebugLog do slice[#slice+1] = DebugLog[i] end
-        DebugLabel:Set(table.concat(slice, "\n"))
-    end
 end
 
 ---------------------------------------------------------------------
@@ -90,9 +122,7 @@ end
 local function patchModuleNoop(tbl)
     if type(tbl) ~= "table" then return end
     for k,v in pairs(tbl) do
-        if type(v)=="function" then
-            tbl[k] = function(...) return nil end
-        end
+        if type(v)=="function" then tbl[k] = function(...) return nil end end
     end
 end
 
@@ -111,7 +141,6 @@ local function tryPatchLoadedModules(target)
     return false
 end
 
--- ลบเฉพาะ Hatch UI (Ultra-Strict)
 local function cleanHatchGUI()
     local pg = LocalPlayer:FindFirstChild("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
     local removed, hidden = 0, 0
@@ -124,23 +153,14 @@ local function cleanHatchGUI()
         if d:IsA("ScreenGui") or d:IsA("Frame") or d:IsA("Folder") then
             local n = (d.Name or ""):lower()
             if allowed[n] then
-                -- ✅ ถ้า GUI ยังถูกอ้างอิงจาก Script อื่น: ซ่อนแทนลบ
-                local ok, result = pcall(function()
+                local ok = pcall(function()
                     d.Visible = false
                     d.Enabled = false
                 end)
-
-                if ok then
-                    hidden += 1
-                else
-                    -- ถ้าไม่มี property Visible/Enabled ก็ลบ
-                    pcall(function() d:Destroy() end)
-                    removed += 1
-                end
+                if ok then hidden += 1 else pcall(function() d:Destroy() end) removed += 1 end
             end
         end
     end
-
     dbg(("Cleaner: Hidden %d | Removed %d Hatch GUI nodes."):format(hidden, removed))
 end
 
@@ -196,7 +216,6 @@ local function DisableHatchAnimation()
     dbg("Hatch animation disabled.")
 end
 
--- Auto-disable at startup
 task.defer(function()
     task.wait(1)
     if flags.DisableAnimation then
@@ -321,7 +340,6 @@ Controls:CreateInput({
             settings.HatchAmount = n
             dbg("Set HatchAmount:", n)
         else
-            warn("⚠️ Invalid Hatch Amount")
             dbg("Invalid HatchAmount:", t)
         end
     end
@@ -381,7 +399,7 @@ Safety:CreateButton({
 })
 
 ---------------------------------------------------------------------
--- ⚙️ Settings Tab (Save / Load)
+-- ⚙️ Settings Tab
 ---------------------------------------------------------------------
 local SettingsTab = Window:CreateTab("⚙️ Settings")
 SettingsTab:CreateButton({
@@ -394,95 +412,23 @@ SettingsTab:CreateButton({
 })
 
 ---------------------------------------------------------------------
--- 📊 Debug Log Tab (UI)
+-- 📊 Debug Log Tab (Rayfield Integrated)
 ---------------------------------------------------------------------
 local DebugTab = Window:CreateTab("📊 Debug Log")
 
--- === UI Elements ===
-local DebugFrame = Instance.new("ScrollingFrame")
-DebugFrame.Size = UDim2.new(1, -20, 0, 320)
-DebugFrame.Position = UDim2.new(0, 10, 0, 10)
-DebugFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-DebugFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-DebugFrame.BackgroundTransparency = 0.2
-DebugFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-DebugFrame.BorderSizePixel = 0
-DebugFrame.ScrollBarThickness = 6
-DebugFrame.Parent = DebugTab.SectionParent or DebugTab
+DebugParagraph = DebugTab:CreateParagraph({
+    Title = "📋 Debug Output",
+    Content = "<b><font color='#AAAAAA'>Logs will appear here...</font></b>"
+})
 
-local DebugText = Instance.new("TextLabel")
-DebugText.Size = UDim2.new(1, -10, 0, 0)
-DebugText.Position = UDim2.new(0, 5, 0, 5)
-DebugText.BackgroundTransparency = 1
-DebugText.TextColor3 = Color3.fromRGB(230, 230, 230)
-DebugText.TextXAlignment = Enum.TextXAlignment.Left
-DebugText.TextYAlignment = Enum.TextYAlignment.Top
-DebugText.Font = Enum.Font.Code
-DebugText.TextSize = 18
-DebugText.RichText = true
-DebugText.TextWrapped = true
-DebugText.Text = "<b><font color='#AAAAAA'>Logs will appear here...</font></b>"
-DebugText.Parent = DebugFrame
-
-DebugText:GetPropertyChangedSignal("TextBounds"):Connect(function()
-    DebugFrame.CanvasSize = UDim2.new(0, 0, 0, DebugText.TextBounds.Y + 20)
-end)
-
--- === Colored Logging ===
-local colors = {
-    ["loop"] = "#5AC8FA",     -- ฟ้า
-    ["patch"] = "#4CD964",    -- เขียว
-    ["cleaner"] = "#FFD60A",  -- เหลือง
-    ["safety"] = "#A2845E",   -- น้ำตาลทอง
-    ["error"] = "#FF3B30",    -- แดง
-    ["warn"] = "#FF9500",     -- ส้ม
-    ["info"] = "#FFFFFF",     -- ขาว
-}
-
-local function getColorForLog(msg)
-    msg = msg:lower()
-    for key, hex in pairs(colors) do
-        if msg:find(key) then
-            return hex
-        end
-    end
-    return "#FFFFFF"
-end
-
-DebugLabel = {
-    Set = function(_, txt)
-        DebugText.Text = txt or ""
-    end
-}
-
--- === เพิ่มระบบแปลง log เป็น RichText ===
-local function renderColoredLogs()
-    local start = math.max(1, #DebugLog - 100 + 1)
-    local buffer = {}
-    for i = start, #DebugLog do
-        local msg = DebugLog[i]
-        local hex = getColorForLog(msg)
-        buffer[#buffer + 1] = string.format("<font color='%s'>%s</font>", hex, msg)
-    end
-    DebugText.Text = table.concat(buffer, "\n")
-end
-
--- อัปเดต dbg() ให้ใช้สีได้
-local oldDbg = dbg
-dbg = function(...)
-    local msg = table.concat(table.pack(...), " ")
-    table.insert(DebugLog, ("[%s] %s"):format(os.date("%H:%M:%S"), msg))
-    if #DebugLog > DEBUG_MAX then table.remove(DebugLog, 1) end
-    renderColoredLogs()
-    print("[BGSI]", msg)
-end
-
--- === ปุ่มควบคุม ===
 DebugTab:CreateButton({
     Name = "🧹 Clear Log",
     Callback = function()
         DebugLog = {}
-        DebugLabel:Set("<b><font color='#888888'>[Logs Cleared]</font></b>")
+        DebugParagraph:Set({
+            Title = "📋 Debug Output",
+            Content = "<b><font color='#888888'>[Logs Cleared]</font></b>"
+        })
         dbg("Cleaner: Debug log cleared.")
     end
 })
@@ -500,4 +446,4 @@ DebugTab:CreateButton({
     end
 })
 
-dbg("Info: Debug UI (Colored Log) initialized.")
+dbg("Info: Debug UI (Rayfield Integrated) initialized.")
