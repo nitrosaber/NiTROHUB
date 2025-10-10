@@ -1,15 +1,14 @@
+---------------------------------------------------------------------
 -- 🌌 BGSI HUB - Deluxe Edition (v8.3 Full Clean + AutoLoad + Debug UI)
--- ✅ Rayfield UI | Auto Hatch | Hatch Disable | Safety | Auto-Rehook | Smart Autosave | Colored Debug Console
--- ✨ By NiTroHub x ChatGPT (Rayfield Integrated Debug Edition)
+-- ✅ Rayfield UI | Auto Hatch | Hatch Disable | Safety | Smart Autosave
+-- ✨ Developer: NiTroHub x ChatGPT (Structured Debug Edition)
+---------------------------------------------------------------------
 
 ---------------------------------------------------------------------
--- 🧱 Load Rayfield
+-- [🧱 1] INITIALIZATION & SERVICES
 ---------------------------------------------------------------------
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
----------------------------------------------------------------------
--- ⚙️ Roblox Services
----------------------------------------------------------------------
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
@@ -18,16 +17,18 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 ---------------------------------------------------------------------
--- 🧠 Safe Wait
+-- [🧠 2] UTILITY FUNCTIONS (Safe Wait)
 ---------------------------------------------------------------------
 local function safeWait(parent, name, timeout)
-    local ok, obj = pcall(function() return parent:WaitForChild(name, timeout or 10) end)
+    local ok, obj = pcall(function()
+        return parent:WaitForChild(name, timeout or 10)
+    end)
     if not ok then warn("⚠️ Missing:", name) end
     return obj
 end
 
 ---------------------------------------------------------------------
--- 🔌 Game Remote
+-- [🧩 3] GAME REMOTES
 ---------------------------------------------------------------------
 local RemoteEvent = safeWait(ReplicatedStorage, "Shared")
 if RemoteEvent then
@@ -39,28 +40,31 @@ end
 if not RemoteEvent then warn("❌ Missing RemoteEvent, some features may not work.") end
 
 ---------------------------------------------------------------------
--- ⚙️ Flags / Settings
+-- [⚙️ 4] FLAGS / SETTINGS
 ---------------------------------------------------------------------
 local flags = {
     BlowBubble = false,
     AutoClaimChest = false,
     AutoHatchEgg = false,
     DisableAnimation = false,
-    AntiAFK = true
+    AntiAFK = true,
+    DebugMuted = false -- ✅ ปิดเสียง log ได้
 }
-local settings = { EggName = "Infinity Egg", HatchAmount = 6 }
+local settings = {
+    EggName = "Infinity Egg",
+    HatchAmount = 6
+}
 local tasks, conns = {}, {}
 local hatchPatched = false
 
 ---------------------------------------------------------------------
--- 🧰 Debug Console (Core)
+-- [📋 5] DEBUG SYSTEM (Mute/Unmute Supported)
 ---------------------------------------------------------------------
 local DEBUG_MAX = 200
 local DebugLog = {}
 local DebugParagraph
 local function ts() return os.date("%H:%M:%S") end
 
--- สีข้อความ
 local colors = {
     ["loop"] = "#5AC8FA",
     ["patch"] = "#4CD964",
@@ -71,24 +75,16 @@ local colors = {
     ["info"] = "#FFFFFF",
 }
 
--- ✅ เพิ่ม flag ปิดเสียงได้
-local flags = flags or {}
-flags.DebugMuted = false
-
 local function getColorForLog(msg)
     msg = msg:lower()
     for key, hex in pairs(colors) do
-        if msg:find(key) then
-            return hex
-        end
+        if msg:find(key) then return hex end
     end
     return "#FFFFFF"
 end
 
 local function renderColoredLogs()
-    -- ❌ ถ้า DebugMuted = true → ไม่เรนเดอร์ UI
     if flags.DebugMuted or not DebugParagraph then return end
-
     local start = math.max(1, #DebugLog - 80 + 1)
     local buf = {}
     for i = start, #DebugLog do
@@ -103,22 +99,22 @@ local function renderColoredLogs()
 end
 
 local function pushLog(text)
-    if flags.DebugMuted then return end  -- ❌ ไม่บันทึก log ใหม่เมื่อปิดเสียง
+    if flags.DebugMuted then return end
     table.insert(DebugLog, ("[%s] %s"):format(ts(), tostring(text)))
     if #DebugLog > DEBUG_MAX then table.remove(DebugLog, 1) end
     renderColoredLogs()
 end
 
 function dbg(...)
-    if flags.DebugMuted then return end  -- ❌ ไม่พิมพ์ออกหรือ push log ถ้าปิดเสียง
+    if flags.DebugMuted then return end
     local msg = table.concat(table.pack(...), " ")
     print("[BGSI]", msg)
     pushLog(msg)
 end
 
 ---------------------------------------------------------------------
--- 🎬 Disable Hatch Animation (No GUI Clean)
----------------------------------------------------------------------
+-- [🎬 6] PATCH: DISABLE HATCH ANIMATION / GUI FIX
+--------------------------------------------------------------------
 local function makeStub()
     local function noop(...) return nil end
     return setmetatable({
@@ -256,62 +252,44 @@ task.spawn(function()
 end)
 
 ---------------------------------------------------------------------
--- 🔄 Core Loops
+-- [🔁 7] CORE LOOPS
 ---------------------------------------------------------------------
---Bubble
+-- 🫧 Bubble Loop
 local function BlowBubbleLoop()
     local ok,err = pcall(function() RemoteEvent:FireServer("BlowBubble") end)
     if not ok then dbg("BlowBubble error:", err) end
     task.wait(0.1)
 end
 
---Chest
+-- 💎 Chest Loop
 local function AutoClaimChestLoop()
     local chests = {
         "Royal Chest","Super Chest","Golden Chest","Ancient Chest","Dice Chest",
         "Infinity Chest","Void Chest","Giant Chest","Ticket Chest",
         "Easy Obby Chest","Medium Obby Chest","Hard Obby Chest"
     }
-
     for _, chestName in ipairs(chests) do
         local chest = workspace:FindFirstChild(chestName, true)
         if chest then
-            -- ตรวจสอบว่ามีคุณสมบัติ "CanClaim" หรือไม่
-            local canClaim = nil
+            local canClaim
             pcall(function()
-                -- เผื่อบางเกมมี ValueObject เก็บสถานะไว้
-                local val = chest:FindFirstChild("CanClaim") or chest:FindFirstChild("Ready") or chest:FindFirstChild("Available")
+                local val = chest:FindFirstChild("CanClaim") or chest:FindFirstChild("Ready")
                 if val and val:IsA("BoolValue") then
                     canClaim = val.Value
-                elseif val and val:IsA("NumberValue") and val.Value <= 0 then
-                    -- ถ้าใช้ตัวเลขนับถอยหลัง (Cooldown)
-                    canClaim = true
                 end
             end)
-
             if canClaim == nil or canClaim == true then
-                -- ✅ เคลมได้แล้ว → ยิง RemoteEvent
-                local ok, err = pcall(function()
+                pcall(function()
                     RemoteEvent:FireServer("ClaimChest", chestName, true)
                 end)
-                if ok then
-                    dbg("Claimed chest:", chestName)
-                else
-                    dbg("ClaimChest error:", chestName, err)
-                end
-            else
-                dbg("Info: Chest not ready →", chestName)
+                dbg("Claimed chest:", chestName)
             end
-        else
-            dbg("Warn: Chest not found →", chestName)
         end
     end
-
-    -- รอรอบต่อไป (สามารถปรับเวลาได้)
     task.wait(1)
 end
 
---AutoHatch
+-- 🥚 Auto Hatch Loop
 local MIN_INTERVAL = 0.12   -- ระยะเวลาขั้นต่ำ (วินาที) ที่จะรอคำสั่งถัดไป
 local MAX_INTERVAL = 1.5    -- ถ้าเกิดปัญหาจะเพิ่มจนไม่เกินค่านี้
 local BACKOFF_FACTOR = 1.8  -- คูณเวลาเมื่อเกิด error
@@ -410,7 +388,9 @@ local function AutoHatchEggLoop()
     task.wait(math.max(MIN_INTERVAL, hatchInterval))
 end
 
---Loop On/Off
+---------------------------------------------------------------------
+-- [⏹️ 8] LOOP CONTROL FUNCTIONS
+---------------------------------------------------------------------
 local function stopLoop(name)
     flags[name] = false
     if tasks[name] then pcall(function() task.cancel(tasks[name]) end) end
@@ -432,18 +412,29 @@ local function startLoop(name, fn, delay)
 end
 
 ---------------------------------------------------------------------
--- 🪟 Rayfield Window
+-- [🪟 9] RAYFIELD WINDOW SETUP
 ---------------------------------------------------------------------
 local Window = Rayfield:CreateWindow({
-    Name="🌌 BGSI HUB / By NiTroHub",
-    LoadingTitle="Loading NiTroHub...",
-    LoadingSubtitle="By NiTroHub",
-    ConfigurationSaving={Enabled=true,FolderName="NiTroHub",FileName="BGSI-Default",Autosave=true,Autoload=true}
+    Name = "🌌 BGSI HUB / By NiTroHub",
+    LoadingTitle = "Loading NiTroHub...",
+    LoadingSubtitle = "By NiTroHub",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "NiTroHub",
+        FileName = "BGSI-Default",
+        Autosave = true,
+        Autoload = true
+    }
 })
-Rayfield:Notify({Title="✅ BGSI HUB Ready", Content="By NiTroHub | Systems Loaded", Duration=3})
+
+Rayfield:Notify({
+    Title="✅ BGSI HUB Ready",
+    Content="By NiTroHub | Systems Loaded",
+    Duration=3
+})
 
 ---------------------------------------------------------------------
--- ⚙️ Controls Tab
+-- [⚙️ 10] UI TABS
 ---------------------------------------------------------------------
 local Controls = Window:CreateTab("⚙️ Main")
 
@@ -753,3 +744,8 @@ DebugTab:CreateToggle({
         end
     end
 })
+
+---------------------------------------------------------------------
+-- [🏁 11] FINALIZE
+---------------------------------------------------------------------
+dbg("Info: BGSI HUB initialized successfully.")
