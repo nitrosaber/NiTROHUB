@@ -264,11 +264,43 @@ local function AutoClaimChestLoop()
         "Infinity Chest","Void Chest","Giant Chest","Ticket Chest",
         "Easy Obby Chest","Medium Obby Chest","Hard Obby Chest"
     }
-    for _,c in ipairs(chests) do
-        local ok,err = pcall(function() RemoteEvent:FireServer("ClaimChest", c, true) end)
-        if not ok then dbg("ClaimChest error:", c, err) end
+
+    for _, chestName in ipairs(chests) do
+        local chest = workspace:FindFirstChild(chestName, true)
+        if chest then
+            -- ตรวจสอบว่ามีคุณสมบัติ "CanClaim" หรือไม่
+            local canClaim = nil
+            pcall(function()
+                -- เผื่อบางเกมมี ValueObject เก็บสถานะไว้
+                local val = chest:FindFirstChild("CanClaim") or chest:FindFirstChild("Ready") or chest:FindFirstChild("Available")
+                if val and val:IsA("BoolValue") then
+                    canClaim = val.Value
+                elseif val and val:IsA("NumberValue") and val.Value <= 0 then
+                    -- ถ้าใช้ตัวเลขนับถอยหลัง (Cooldown)
+                    canClaim = true
+                end
+            end)
+
+            if canClaim == nil or canClaim == true then
+                -- ✅ เคลมได้แล้ว → ยิง RemoteEvent
+                local ok, err = pcall(function()
+                    RemoteEvent:FireServer("ClaimChest", chestName, true)
+                end)
+                if ok then
+                    dbg("Claimed chest:", chestName)
+                else
+                    dbg("ClaimChest error:", chestName, err)
+                end
+            else
+                dbg("Info: Chest not ready →", chestName)
+            end
+        else
+            dbg("Warn: Chest not found →", chestName)
+        end
     end
-    task.wait(3)
+
+    -- รอรอบต่อไป (สามารถปรับเวลาได้)
+    task.wait(5)
 end
 
 --AutoHatch
