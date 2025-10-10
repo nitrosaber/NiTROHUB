@@ -45,7 +45,7 @@ local flags = {
     BlowBubble = false,
     AutoClaimChest = false,
     AutoHatchEgg = false,
-    DisableAnimation = true,
+    DisableAnimation = false,
     AntiAFK = true
 }
 local settings = { EggName = "Infinity Egg", HatchAmount = 6 }
@@ -395,7 +395,7 @@ end
 -- 🪟 Rayfield Window
 ---------------------------------------------------------------------
 local Window = Rayfield:CreateWindow({
-    Name="🌌 BGSI HUB",
+    Name="🌌 BGSI HUB / By NiTroHub",
     LoadingTitle="Loading NiTroHub...",
     LoadingSubtitle="By NiTroHub",
     ConfigurationSaving={Enabled=true,FolderName="NiTroHub",FileName="BGSI-Deluxe",Autosave=true,Autoload=true}
@@ -405,7 +405,7 @@ Rayfield:Notify({Title="✅ BGSI HUB Ready", Content="By NiTroHub | Systems Load
 ---------------------------------------------------------------------
 -- ⚙️ Controls Tab
 ---------------------------------------------------------------------
-local Controls = Window:CreateTab("⚙️ Controls")
+local Controls = Window:CreateTab("⚙️ Main")
 
 Controls:CreateToggle({
     Name="Blow Bubble", CurrentValue=false,
@@ -424,7 +424,7 @@ Controls:CreateToggle({
 })
 
 Controls:CreateToggle({
-    Name="Auto Hatch (Custom Egg)", CurrentValue=false,
+    Name="Auto Hatch)", CurrentValue=false,
     Callback=function(v)
         flags.AutoHatchEgg = v
         if v then
@@ -433,21 +433,6 @@ Controls:CreateToggle({
         else
             stopLoop("AutoHatchEgg")
         end
-    end
-})
-
-Controls:CreateInput({
-    Name="Min Hatch Interval (sec)", PlaceholderText="0.12",
-    Callback=function(t)
-        local n = tonumber(t)
-        if n and n >= 0.05 then MIN_INTERVAL = n dbg("Set MIN_INTERVAL:", n) end
-    end
-})
-Controls:CreateInput({
-    Name="Max Hatch Distance (stud)", PlaceholderText="50",
-    Callback=function(t)
-        local n = tonumber(t)
-        if n and n > 0 then MAX_DISTANCE = n dbg("Set MAX_DISTANCE:", n) end
     end
 })
 
@@ -461,12 +446,12 @@ Controls:CreateToggle({
 })
 
 Controls:CreateInput({
-    Name="Egg Name", PlaceholderText="Infinity Egg", RemoveTextAfterFocusLost=false,
+    Name="Egg Name", PlaceholderText=" Infinity Egg ", RemoveTextAfterFocusLost=false,
     Callback=function(t) settings.EggName = t dbg("Set EggName: ", t) end
 })
 
 Controls:CreateInput({
-    Name="Hatch Amount (1/3/6/8/9/10/11/12)", PlaceholderText="6", RemoveTextAfterFocusLost=false,
+    Name="Hatch Amount (1/ 3/ 6/ 8/ 9/ 10/ 11/ 12)", PlaceholderText=" 6 ", RemoveTextAfterFocusLost=false,
     Callback=function(t)
         local n = tonumber(t)
         if n and table.find({1,3,6,8,9,10,11,12}, n) then
@@ -475,6 +460,21 @@ Controls:CreateInput({
         else
             dbg("Invalid HatchAmount:", t)
         end
+    end
+})
+
+Controls:CreateInput({
+    Name="Min Hatch Interval (sec)", PlaceholderText=" 0.12 ",
+    Callback=function(t)
+        local n = tonumber(t)
+        if n and n >= 0.05 then MIN_INTERVAL = n dbg("Set MIN_INTERVAL:", n) end
+    end
+})
+Controls:CreateInput({
+    Name="Max Hatch Distance (stud)", PlaceholderText=" 50 ",
+    Callback=function(t)
+        local n = tonumber(t)
+        if n and n > 0 then MAX_DISTANCE = n dbg("Set MAX_DISTANCE:", n) end
     end
 })
 
@@ -513,36 +513,10 @@ Safety:CreateButton({
     end
 })
 
-Safety:CreateButton({
-    Name="🕵️ Anti-Admin Detector",
-    Callback=function()
-        local words={"admin","mod","dev","staff"}
-        Players.PlayerAdded:Connect(function(p)
-            for _,w in ipairs(words) do
-                if p.Name:lower():find(w) then
-                    for k in pairs(flags) do stopLoop(k) end
-                    Rayfield:Destroy()
-                    LocalPlayer:Kick("⚠️ Admin Detected. Script Stopped.")
-                    dbg("Kicked due to admin-like name:", p.Name)
-                end
-            end
-        end)
-        dbg("Anti-Admin: enabled")
-    end
-})
-
 ---------------------------------------------------------------------
 -- ⚙️ Settings Tab \ Performance Booster \ FPS Limiter / Unlocker
 ---------------------------------------------------------------------
 local SettingsTab = Window:CreateTab("⚙️ Settings")
-SettingsTab:CreateButton({
-    Name="🧨 Destroy UI",
-    Callback=function()
-        for k in pairs(flags) do stopLoop(k) end
-        Rayfield:Destroy()
-        dbg("UI destroyed by user.")
-    end
-})
 
 local lighting = game:GetService("Lighting")
 local terrain = workspace:FindFirstChildOfClass("Terrain")
@@ -664,6 +638,16 @@ SettingsTab:CreateDropdown({
         end
     end
 })
+
+SettingsTab:CreateButton({
+    Name="🧨 Destroy UI",
+    Callback=function()
+        for k in pairs(flags) do stopLoop(k) end
+        Rayfield:Destroy()
+        dbg("UI destroyed by user.")
+    end
+})
+
 ---------------------------------------------------------------------
 -- 📊 Debug Log Tab (Rayfield Integrated)
 ---------------------------------------------------------------------
