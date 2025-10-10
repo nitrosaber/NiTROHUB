@@ -212,6 +212,42 @@ task.defer(function()
 end)
 
 ---------------------------------------------------------------------
+-- 🧩 Universal Fake GUI Fix (for Hatching errors)
+---------------------------------------------------------------------
+task.spawn(function()
+    local pg = LocalPlayer:WaitForChild("PlayerGui", 10)
+    if not pg then
+        dbg("Warn: PlayerGui not found; cannot create fake GUI.")
+        return
+    end
+
+    local possibleParents = {
+        pg,
+        pg:FindFirstChild("ScreenGui"),
+        pg:FindFirstChildWhichIsA("ScreenGui"),
+        pg:FindFirstChild("Gui"),
+        pg:FindFirstChild("GuiFrame"),
+    }
+
+    local created = false
+    for _, parent in ipairs(possibleParents) do
+        if parent and not parent:FindFirstChild("Hatching") then
+            local fake = Instance.new("Frame")
+            fake.Name = "Hatching"
+            fake.Visible = false
+            fake.Size = UDim2.new(0, 0, 0, 0)
+            fake.Parent = parent
+            dbg("Patch: Added fake Hatching GUI under " .. parent.Name)
+            created = true
+        end
+    end
+
+    if not created then
+        dbg("Info: No valid parent found for fake Hatching GUI (may already exist).")
+    end
+end)
+
+---------------------------------------------------------------------
 -- 🔄 Core Loops
 ---------------------------------------------------------------------
 local function BlowBubbleLoop()
