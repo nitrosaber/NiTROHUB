@@ -250,12 +250,14 @@ end)
 ---------------------------------------------------------------------
 -- 🔄 Core Loops
 ---------------------------------------------------------------------
+--Bubble
 local function BlowBubbleLoop()
     local ok,err = pcall(function() RemoteEvent:FireServer("BlowBubble") end)
     if not ok then dbg("BlowBubble error:", err) end
     task.wait(0.1)
 end
 
+--Chest
 local function AutoClaimChestLoop()
     local chests = {
         "Royal Chest","Super Chest","Golden Chest","Ancient Chest","Dice Chest",
@@ -269,14 +271,106 @@ local function AutoClaimChestLoop()
     task.wait(3)
 end
 
-local function AutoHatchEggLoop()
-    local ok,err = pcall(function()
-        RemoteEvent:FireServer("HatchEgg", settings.EggName, settings.HatchAmount)
-    end)
-    if not ok then dbg("HatchEgg error:", err) end
-    task.wait(0.1)
+--AutoHatch
+local MIN_INTERVAL = 0.12   -- ระยะเวลาขั้นต่ำ (วินาที) ที่จะรอคำสั่งถัดไป
+local MAX_INTERVAL = 1.5    -- ถ้าเกิดปัญหาจะเพิ่มจนไม่เกินค่านี้
+local BACKOFF_FACTOR = 1.8  -- คูณเวลาเมื่อเกิด error
+local JITTER = 0.06         -- เพิ่ม/ลบนิดหน่อยเพื่อหลีกเลี่ยง pattern ตายตัว
+local MAX_ERRORS = 5        -- ถ้าเกิด error ติดต่อกันเกินนี้จะหยุด AutoHatch
+local MAX_DISTANCE = 50     -- ระยะสูงสุด (studs) ที่อนุญาตให้ฟักไข่
+
+-- internal state
+local hatchInterval = MIN_INTERVAL
+local consecutiveErrors = 0
+
+local function randomJitter()
+    return (math.random() * 2 - 1) * JITTER -- ค่าระหว่าง -JITTER .. +JITTER
 end
 
+local function resetBackoff()
+    hatchInterval = MIN_INTERVAL
+    consecutiveErrors = 0
+end
+
+local function increaseBackoff()
+    hatchInterval = math.min(MAX_INTERVAL, hatchInterval * BACKOFF_FACTOR)
+    hatchInterval = hatchInterval + randomJitter()
+    consecutiveErrors = consecutiveErrors + 1
+end
+
+local function AutoHatchEggLoop()
+    local ok, err = pcall(function()
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        -- หาไข่ใน workspace
+        local egg = workspace:FindFirstChild(settings.EggName, true)
+        if not egg then
+            dbg("Warn: Egg not found →", settings.EggName)
+            -- ถ้าไม่เจอ ให้เพิ่ม backoff เพื่อไม่สแปมการค้นหา
+            increaseBackoff()
+            if consecutiveErrors >= MAX_ERRORS then
+                flags.AutoHatchEgg = false
+                stopLoop("AutoHatchEgg")
+                Rayfield:Notify({Title="⛔ AutoHatch Stopped", Content="ไม่พบไข่หลายครั้ง กำลังหยุด", Duration=3})
+            end
+            return
+        end
+
+        -- คำนวณตำแหน่งของไข่
+        local eggPos
+        if egg:IsA("Model") and egg.GetPivot then
+            eggPos = egg:GetPivot().Position
+        elseif egg:IsA("BasePart") then
+            eggPos = egg.Position
+        else
+            -- กรณีวัตถุไม่รองรับ
+            dbg("Warn: Egg object not a Model/BasePart")
+            increaseBackoff()
+            return
+        end
+
+        -- เช็กระยะ ถ้าไกลเกินหยุด AutoHatch
+        local dist = (hrp.Position - eggPos).Magnitude
+        if dist > MAX_DISTANCE then
+            flags.AutoHatchEgg = false
+            stopLoop("AutoHatchEgg")
+            Rayfield:Notify({Title="⛔ Out of Range", Content="อยู่นอกระยะ ("..math.floor(dist).." studs). AutoHatch หยุด", Duration=3})
+            dbg("Warn: Too far from egg:", math.floor(dist))
+            return
+        end
+
+        -- ส่งคำขอฟักไข่แบบปลอดภัย (pcall)
+        local fired, fireErr = pcall(function()
+            RemoteEvent:FireServer("HatchEgg", settings.EggName, settings.HatchAmount)
+        end)
+
+        if not fired then
+            dbg("HatchEgg FireServer fail:", fireErr)
+            increaseBackoff()
+            if consecutiveErrors >= MAX_ERRORS then
+                flags.AutoHatchEgg = false
+                stopLoop("AutoHatchEgg")
+                Rayfield:Notify({Title="❗ AutoHatch Disabled", Content="เกิดข้อผิดพลาดซ้ำหลายครั้ง", Duration=4})
+            end
+            return
+        end
+
+        -- ถ้า FireServer สำเร็จ ให้รีเซ็ต backoff เล็กน้อย
+        resetBackoff()
+    end)
+
+    if not ok then
+        dbg("AutoHatch loop outer pcall error:", err)
+        increaseBackoff()
+    end
+
+    -- รอโดยใช้ hatchInterval (adaptive) แต่ไม่ต่ำกว่า MIN_INTERVAL
+    task.wait(math.max(MIN_INTERVAL, hatchInterval))
+end
+
+--Loop On/Off
 local function stopLoop(name)
     flags[name] = false
     if tasks[name] then pcall(function() task.cancel(tasks[name]) end) end
@@ -342,8 +436,23 @@ Controls:CreateToggle({
     end
 })
 
+Controls:CreateInput({
+    Name="Min Hatch Interval (sec)", PlaceholderText="0.12",
+    Callback=function(t)
+        local n = tonumber(t)
+        if n and n >= 0.05 then MIN_INTERVAL = n dbg("Set MIN_INTERVAL:", n) end
+    end
+})
+Controls:CreateInput({
+    Name="Max Hatch Distance (stud)", PlaceholderText="50",
+    Callback=function(t)
+        local n = tonumber(t)
+        if n and n > 0 then MAX_DISTANCE = n dbg("Set MAX_DISTANCE:", n) end
+    end
+})
+
 Controls:CreateToggle({
-    Name="Disable Hatch Animation (Auto-Rehook)", CurrentValue=flags.DisableAnimation,
+    Name="Disable Hatch Animation", CurrentValue=flags.DisableAnimation,
     Callback=function(v)
         flags.DisableAnimation = v
         if v then DisableHatchAnimation()
@@ -352,12 +461,12 @@ Controls:CreateToggle({
 })
 
 Controls:CreateInput({
-    Name="Egg Name", PlaceholderText="Infinity Egg", RemoveTextAfterFocusLost=true,
-    Callback=function(t) settings.EggName = t dbg("Set EggName:", t) end
+    Name="Egg Name", PlaceholderText="Infinity Egg", RemoveTextAfterFocusLost=false,
+    Callback=function(t) settings.EggName = t dbg("Set EggName: ", t) end
 })
 
 Controls:CreateInput({
-    Name="Hatch Amount (1/3/6/8/9/10/11/12)", PlaceholderText="6", RemoveTextAfterFocusLost=true,
+    Name="Hatch Amount (1/3/6/8/9/10/11/12)", PlaceholderText="6", RemoveTextAfterFocusLost=false,
     Callback=function(t)
         local n = tonumber(t)
         if n and table.find({1,3,6,8,9,10,11,12}, n) then
