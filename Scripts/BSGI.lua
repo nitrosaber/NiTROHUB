@@ -71,6 +71,10 @@ local colors = {
     ["info"] = "#FFFFFF",
 }
 
+-- ✅ เพิ่ม flag ปิดเสียงได้
+local flags = flags or {}
+flags.DebugMuted = false
+
 local function getColorForLog(msg)
     msg = msg:lower()
     for key, hex in pairs(colors) do
@@ -82,7 +86,9 @@ local function getColorForLog(msg)
 end
 
 local function renderColoredLogs()
-    if not DebugParagraph then return end
+    -- ❌ ถ้า DebugMuted = true → ไม่เรนเดอร์ UI
+    if flags.DebugMuted or not DebugParagraph then return end
+
     local start = math.max(1, #DebugLog - 80 + 1)
     local buf = {}
     for i = start, #DebugLog do
@@ -97,12 +103,14 @@ local function renderColoredLogs()
 end
 
 local function pushLog(text)
+    if flags.DebugMuted then return end  -- ❌ ไม่บันทึก log ใหม่เมื่อปิดเสียง
     table.insert(DebugLog, ("[%s] %s"):format(ts(), tostring(text)))
     if #DebugLog > DEBUG_MAX then table.remove(DebugLog, 1) end
     renderColoredLogs()
 end
 
 function dbg(...)
+    if flags.DebugMuted then return end  -- ❌ ไม่พิมพ์ออกหรือ push log ถ้าปิดเสียง
     local msg = table.concat(table.pack(...), " ")
     print("[BGSI]", msg)
     pushLog(msg)
@@ -718,4 +726,30 @@ DebugTab:CreateButton({
     end
 })
 
-dbg("Info: Debug UI (Rayfield Integrated) initialized.")
+DebugTab:CreateToggle({
+    Name = "🔇 Mute Debug Output",
+    CurrentValue = flags.DebugMuted,
+    Callback = function(v)
+        flags.DebugMuted = v
+        if v then
+            if DebugParagraph then
+                DebugParagraph:Set({
+                    Title = "📋 Debug Output",
+                    Content = "<b><font color='#888888'>[Muted]</font></b>"
+                })
+            end
+            Rayfield:Notify({
+                Title = "🔇 Debug Output Muted",
+                Content = "ปิดการแสดงผล log ชั่วคราว",
+                Duration = 3
+            })
+        else
+            Rayfield:Notify({
+                Title = "🔊 Debug Output Restored",
+                Content = "เปิดการแสดงผล log แล้ว",
+                Duration = 3
+            })
+            renderColoredLogs()
+        end
+    end
+})
