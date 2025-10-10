@@ -1,7 +1,7 @@
--- 🌌 BGSI HUB - Deluxe Edition (Final Fixed v4 for Bubble Gum Simulator Infinite)
--- ✅ Hatch Animation Disable (Confirmed Working)
--- ✅ Auto Hatch / Claim Chest / Blow Bubble
--- ✅ Stable Rayfield + Anti-AFK + Panic
+-- 🌌 BGSI HUB - Deluxe Edition (Final Fixed v5 for Bubble Gum Simulator Infinite)
+-- ✅ Stable Rayfield + Auto Hatch + Disable Hatch Animation (Confirmed)
+-- ✅ Auto-Resize Egg Name Input + Tween Smooth Effect
+-- 🧠 By NiTroHub
 
 -- // Load Rayfield Library
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 local TeleportService = game:GetService("TeleportService")
+local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
 -- === Safe Wait ===
@@ -48,7 +49,7 @@ local settings = {
 
 local tasks, conns = {}, {}
 
--- === 🧩 Final Fixed Disable Hatch Animation (Confirmed Path) ===
+-- === 🧩 Disable Hatch Animation (Confirmed Path)
 local function DisableHatchAnimation()
     local hatchModule = game:GetService("ReplicatedStorage"):FindFirstChild("Client")
     if not hatchModule then
@@ -87,7 +88,7 @@ end
 -- === Core Loops ===
 local function BlowBubbleLoop()
     pcall(function() RemoteEvent:FireServer("BlowBubble") end)
-    task.wait(0.2)
+    task.wait(0.1)
 end
 
 local function AutoClaimChestLoop()
@@ -123,7 +124,7 @@ local function startLoop(name, fn, delay)
         while flags[name] do
             local ok, err = pcall(fn)
             if not ok then warn("[Loop Error: "..name.."]", err) end
-            task.wait(delay or 0.3)
+            task.wait(delay or 0.1)
         end
         tasks[name] = nil
     end)
@@ -208,7 +209,8 @@ Controls:CreateToggle({
     end
 })
 
-Controls:CreateInput({
+-- === Input: Egg Name (With Auto Resize)
+local EggInput = Controls:CreateInput({
     Name = "Egg Name",
     PlaceholderText = "Infinity Egg",
     RemoveTextAfterFocusLost = false,
@@ -217,6 +219,22 @@ Controls:CreateInput({
     end
 })
 
+-- 🧠 Auto Resize Input Box
+task.spawn(function()
+    local textBox = EggInput.InputBox or EggInput.Input or EggInput
+    if not textBox then return end
+
+    local minWidth, maxWidth = 200, 600
+    textBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local len = string.len(textBox.Text)
+        local newW = math.clamp(minWidth + (len * 10), minWidth, maxWidth)
+        TweenService:Create(textBox, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {
+            Size = UDim2.new(0, newW, 0, 30)
+        }):Play()
+    end)
+end)
+
+-- === Input: Hatch Amount
 Controls:CreateInput({
     Name = "Hatch Amount (1/3/6/8/9/10/11/12)",
     PlaceholderText = "6",
