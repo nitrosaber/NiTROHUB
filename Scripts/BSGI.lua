@@ -399,7 +399,7 @@ Safety:CreateButton({
 })
 
 ---------------------------------------------------------------------
--- ⚙️ Settings Tab
+-- ⚙️ Settings Tab \ Performance Booster \ FPS Limiter / Unlocker
 ---------------------------------------------------------------------
 local SettingsTab = Window:CreateTab("⚙️ Settings")
 SettingsTab:CreateButton({
@@ -408,6 +408,116 @@ SettingsTab:CreateButton({
         for k in pairs(flags) do stopLoop(k) end
         Rayfield:Destroy()
         dbg("UI destroyed by user.")
+    end
+})
+
+local lighting = game:GetService("Lighting")
+local terrain = workspace:FindFirstChildOfClass("Terrain")
+
+local perfState = false
+local oldSettings = {}
+
+SettingsTab:CreateToggle({
+    Name = "🚀 Performance Booster (ลดแลค / เพิ่มเฟรมเรต)",
+    CurrentValue = false,
+    Callback = function(v)
+        perfState = v
+        if v then
+            -- บันทึกค่าปัจจุบัน
+            oldSettings = {
+                GlobalShadows = lighting.GlobalShadows,
+                FogEnd = lighting.FogEnd,
+                Brightness = lighting.Brightness,
+                WaterWaveSize = terrain.WaterWaveSize,
+                WaterTransparency = terrain.WaterTransparency
+            }
+
+            -- ปรับค่าให้อยู่ในโหมดประสิทธิภาพสูง
+            lighting.GlobalShadows = false
+            lighting.FogEnd = 100000
+            lighting.Brightness = 1
+            terrain.WaterWaveSize = 0
+            terrain.WaterTransparency = 1
+
+            -- ปิด ParticleEffects และ Decals หนัก ๆ
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+                    obj.Enabled = false
+                elseif obj:IsA("Explosion") then
+                    obj.Visible = false
+                elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                    obj.Transparency = 1
+                end
+            end
+
+            Rayfield:Notify({
+                Title = "🚀 Performance Mode Enabled",
+                Content = "ลดอาการแลคและเพิ่ม FPS สำเร็จ!",
+                Duration = 3
+            })
+            dbg("Info: Performance Booster enabled.")
+        else
+            -- คืนค่ากลับเมื่อปิด
+            lighting.GlobalShadows = oldSettings.GlobalShadows or true
+            lighting.FogEnd = oldSettings.FogEnd or 5000
+            lighting.Brightness = oldSettings.Brightness or 2
+            terrain.WaterWaveSize = oldSettings.WaterWaveSize or 0.15
+            terrain.WaterTransparency = oldSettings.WaterTransparency or 0.3
+
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+                    obj.Enabled = true
+                elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                    obj.Transparency = 0
+                end
+            end
+
+            Rayfield:Notify({
+                Title = "🧹 Performance Mode Disabled",
+                Content = "คืนค่าภาพปกติแล้ว",
+                Duration = 3
+            })
+            dbg("Cleaner: Performance Booster disabled.")
+        end
+    end
+})
+
+local FPSValues = {30, 60, 120, 240, 0} -- 0 = Unlimited
+local currentFPS = 60
+
+SettingsTab:CreateDropdown({
+    Name = "🎯 FPS Limiter / Unlocker",
+    Options = {"30 FPS", "60 FPS", "120 FPS", "240 FPS", "🔓 Unlimited"},
+    CurrentOption = "60 FPS",
+    Callback = function(option)
+        if option:find("30") then currentFPS = 30
+        elseif option:find("60") then currentFPS = 60
+        elseif option:find("120") then currentFPS = 120
+        elseif option:find("240") then currentFPS = 240
+        elseif option:find("Unlimited") then currentFPS = 0 end
+
+        -- ใช้ setfpscap ถ้ามีใน executor
+        if typeof(setfpscap) == "function" then
+            setfpscap(currentFPS)
+            if currentFPS == 0 then
+                Rayfield:Notify({
+                    Title = "🔓 FPS Unlocked",
+                    Content = "FPS ปลดล็อกเต็มศักยภาพ!",
+                    Duration = 3
+                })
+                dbg("Info: FPS unlocked (no limit).")
+            else
+                Rayfield:Notify({
+                    Title = "🎯 FPS Limited",
+                    Content = "ตั้งค่า FPS: " .. currentFPS,
+                    Duration = 3
+                })
+                dbg("Info: FPS capped to", currentFPS)
+            end
+        else
+            warn("⚠️ setfpscap() not supported in this executor.")
+            dbg("Warn: FPS limiter not supported.")
+        end
     end
 })
 
