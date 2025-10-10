@@ -114,21 +114,34 @@ end
 -- ลบเฉพาะ Hatch UI (Ultra-Strict)
 local function cleanHatchGUI()
     local pg = LocalPlayer:FindFirstChild("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
+    local removed, hidden = 0, 0
     local allowed = {
         ["hatchegg"]=true,["hatchanimation"]=true,["hatching"]=true,
         ["eggopen"]=true,["egg_ui"]=true,["hatch_ui"]=true,["eggpopup"]=true
     }
-    local removed = 0
-    for _,d in ipairs(pg:GetDescendants()) do
+
+    for _, d in ipairs(pg:GetDescendants()) do
         if d:IsA("ScreenGui") or d:IsA("Frame") or d:IsA("Folder") then
             local n = (d.Name or ""):lower()
             if allowed[n] then
-                pcall(function() d:Destroy() end)
-                removed += 1
+                -- ✅ ถ้า GUI ยังถูกอ้างอิงจาก Script อื่น: ซ่อนแทนลบ
+                local ok, result = pcall(function()
+                    d.Visible = false
+                    d.Enabled = false
+                end)
+
+                if ok then
+                    hidden += 1
+                else
+                    -- ถ้าไม่มี property Visible/Enabled ก็ลบ
+                    pcall(function() d:Destroy() end)
+                    removed += 1
+                end
             end
         end
     end
-    if removed > 0 then dbg(("Cleaner removed %d Hatch GUI node(s)"):format(removed)) end
+
+    dbg(("Cleaner: Hidden %d | Removed %d Hatch GUI nodes."):format(hidden, removed))
 end
 
 local function patchHatchEgg()
@@ -296,12 +309,12 @@ Controls:CreateToggle({
 })
 
 Controls:CreateInput({
-    Name="Egg Name", PlaceholderText="Infinity Egg", RemoveTextAfterFocusLost=false,
-    Callback=function(t) settings.EggName = t dbg("Set EggName:", t) end
+    Name="Egg Name", PlaceholderText="Infinity Egg", RemoveTextAfterFocusLost=true,
+    Callback=function(t) settings.EggName = t dbg("Set EggName: ", t) end
 })
 
 Controls:CreateInput({
-    Name="Hatch Amount (1/3/6/8/9/10/11/12)", PlaceholderText="6", RemoveTextAfterFocusLost=false,
+    Name="Hatch Amount (1/3/6/8/9/10/11/12)", PlaceholderText="6", RemoveTextAfterFocusLost=true,
     Callback=function(t)
         local n = tonumber(t)
         if n and table.find({1,3,6,8,9,10,11,12}, n) then
@@ -385,30 +398,106 @@ SettingsTab:CreateButton({
 ---------------------------------------------------------------------
 local DebugTab = Window:CreateTab("📊 Debug Log")
 
--- Label สำหรับแสดง log (Rayfield label รองรับหลายบรรทัด)
-DebugLabel = DebugTab:CreateLabel("Logs will appear here...")
+-- === UI Elements ===
+local DebugFrame = Instance.new("ScrollingFrame")
+DebugFrame.Size = UDim2.new(1, -20, 0, 320)
+DebugFrame.Position = UDim2.new(0, 10, 0, 10)
+DebugFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+DebugFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+DebugFrame.BackgroundTransparency = 0.2
+DebugFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+DebugFrame.BorderSizePixel = 0
+DebugFrame.ScrollBarThickness = 6
+DebugFrame.Parent = DebugTab.SectionParent or DebugTab
 
+local DebugText = Instance.new("TextLabel")
+DebugText.Size = UDim2.new(1, -10, 0, 0)
+DebugText.Position = UDim2.new(0, 5, 0, 5)
+DebugText.BackgroundTransparency = 1
+DebugText.TextColor3 = Color3.fromRGB(230, 230, 230)
+DebugText.TextXAlignment = Enum.TextXAlignment.Left
+DebugText.TextYAlignment = Enum.TextYAlignment.Top
+DebugText.Font = Enum.Font.Code
+DebugText.TextSize = 18
+DebugText.RichText = true
+DebugText.TextWrapped = true
+DebugText.Text = "<b><font color='#AAAAAA'>Logs will appear here...</font></b>"
+DebugText.Parent = DebugFrame
+
+DebugText:GetPropertyChangedSignal("TextBounds"):Connect(function()
+    DebugFrame.CanvasSize = UDim2.new(0, 0, 0, DebugText.TextBounds.Y + 20)
+end)
+
+-- === Colored Logging ===
+local colors = {
+    ["loop"] = "#5AC8FA",     -- ฟ้า
+    ["patch"] = "#4CD964",    -- เขียว
+    ["cleaner"] = "#FFD60A",  -- เหลือง
+    ["safety"] = "#A2845E",   -- น้ำตาลทอง
+    ["error"] = "#FF3B30",    -- แดง
+    ["warn"] = "#FF9500",     -- ส้ม
+    ["info"] = "#FFFFFF",     -- ขาว
+}
+
+local function getColorForLog(msg)
+    msg = msg:lower()
+    for key, hex in pairs(colors) do
+        if msg:find(key) then
+            return hex
+        end
+    end
+    return "#FFFFFF"
+end
+
+DebugLabel = {
+    Set = function(_, txt)
+        DebugText.Text = txt or ""
+    end
+}
+
+-- === เพิ่มระบบแปลง log เป็น RichText ===
+local function renderColoredLogs()
+    local start = math.max(1, #DebugLog - 100 + 1)
+    local buffer = {}
+    for i = start, #DebugLog do
+        local msg = DebugLog[i]
+        local hex = getColorForLog(msg)
+        buffer[#buffer + 1] = string.format("<font color='%s'>%s</font>", hex, msg)
+    end
+    DebugText.Text = table.concat(buffer, "\n")
+end
+
+-- อัปเดต dbg() ให้ใช้สีได้
+local oldDbg = dbg
+dbg = function(...)
+    local msg = table.concat(table.pack(...), " ")
+    table.insert(DebugLog, ("[%s] %s"):format(os.date("%H:%M:%S"), msg))
+    if #DebugLog > DEBUG_MAX then table.remove(DebugLog, 1) end
+    renderColoredLogs()
+    print("[BGSI]", msg)
+end
+
+-- === ปุ่มควบคุม ===
 DebugTab:CreateButton({
-    Name="🧹 Clear Log",
-    Callback=function()
+    Name = "🧹 Clear Log",
+    Callback = function()
         DebugLog = {}
-        if DebugLabel and DebugLabel.Set then DebugLabel:Set("Logs cleared.") end
-        dbg("Debug log cleared.")
+        DebugLabel:Set("<b><font color='#888888'>[Logs Cleared]</font></b>")
+        dbg("Cleaner: Debug log cleared.")
     end
 })
 
 DebugTab:CreateButton({
-    Name="📥 Export Log to File",
-    Callback=function()
+    Name = "📥 Export Log to File",
+    Callback = function()
         local exportName = ("BGSI_Debug_%s.txt"):format(os.date("%Y%m%d_%H%M%S"))
         local start = math.max(1, #DebugLog - 200 + 1)
         local buf = {}
-        for i=start, #DebugLog do buf[#buf+1] = DebugLog[i] end
+        for i = start, #DebugLog do buf[#buf+1] = DebugLog[i] end
         writefile(exportName, table.concat(buf, "\n"))
         Rayfield:Notify({Title="📥 Exported", Content=exportName, Duration=3})
-        dbg("Exported debug log to", exportName)
+        dbg("Info: Exported debug log to file →", exportName)
     end
 })
 
--- แสดงสถานะเริ่มต้น
-dbg("Debug UI initialized.")
+dbg("Info: Debug UI (Colored Log) initialized.")
