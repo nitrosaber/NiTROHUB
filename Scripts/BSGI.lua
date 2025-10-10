@@ -114,21 +114,34 @@ end
 -- ลบเฉพาะ Hatch UI (Ultra-Strict)
 local function cleanHatchGUI()
     local pg = LocalPlayer:FindFirstChild("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
+    local removed, hidden = 0, 0
     local allowed = {
         ["hatchegg"]=true,["hatchanimation"]=true,["hatching"]=true,
         ["eggopen"]=true,["egg_ui"]=true,["hatch_ui"]=true,["eggpopup"]=true
     }
-    local removed = 0
-    for _,d in ipairs(pg:GetDescendants()) do
+
+    for _, d in ipairs(pg:GetDescendants()) do
         if d:IsA("ScreenGui") or d:IsA("Frame") or d:IsA("Folder") then
             local n = (d.Name or ""):lower()
             if allowed[n] then
-                pcall(function() d:Destroy() end)
-                removed += 1
+                -- ✅ ถ้า GUI ยังถูกอ้างอิงจาก Script อื่น: ซ่อนแทนลบ
+                local ok, result = pcall(function()
+                    d.Visible = false
+                    d.Enabled = false
+                end)
+
+                if ok then
+                    hidden += 1
+                else
+                    -- ถ้าไม่มี property Visible/Enabled ก็ลบ
+                    pcall(function() d:Destroy() end)
+                    removed += 1
+                end
             end
         end
     end
-    if removed > 0 then dbg(("Cleaner removed %d Hatch GUI node(s)"):format(removed)) end
+
+    dbg(("Cleaner: Hidden %d | Removed %d Hatch GUI nodes."):format(hidden, removed))
 end
 
 local function patchHatchEgg()
