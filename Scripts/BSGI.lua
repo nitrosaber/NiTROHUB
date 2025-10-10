@@ -449,7 +449,7 @@ Controls:CreateToggle({
 })
 
 Controls:CreateToggle({
-    Name="Auto Hatch)", CurrentValue=false,
+    Name="Auto Hatch", CurrentValue=false,
     Callback=function(v)
         flags.AutoHatchEgg = v
         if v then
@@ -525,7 +525,7 @@ Safety:CreateToggle({
 })
 
 Safety:CreateButton({
-    Name="🔁 Rejoin Same Server",
+    Name="🔁 Rejoin Game",
     Callback=function()
         Rayfield:Notify({Title="🔁 Rejoining...", Content="กลับเข้าสู่เซิร์ฟเวอร์เดิม", Duration=3})
         dbg("Rejoining current server...")
