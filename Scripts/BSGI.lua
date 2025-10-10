@@ -1,10 +1,4 @@
 ---------------------------------------------------------------------
--- 🌌 BGSI HUB - Deluxe Edition (v8.3 Full Clean + AutoLoad + Debug UI)
--- ✅ Rayfield UI | Auto Hatch | Hatch Disable | Safety | Smart Autosave
--- ✨ Developer: NiTroHub x ChatGPT (Structured Debug Edition)
----------------------------------------------------------------------
-
----------------------------------------------------------------------
 -- [🧱 1] INITIALIZATION & SERVICES
 ---------------------------------------------------------------------
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -442,7 +436,7 @@ Controls:CreateToggle({
     Name="Blow Bubble", CurrentValue=false,
     Callback=function(v)
         flags.BlowBubble = v
-        if v then startLoop("BlowBubble", BlowBubbleLoop, 0.5) else stopLoop("BlowBubble") end
+        if v then startLoop("BlowBubble", BlowBubbleLoop, 0.1) else stopLoop("BlowBubble") end
     end
 })
 
@@ -450,7 +444,7 @@ Controls:CreateToggle({
     Name="Auto Claim All Chests", CurrentValue=false,
     Callback=function(v)
         flags.AutoClaimChest = v
-        if v then startLoop("AutoClaimChest", AutoClaimChestLoop, 3) else stopLoop("AutoClaimChest") end
+        if v then startLoop("AutoClaimChest", AutoClaimChestLoop, 1) else stopLoop("AutoClaimChest") end
     end
 })
 
@@ -460,7 +454,7 @@ Controls:CreateToggle({
         flags.AutoHatchEgg = v
         if v then
             if flags.DisableAnimation then DisableHatchAnimation() end
-            startLoop("AutoHatchEgg", AutoHatchEggLoop, 0.15)
+            startLoop("AutoHatchEgg", AutoHatchEggLoop, 0.1)
         else
             stopLoop("AutoHatchEgg")
         end
@@ -482,10 +476,10 @@ Controls:CreateInput({
 })
 
 Controls:CreateInput({
-    Name="Hatch Amount (1/ 3/ 6/ 8/ 9/ 10/ 11/ 12)", PlaceholderText=" 6 ", RemoveTextAfterFocusLost=false,
+    Name="Hatch Amount (1-20)", PlaceholderText=" 6 ", RemoveTextAfterFocusLost=false,
     Callback=function(t)
         local n = tonumber(t)
-        if n and table.find({1,3,6,8,9,10,11,12}, n) then
+        if n and table.find({1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20}, n) then
             settings.HatchAmount = n
             dbg("Set HatchAmount:", n)
         else
