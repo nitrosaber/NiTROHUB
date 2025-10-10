@@ -1,35 +1,34 @@
--- 🌌 BGSI HUB - Deluxe Edition (v8.0 Ultra-Safe + Smart AutoSave)
--- ✅ Rayfield UI + Auto Hatch + Hatch Disable + Safety + Auto-Rehook
--- 🧠 By NiTroHub x ChatGPT Integration
--- ⚙️ ออกแบบให้เสถียร ปลอดภัย และอ่านเข้าใจง่าย
+-- 🌌 BGSI HUB - Deluxe Edition (v8.3 Full Clean + AutoLoad + Debug UI)
+-- ✅ Rayfield UI | Auto Hatch | Hatch Disable | Safety | Auto-Rehook | Smart Autosave | Debug Console
+-- ✨ By NiTroHub x ChatGPT
 
---------------------------------------------------------------------
--- 🧱 โหลด Library หลัก
---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- 🧱 Load Rayfield
+---------------------------------------------------------------------
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
---------------------------------------------------------------------
--- 🧩 Services หลักของ Roblox
---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- ⚙️ Roblox Services
+---------------------------------------------------------------------
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 local TeleportService = game:GetService("TeleportService")
-local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
---------------------------------------------------------------------
--- 🧠 ฟังก์ชันรอ Object อย่างปลอดภัย
---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- 🧠 Safe Wait
+---------------------------------------------------------------------
 local function safeWait(parent, name, timeout)
     local ok, obj = pcall(function() return parent:WaitForChild(name, timeout or 10) end)
     if not ok then warn("⚠️ Missing:", name) end
     return obj
 end
 
---------------------------------------------------------------------
--- 🔌 ตรวจหา Remote หลักของเกม
---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- 🔌 Game Remote
+---------------------------------------------------------------------
 local RemoteEvent = safeWait(ReplicatedStorage, "Shared")
 if RemoteEvent then
     RemoteEvent = safeWait(RemoteEvent, "Framework")
@@ -37,108 +36,154 @@ if RemoteEvent then
     RemoteEvent = safeWait(RemoteEvent, "Remote")
     RemoteEvent = safeWait(RemoteEvent, "RemoteEvent")
 end
-if not RemoteEvent then warn("❌ Missing RemoteEvent, บางฟังก์ชันอาจใช้ไม่ได้") end
+if not RemoteEvent then warn("❌ Missing RemoteEvent, some features may not work.") end
 
---------------------------------------------------------------------
--- ⚙️ ตัวแปรหลัก (Settings / Flags)
---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- ⚙️ Flags / Settings
+---------------------------------------------------------------------
 local flags = {
     BlowBubble = false,
     AutoClaimChest = false,
     AutoHatchEgg = false,
-    DisableAnimation = true
+    DisableAnimation = true,
+    AntiAFK = true
 }
-
-local settings = {
-    EggName = "Infinity Egg",
-    HatchAmount = 6,
-}
-
+local settings = { EggName = "Infinity Egg", HatchAmount = 6 }
 local tasks, conns = {}, {}
 local hatchPatched = false
 
---------------------------------------------------------------------
--- 🎬 ปิดแอนิเมชัน HatchEgg (Ultra-Safe System)
---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- 🧰 Debug Console (UI + Logger)
+---------------------------------------------------------------------
+local DEBUG_MAX = 200          -- เก็บได้สูงสุดกี่บรรทัด
+local DebugLog = {}            -- เก็บข้อความ
+local DebugLabel               -- Label ใน UI สำหรับแสดง log
+local function ts() return os.date("%H:%M:%S") end
+local function pushLog(text)
+    table.insert(DebugLog, ("[%s] %s"):format(ts(), tostring(text)))
+    if #DebugLog > DEBUG_MAX then table.remove(DebugLog, 1) end
+end
+local function dbg(...)
+    local msg = table.concat(table.pack(...), " ")
+    print("[BGSI]", msg)
+    pushLog(msg)
+    if DebugLabel and DebugLabel.Set then
+        -- แสดงเฉพาะ 60 บรรทัดล่าสุดให้อ่านง่าย
+        local start = math.max(1, #DebugLog - 60 + 1)
+        local slice = {}
+        for i = start, #DebugLog do slice[#slice+1] = DebugLog[i] end
+        DebugLabel:Set(table.concat(slice, "\n"))
+    end
+end
+
+---------------------------------------------------------------------
+-- 🎬 Disable Hatch Animation (Ultra-Safe)
+---------------------------------------------------------------------
 local function makeStub()
     local function noop(...) return nil end
     return setmetatable({
         Play=noop,Hatch=noop,Open=noop,Init=noop,
         Animate=noop,Create=noop,Show=noop,Hide=noop
-    },{__call=noop,__index=function()return noop end})
+    }, { __call=noop, __index=function() return noop end })
 end
 
 local function patchModuleNoop(tbl)
-    if type(tbl)~="table" then return end
-    for k,v in pairs(tbl)do
-        if type(v)=="function"then tbl[k]=function(...)return nil end end
-    end
-end
-
-local function tryPatchLoadedModules(target)
-    if typeof(getloadedmodules)~="function"then return false end
-    for _,m in ipairs(getloadedmodules())do
-        if m==target or (m.Name=="HatchEgg" and m.Parent and m.Parent.Name=="Effects")then
-            local ok,lib=pcall(require,m)
-            if ok and type(lib)=="table"then patchModuleNoop(lib)return true end
+    if type(tbl) ~= "table" then return end
+    for k,v in pairs(tbl) do
+        if type(v)=="function" then
+            tbl[k] = function(...) return nil end
         end
     end
 end
 
+local function tryPatchLoadedModules(target)
+    if typeof(getloadedmodules) ~= "function" then return false end
+    for _,m in ipairs(getloadedmodules()) do
+        if m==target or (m.Name=="HatchEgg" and m.Parent and m.Parent.Name=="Effects") then
+            local ok,lib = pcall(require, m)
+            if ok and type(lib)=="table" then
+                patchModuleNoop(lib)
+                dbg("Patched loaded HatchEgg table.")
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- ลบเฉพาะ Hatch UI (Ultra-Strict)
 local function cleanHatchGUI()
     local pg = LocalPlayer:FindFirstChild("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
     local allowed = {
         ["hatchegg"]=true,["hatchanimation"]=true,["hatching"]=true,
         ["eggopen"]=true,["egg_ui"]=true,["hatch_ui"]=true,["eggpopup"]=true
     }
-    for _,d in ipairs(pg:GetDescendants())do
-        if d:IsA("ScreenGui")or d:IsA("Frame")or d:IsA("Folder")then
-            if allowed[d.Name:lower()]then pcall(function()d:Destroy()end)end
+    local removed = 0
+    for _,d in ipairs(pg:GetDescendants()) do
+        if d:IsA("ScreenGui") or d:IsA("Frame") or d:IsA("Folder") then
+            local n = (d.Name or ""):lower()
+            if allowed[n] then
+                pcall(function() d:Destroy() end)
+                removed += 1
+            end
         end
     end
+    if removed > 0 then dbg(("Cleaner removed %d Hatch GUI node(s)"):format(removed)) end
 end
 
 local function patchHatchEgg()
     local client = ReplicatedStorage:FindFirstChild("Client")
     local effects = client and client:FindFirstChild("Effects")
-    if not effects then return end
+    if not effects then dbg("Effects folder not found."); return end
+
     local target = effects:FindFirstChild("HatchEgg")
-    if not target then return end
+    if not target then dbg("HatchEgg module not found yet."); return end
 
     local stub = makeStub()
-    pcall(function()tryPatchLoadedModules(target)end)
+    pcall(function() tryPatchLoadedModules(target) end)
 
-    local env = (pcall(function()return getrenv()end) and getrenv()) or _G
+    local env = (pcall(function() return getrenv() end) and getrenv()) or _G
     local req = (rawget(env or {}, "require") or require)
+
     if typeof(req)=="function" and hookfunction and not _G.HatchReqHooked then
         _G.HatchReqHooked = true
-        local old; old=hookfunction(req,function(mod,...)
-            if typeof(mod)=="Instance"and mod:IsA("ModuleScript")then
-                if mod==target or(mod.Name=="HatchEgg"and mod.Parent and mod.Parent.Name=="Effects")then
+        local old
+        old = hookfunction(req, function(mod, ...)
+            if typeof(mod)=="Instance" and mod:IsA("ModuleScript") then
+                if mod==target or (mod.Name=="HatchEgg" and mod.Parent and mod.Parent.Name=="Effects") then
+                    dbg("Stubbed require(HatchEgg).")
                     return stub
                 end
             end
-            return old(mod,...)
+            return old(mod, ...)
         end)
+        dbg("Hooked require() for HatchEgg.")
     end
 
-    if conns.HatchAuto then pcall(function()conns.HatchAuto:Disconnect()end)end
+    if conns.HatchAuto then pcall(function() conns.HatchAuto:Disconnect() end) end
     conns.HatchAuto = effects.ChildAdded:Connect(function(child)
-        if child.Name=="HatchEgg"then task.wait(0.5)
-            pcall(function()tryPatchLoadedModules(child)cleanHatchGUI()end)
+        if child.Name == "HatchEgg" then
+            task.wait(0.5)
+            pcall(function()
+                tryPatchLoadedModules(child)
+                cleanHatchGUI()
+                dbg("Auto-rehook on HatchEgg ChildAdded.")
+            end)
         end
     end)
+    dbg("patchHatchEgg completed.")
 end
 
 local function DisableHatchAnimation()
-    if hatchPatched then return end
+    if hatchPatched then dbg("DisableHatchAnimation: already applied."); return end
     hatchPatched = true
     pcall(patchHatchEgg)
     pcall(cleanHatchGUI)
-    Rayfield:Notify({Title="🎬 Hatch Animation Disabled",Content="Delta Auto-Rehook Active ✅",Duration=3})
+    Rayfield:Notify({Title="🎬 Hatch Animation Disabled", Content="Delta Auto-Rehook Active ✅", Duration=3})
+    dbg("Hatch animation disabled.")
 end
 
--- 🔁 เรียกใช้โดยอัตโนมัติเมื่อสคริปต์โหลด
+-- Auto-disable at startup
 task.defer(function()
     task.wait(1)
     if flags.DisableAnimation then
@@ -146,141 +191,224 @@ task.defer(function()
     end
 end)
 
---------------------------------------------------------------------
--- 🔄 Core Loops (ฟังก์ชันหลัก)
---------------------------------------------------------------------
-local function BlowBubbleLoop()pcall(function()RemoteEvent:FireServer("BlowBubble")end)task.wait(0.1)end
+---------------------------------------------------------------------
+-- 🔄 Core Loops
+---------------------------------------------------------------------
+local function BlowBubbleLoop()
+    local ok,err = pcall(function() RemoteEvent:FireServer("BlowBubble") end)
+    if not ok then dbg("BlowBubble error:", err) end
+    task.wait(0.1)
+end
+
 local function AutoClaimChestLoop()
-    local chests={"Royal Chest","Super Chest","Golden Chest","Ancient Chest","Dice Chest","Infinity Chest",
-        "Void Chest","Giant Chest","Ticket Chest","Easy Obby Chest","Medium Obby Chest","Hard Obby Chest"}
-    for _,c in ipairs(chests)do pcall(function()RemoteEvent:FireServer("ClaimChest",c,true)end)end
+    local chests = {
+        "Royal Chest","Super Chest","Golden Chest","Ancient Chest","Dice Chest",
+        "Infinity Chest","Void Chest","Giant Chest","Ticket Chest",
+        "Easy Obby Chest","Medium Obby Chest","Hard Obby Chest"
+    }
+    for _,c in ipairs(chests) do
+        local ok,err = pcall(function() RemoteEvent:FireServer("ClaimChest", c, true) end)
+        if not ok then dbg("ClaimChest error:", c, err) end
+    end
     task.wait(3)
 end
+
 local function AutoHatchEggLoop()
-    pcall(function()RemoteEvent:FireServer("HatchEgg",settings.EggName,settings.HatchAmount)end)
+    local ok,err = pcall(function()
+        RemoteEvent:FireServer("HatchEgg", settings.EggName, settings.HatchAmount)
+    end)
+    if not ok then dbg("HatchEgg error:", err) end
     task.wait(0.1)
 end
 
 local function stopLoop(name)
-    flags[name]=false
-    if tasks[name] then pcall(function()task.cancel(tasks[name])end)end
-    tasks[name]=nil
+    flags[name] = false
+    if tasks[name] then pcall(function() task.cancel(tasks[name]) end) end
+    tasks[name] = nil
+    dbg("Stopped loop:", name)
 end
 
-local function startLoop(name,fn,delay)
-    if tasks[name]then return end
-    tasks[name]=task.spawn(function()
-        while flags[name]do local ok,err=pcall(fn)
-            if not ok then warn("[Loop Error:"..name.."]",err)end
+local function startLoop(name, fn, delay)
+    if tasks[name] then return end
+    dbg("Started loop:", name)
+    tasks[name] = task.spawn(function()
+        while flags[name] do
+            local ok, err = pcall(fn)
+            if not ok then dbg("[Loop Error:", name .. "]", err) end
             task.wait(delay or 0.1)
         end
-        tasks[name]=nil
+        tasks[name] = nil
     end)
 end
 
---------------------------------------------------------------------
--- 🪟 สร้าง UI หลัก (Rayfield)
---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- 🪟 Rayfield Window
+---------------------------------------------------------------------
 local Window = Rayfield:CreateWindow({
     Name="🌌 BGSI HUB",
     LoadingTitle="Loading NiTroHub...",
     LoadingSubtitle="By NiTroHub",
     ConfigurationSaving={Enabled=true,FolderName="NiTroHub",FileName="BGSI-Deluxe",Autosave=true,Autoload=true}
 })
+Rayfield:Notify({Title="✅ BGSI HUB Ready", Content="Systems Loaded", Duration=3})
 
-Rayfield:Notify({Title="✅ BGSI HUB Ready",Content="ระบบโหลดเสร็จสมบูรณ์",Duration=3})
-
---------------------------------------------------------------------
--- ⚙️ แท็บ Controls (คำสั่งหลัก)
---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- ⚙️ Controls Tab
+---------------------------------------------------------------------
 local Controls = Window:CreateTab("⚙️ Controls")
 
-Controls:CreateToggle({Name="Blow Bubble",CurrentValue=false,Callback=function(v)
-    flags.BlowBubble=v if v then startLoop("BlowBubble",BlowBubbleLoop,0.5) else stopLoop("BlowBubble") end
-end})
+Controls:CreateToggle({
+    Name="Blow Bubble", CurrentValue=false,
+    Callback=function(v)
+        flags.BlowBubble = v
+        if v then startLoop("BlowBubble", BlowBubbleLoop, 0.5) else stopLoop("BlowBubble") end
+    end
+})
 
-Controls:CreateToggle({Name="Auto Claim All Chests",CurrentValue=false,Callback=function(v)
-    flags.AutoClaimChest=v if v then startLoop("AutoClaimChest",AutoClaimChestLoop,3) else stopLoop("AutoClaimChest") end
-end})
+Controls:CreateToggle({
+    Name="Auto Claim All Chests", CurrentValue=false,
+    Callback=function(v)
+        flags.AutoClaimChest = v
+        if v then startLoop("AutoClaimChest", AutoClaimChestLoop, 3) else stopLoop("AutoClaimChest") end
+    end
+})
 
-Controls:CreateToggle({Name="Auto Hatch (Custom Egg)",CurrentValue=false,Callback=function(v)
-    flags.AutoHatchEgg=v
-    if v then
-        if flags.DisableAnimation then DisableHatchAnimation() end
-        startLoop("AutoHatchEgg",AutoHatchEggLoop,0.15)
-    else stopLoop("AutoHatchEgg") end
-end})
+Controls:CreateToggle({
+    Name="Auto Hatch (Custom Egg)", CurrentValue=false,
+    Callback=function(v)
+        flags.AutoHatchEgg = v
+        if v then
+            if flags.DisableAnimation then DisableHatchAnimation() end
+            startLoop("AutoHatchEgg", AutoHatchEggLoop, 0.15)
+        else
+            stopLoop("AutoHatchEgg")
+        end
+    end
+})
 
-Controls:CreateToggle({Name="Disable Hatch Animation (Auto-Rehook)",CurrentValue=flags.DisableAnimation,Callback=function(v)
-    flags.DisableAnimation=v
-    if v then DisableHatchAnimation()
-    else Rayfield:Notify({Title="⚙️ Rejoin Required",Content="Rejoin เพื่อเปิด Animation กลับ",Duration=3}) end
-end})
+Controls:CreateToggle({
+    Name="Disable Hatch Animation (Auto-Rehook)", CurrentValue=flags.DisableAnimation,
+    Callback=function(v)
+        flags.DisableAnimation = v
+        if v then DisableHatchAnimation()
+        else Rayfield:Notify({Title="⚙️ Rejoin Required", Content="Rejoin to restore animations.", Duration=3}) end
+    end
+})
 
---------------------------------------------------------------------
--- 🥚 ตั้งค่า Egg / Hatch
---------------------------------------------------------------------
-Controls:CreateInput({Name="Egg Name",PlaceholderText="Infinity Egg",RemoveTextAfterFocusLost=false,
-    Callback=function(t)settings.EggName=t end})
+Controls:CreateInput({
+    Name="Egg Name", PlaceholderText="Infinity Egg", RemoveTextAfterFocusLost=false,
+    Callback=function(t) settings.EggName = t dbg("Set EggName:", t) end
+})
 
-Controls:CreateInput({Name="Hatch Amount (1/3/6/8/9/10/11/12)",PlaceholderText="6",RemoveTextAfterFocusLost=false,
-    Callback=function(t)local n=tonumber(t)
-    if n and (n==1 or n==3 or n==6 or n==8 or n==9 or n==10 or n==11 or n==12)then settings.HatchAmount=n
-    else warn("⚠️ Invalid Hatch Amount")end end})
+Controls:CreateInput({
+    Name="Hatch Amount (1/3/6/8/9/10/11/12)", PlaceholderText="6", RemoveTextAfterFocusLost=false,
+    Callback=function(t)
+        local n = tonumber(t)
+        if n and table.find({1,3,6,8,9,10,11,12}, n) then
+            settings.HatchAmount = n
+            dbg("Set HatchAmount:", n)
+        else
+            warn("⚠️ Invalid Hatch Amount")
+            dbg("Invalid HatchAmount:", t)
+        end
+    end
+})
 
---------------------------------------------------------------------
--- 🛡️ Safety Tab (ระบบป้องกัน)
---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- 🛡️ Safety Tab
+---------------------------------------------------------------------
 local Safety = Window:CreateTab("🛡️ Safety")
 
-Safety:CreateToggle({Name="Anti-AFK",CurrentValue=true,Callback=function(v)
-    if conns.AFK then conns.AFK:Disconnect() conns.AFK=nil end
-    if v then conns.AFK=LocalPlayer.Idled:Connect(function()
-        VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-        task.wait(1)VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-    end) end
-end})
-
-Safety:CreateButton({Name="♻️ Auto Reconnect",Callback=function()
-    LocalPlayer.OnTeleport:Connect(function(s)
-        if s==Enum.TeleportState.Failed then task.wait(3)TeleportService:Teleport(game.PlaceId)end
-    end)
-    Rayfield:Notify({Title="🌐 Auto Reconnect",Content="เปิดใช้งานแล้ว",Duration=3})
-end})
-
-Safety:CreateButton({Name="🕵️ Anti-Admin Detector",Callback=function()
-    local words={"admin","mod","dev","staff"}
-    Players.PlayerAdded:Connect(function(p)
-        for _,w in ipairs(words)do
-            if p.Name:lower():find(w)then
-                for k in pairs(flags)do stopLoop(k)end
-                Rayfield:Destroy()
-                LocalPlayer:Kick("⚠️ Admin Detected. Script Stopped.")
-            end
+Safety:CreateToggle({
+    Name="Anti-AFK", CurrentValue=flags.AntiAFK,
+    Callback=function(v)
+        flags.AntiAFK = v
+        if conns.AFK then conns.AFK:Disconnect() conns.AFK=nil end
+        if v then
+            conns.AFK = LocalPlayer.Idled:Connect(function()
+                VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+                task.wait(1)
+                VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+            end)
         end
-    end)
-end})
+        dbg("Anti-AFK:", v and "ON" or "OFF")
+    end
+})
 
---------------------------------------------------------------------
--- ⚙️ Settings Tab (ตั้งค่า / บันทึกสถานะ)
---------------------------------------------------------------------
-local Settings = Window:CreateTab("⚙️ Settings")
+Safety:CreateButton({
+    Name="♻️ Auto Reconnect",
+    Callback=function()
+        LocalPlayer.OnTeleport:Connect(function(s)
+            if s==Enum.TeleportState.Failed then
+                task.wait(3)
+                TeleportService:Teleport(game.PlaceId)
+            end
+        end)
+        Rayfield:Notify({Title="🌐 Auto Reconnect", Content="Enabled", Duration=3})
+        dbg("AutoReconnect: enabled")
+    end
+})
 
-Settings:CreateButton({Name="💾 Save Current Toggles",Callback=function()
-    writefile("NiTroHub_Toggles.json", game:GetService("HttpService"):JSONEncode(flags))
-    Rayfield:Notify({Title="💾 Saved",Content="บันทึกสถานะการเปิด/ปิดแล้ว",Duration=2})
-end})
+Safety:CreateButton({
+    Name="🕵️ Anti-Admin Detector",
+    Callback=function()
+        local words={"admin","mod","dev","staff"}
+        Players.PlayerAdded:Connect(function(p)
+            for _,w in ipairs(words) do
+                if p.Name:lower():find(w) then
+                    for k in pairs(flags) do stopLoop(k) end
+                    Rayfield:Destroy()
+                    LocalPlayer:Kick("⚠️ Admin Detected. Script Stopped.")
+                    dbg("Kicked due to admin-like name:", p.Name)
+                end
+            end
+        end)
+        dbg("Anti-Admin: enabled")
+    end
+})
 
-Settings:CreateButton({Name="♻️ Load Saved Toggles",Callback=function()
-    local s=pcall(function()
-        local data=readfile("NiTroHub_Toggles.json")
-        local loaded=game:GetService("HttpService"):JSONDecode(data)
-        for k,v in pairs(loaded)do flags[k]=v end
-        Rayfield:Notify({Title="✅ Loaded",Content="โหลดสถานะล่าสุดเรียบร้อย",Duration=2})
-    end)
-end})
+---------------------------------------------------------------------
+-- ⚙️ Settings Tab (Save / Load)
+---------------------------------------------------------------------
+local SettingsTab = Window:CreateTab("⚙️ Settings")
+SettingsTab:CreateButton({
+    Name="🧨 Destroy UI",
+    Callback=function()
+        for k in pairs(flags) do stopLoop(k) end
+        Rayfield:Destroy()
+        dbg("UI destroyed by user.")
+    end
+})
 
-Settings:CreateButton({Name="🧨 Destroy UI",Callback=function()
-    for k in pairs(flags)do stopLoop(k)end
-    Rayfield:Destroy()
-end})
+---------------------------------------------------------------------
+-- 📊 Debug Log Tab (UI)
+---------------------------------------------------------------------
+local DebugTab = Window:CreateTab("📊 Debug Log")
+
+-- Label สำหรับแสดง log (Rayfield label รองรับหลายบรรทัด)
+DebugLabel = DebugTab:CreateLabel("Logs will appear here...")
+
+DebugTab:CreateButton({
+    Name="🧹 Clear Log",
+    Callback=function()
+        DebugLog = {}
+        if DebugLabel and DebugLabel.Set then DebugLabel:Set("Logs cleared.") end
+        dbg("Debug log cleared.")
+    end
+})
+
+DebugTab:CreateButton({
+    Name="📥 Export Log to File",
+    Callback=function()
+        local exportName = ("BGSI_Debug_%s.txt"):format(os.date("%Y%m%d_%H%M%S"))
+        local start = math.max(1, #DebugLog - 200 + 1)
+        local buf = {}
+        for i=start, #DebugLog do buf[#buf+1] = DebugLog[i] end
+        writefile(exportName, table.concat(buf, "\n"))
+        Rayfield:Notify({Title="📥 Exported", Content=exportName, Duration=3})
+        dbg("Exported debug log to", exportName)
+    end
+})
+
+-- แสดงสถานะเริ่มต้น
+dbg("Debug UI initialized.")
