@@ -482,7 +482,6 @@ SettingsTab:CreateToggle({
     end
 })
 
-local FPSValues = {30, 60, 120, 240, 0} -- 0 = Unlimited
 local currentFPS = 60
 
 SettingsTab:CreateDropdown({
@@ -490,13 +489,25 @@ SettingsTab:CreateDropdown({
     Options = {"30 FPS", "60 FPS", "120 FPS", "240 FPS", "🔓 Unlimited"},
     CurrentOption = "60 FPS",
     Callback = function(option)
-        if option:find("30") then currentFPS = 30
-        elseif option:find("60") then currentFPS = 60
-        elseif option:find("120") then currentFPS = 120
-        elseif option:find("240") then currentFPS = 240
-        elseif option:find("Unlimited") then currentFPS = 0 end
+        -- ✅ Rayfield ส่งค่ากลับมาเป็น table เช่น { "60 FPS" }
+        local selected = option
+        if type(option) == "table" then
+            selected = option[1]
+        end
 
-        -- ใช้ setfpscap ถ้ามีใน executor
+        if not selected then
+            dbg("Warn: FPS dropdown returned nil option")
+            return
+        end
+
+        -- ✅ แปลงค่าที่เลือกเป็นตัวเลข FPS
+        if string.find(selected, "30") then currentFPS = 30
+        elseif string.find(selected, "60") then currentFPS = 60
+        elseif string.find(selected, "120") then currentFPS = 120
+        elseif string.find(selected, "240") then currentFPS = 240
+        elseif string.find(selected, "Unlimited") then currentFPS = 0 end
+
+        -- ✅ ใช้งาน setfpscap() ถ้ามีใน executor
         if typeof(setfpscap) == "function" then
             setfpscap(currentFPS)
             if currentFPS == 0 then
@@ -520,7 +531,6 @@ SettingsTab:CreateDropdown({
         end
     end
 })
-
 ---------------------------------------------------------------------
 -- 📊 Debug Log Tab (Rayfield Integrated)
 ---------------------------------------------------------------------
