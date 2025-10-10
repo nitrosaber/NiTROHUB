@@ -1,7 +1,6 @@
--- 🌌 BGSI HUB - Deluxe Edition (Final Fixed v5 for Bubble Gum Simulator Infinite)
--- ✅ Stable Rayfield + Auto Hatch + Disable Hatch Animation (Confirmed)
--- ✅ Auto-Resize Egg Name Input + Tween Smooth Effect
--- 🧠 By NiTroHub
+-- 🌌 BGSI HUB - Deluxe Edition (Delta Auto-Rehook v6)
+-- ✅ Stable Rayfield + Auto Hatch + Auto Hatch Disable (Delta Optimized)
+-- 🧠 By NiTroHub x ChatGPT Integration
 
 -- // Load Rayfield Library
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -48,44 +47,102 @@ local settings = {
 }
 
 local tasks, conns = {}, {}
+local hatchPatched = false
 
--- === 🧩 Disable Hatch Animation (Confirmed Path)
-local function DisableHatchAnimation()
-    local hatchModule = game:GetService("ReplicatedStorage"):FindFirstChild("Client")
-    if not hatchModule then
-        warn("[BGSI] Folder 'Client' not found in ReplicatedStorage.")
-        return
-    end
+--------------------------------------------------------------------
+-- === 🧩 Disable Hatch Animation (Delta Auto-Rehook)
+--------------------------------------------------------------------
+local function makeStub()
+    local function noop(...) return nil end
+    return setmetatable({
+        Play = noop, Hatch = noop, Open = noop, Init = noop,
+        Animate = noop, Create = noop, Show = noop, Hide = noop
+    }, { __call = noop, __index = function() return noop end })
+end
 
-    hatchModule = hatchModule:FindFirstChild("Effects")
-    if not hatchModule then
-        warn("[BGSI] Folder 'Effects' not found in ReplicatedStorage.Client.")
-        return
-    end
+local function patchHatchEgg()
+    local Rep = game:GetService("ReplicatedStorage")
+    local client = Rep:FindFirstChild("Client")
+    local effects = client and client:FindFirstChild("Effects")
+    local target = effects and effects:FindFirstChild("HatchEgg")
 
-    hatchModule = hatchModule:FindFirstChild("HatchEgg")
-    if not hatchModule then
-        warn("[BGSI] HatchEgg not found in ReplicatedStorage.Client.Effects.")
-        return
-    end
+    if not target then return end
+    local stub = makeStub()
 
-    if hatchModule:IsA("ModuleScript") then
-        pcall(function()
-            hatchModule.Name = "HatchEgg_Disabled"
-            if hatchModule.Source then
-                hatchModule.Source = "-- Hatch animation disabled by BGSI HUB"
+    local req = rawget(getrenv(), "require") or require
+    if typeof(req) == "function" and hookfunction then
+        local old; old = hookfunction(req, function(mod, ...)
+            if typeof(mod) == "Instance" and mod:IsA("ModuleScript") then
+                if mod == target or (mod.Name == "HatchEgg" and mod.Parent and mod.Parent.Name == "Effects") then
+                    return stub
+                end
             end
+            return old(mod, ...)
         end)
-        print("[BGSI] ✅ Hatch animation module disabled successfully.")
-    else
-        pcall(function()
-            hatchModule:Destroy()
-        end)
-        print("[BGSI] ✅ Hatch animation object destroyed.")
+    end
+
+    if getloadedmodules then
+        for _, m in ipairs(getloadedmodules()) do
+            if m == target then
+                local ok, lib = pcall(require, m)
+                if ok and type(lib) == "table" then
+                    for k, v in pairs(lib) do
+                        if type(v) == "function" then
+                            lib[k] = function(...) return nil end
+                        end
+                    end
+                end
+                break
+            end
+        end
     end
 end
 
+local function cleanHatchGUI()
+    local pg = Players.LocalPlayer:FindFirstChild("PlayerGui") or Players.LocalPlayer:WaitForChild("PlayerGui")
+    for _, d in ipairs(pg:GetDescendants()) do
+        if d:IsA("ScreenGui") or d:IsA("Frame") or d:IsA("Folder") then
+            local n = d.Name:lower()
+            if n:find("hatch") or n:find("egg") then
+                pcall(function() d:Destroy() end)
+            end
+        end
+    end
+end
+
+local function DisableHatchAnimation()
+    if hatchPatched then return end
+    hatchPatched = true
+
+    local exec = identifyexecutor and identifyexecutor() or "Unknown"
+    local isDelta = exec:lower():find("delta") ~= nil
+
+    patchHatchEgg()
+    cleanHatchGUI()
+
+    local Rep = game:GetService("ReplicatedStorage")
+    local client = Rep:WaitForChild("Client")
+    local effects = client:WaitForChild("Effects")
+
+    if conns.HatchAuto then conns.HatchAuto:Disconnect() end
+    conns.HatchAuto = effects.ChildAdded:Connect(function(child)
+        if child.Name == "HatchEgg" then
+            task.wait(1)
+            patchHatchEgg()
+            cleanHatchGUI()
+        end
+    end)
+
+    Rayfield:Notify({
+        Title = "🎬 Hatch Animation Disabled",
+        Content = isDelta and "Delta Auto-Rehook Active ✅" or "Generic Hook Active ⚙️",
+        Duration = 3
+    })
+end
+
+--------------------------------------------------------------------
 -- === Core Loops ===
+--------------------------------------------------------------------
 local function BlowBubbleLoop()
     pcall(function() RemoteEvent:FireServer("BlowBubble") end)
     task.wait(0.1)
@@ -112,7 +169,6 @@ local function AutoHatchEggLoop()
     task.wait(0.1)
 end
 
--- === Loop Manager ===
 local function stopLoop(name)
     flags[name] = false
     if tasks[name] then task.cancel(tasks[name]); tasks[name] = nil end
@@ -130,7 +186,9 @@ local function startLoop(name, fn, delay)
     end)
 end
 
+--------------------------------------------------------------------
 -- === UI ===
+--------------------------------------------------------------------
 local Window = Rayfield:CreateWindow({
     Name = "🌌 BGSI HUB",
     LoadingTitle = "Loading NiTroHub...",
@@ -150,7 +208,6 @@ Rayfield:Notify({
     Duration = 4
 })
 
--- === Controls Tab ===
 local Controls = Window:CreateTab("⚙️ Controls")
 
 Controls:CreateToggle({
@@ -188,17 +245,12 @@ Controls:CreateToggle({
 })
 
 Controls:CreateToggle({
-    Name = "Disable Hatch Animation (Permanent)",
+    Name = "Disable Hatch Animation (Auto-Rehook)",
     CurrentValue = flags.DisableAnimation,
     Callback = function(v)
         flags.DisableAnimation = v
         if v then
             DisableHatchAnimation()
-            Rayfield:Notify({
-                Title = "🎬 Hatch Animation Disabled",
-                Content = "HatchEgg module safely disabled.",
-                Duration = 3
-            })
         else
             Rayfield:Notify({
                 Title = "⚙️ Rejoin Required",
@@ -209,7 +261,7 @@ Controls:CreateToggle({
     end
 })
 
--- === Input: Egg Name (With Auto Resize)
+-- === Inputs ===
 local EggInput = Controls:CreateInput({
     Name = "Egg Name",
     PlaceholderText = "Infinity Egg",
@@ -219,11 +271,9 @@ local EggInput = Controls:CreateInput({
     end
 })
 
--- 🧠 Auto Resize Input Box
 task.spawn(function()
     local textBox = EggInput.InputBox or EggInput.Input or EggInput
     if not textBox then return end
-
     local minWidth, maxWidth = 200, 600
     textBox:GetPropertyChangedSignal("Text"):Connect(function()
         local len = string.len(textBox.Text)
@@ -234,7 +284,6 @@ task.spawn(function()
     end)
 end)
 
--- === Input: Hatch Amount
 Controls:CreateInput({
     Name = "Hatch Amount (1/3/6/8/9/10/11/12)",
     PlaceholderText = "6",
@@ -296,7 +345,6 @@ Safety:CreateButton({
     end
 })
 
--- === Settings Tab ===
 local SettingsTab = Window:CreateTab("⚙️ Settings")
 
 SettingsTab:CreateButton({
