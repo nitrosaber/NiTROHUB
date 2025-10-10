@@ -525,16 +525,45 @@ Safety:CreateToggle({
 })
 
 Safety:CreateButton({
-    Name="♻️ Auto Reconnect",
+    Name="🔁 Rejoin Same Server",
     Callback=function()
-        LocalPlayer.OnTeleport:Connect(function(s)
-            if s==Enum.TeleportState.Failed then
-                task.wait(3)
-                TeleportService:Teleport(game.PlaceId)
-            end
+        Rayfield:Notify({Title="🔁 Rejoining...", Content="กลับเข้าสู่เซิร์ฟเวอร์เดิม", Duration=3})
+        dbg("Rejoining current server...")
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+    end
+})
+
+Safety:CreateButton({
+    Name="🌍 Server Hop (Find New Server)",
+    Callback=function()
+        local HttpService = game:GetService("HttpService")
+        local servers = {}
+        local success, result = pcall(function()
+            local cursor = ""
+            repeat
+                local response = game:HttpGet(
+                    ("https://games.roblox.com/v1/games/%s/servers/Public?sortOrder=Asc&limit=100%s")
+                    :format(game.PlaceId, cursor ~= "" and "&cursor=" .. cursor or "")
+                )
+                local data = HttpService:JSONDecode(response)
+                for _, srv in ipairs(data.data) do
+                    if srv.playing < srv.maxPlayers and srv.id ~= game.JobId then
+                        table.insert(servers, srv.id)
+                    end
+                end
+                cursor = data.nextPageCursor
+            until not cursor or #servers >= 10
         end)
-        Rayfield:Notify({Title="🌐 Auto Reconnect", Content="Enabled", Duration=3})
-        dbg("AutoReconnect: enabled")
+
+        if success and #servers > 0 then
+            local randomServer = servers[math.random(1, #servers)]
+            Rayfield:Notify({Title="🌍 Server Hop", Content="กำลังย้ายเซิร์ฟเวอร์ใหม่...", Duration=3})
+            dbg("ServerHop →", randomServer)
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, randomServer, LocalPlayer)
+        else
+            Rayfield:Notify({Title="⚠️ ServerHop Failed", Content="ไม่พบเซิร์ฟเวอร์ใหม่", Duration=3})
+            dbg("ServerHop: failed to fetch list")
+        end
     end
 })
 
