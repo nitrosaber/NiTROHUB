@@ -131,9 +131,9 @@ end
 
 -- === UI ===
 local Window = Rayfield:CreateWindow({
-    Name = "🌌 BGSI HUB - Deluxe Edition",
+    Name = "🌌 BGSI HUB",
     LoadingTitle = "Loading NiTroHub...",
-    LoadingSubtitle = "BGS Infinite Edition",
+    LoadingSubtitle = "By NiTroHub",
     ConfigurationSaving = {
         Enabled = true,
         FolderName = "NiTroHub",
@@ -145,7 +145,7 @@ local Window = Rayfield:CreateWindow({
 
 Rayfield:Notify({
     Title = "✅ BGSI HUB Ready",
-    Content = "Hatch Animation Disabled | Systems Loaded",
+    Content = "By NiTroHub | Systems Loaded",
     Duration = 4
 })
 
@@ -275,14 +275,6 @@ Safety:CreateButton({
                 end
             end
         end)
-    end
-})
-
-Safety:CreateButton({
-    Name = "🔴 Panic (Stop Everything)",
-    Callback = function()
-        for k in pairs(flags) do stopLoop(k) end
-        Rayfield:Destroy()
     end
 })
 
