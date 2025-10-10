@@ -204,6 +204,82 @@ task.defer(function()
     end
 end)
 
+--------------------------------------------------------------------
+-- Helpers สำหรับเคลม “Chest” อย่างทนทาน
+--------------------------------------------------------------------
+local RS = game:GetService("ReplicatedStorage")
+local function isRemote(x) return x and (x:IsA("RemoteEvent") or x:IsA("RemoteFunction")) end
+
+-- ยิงรีโมตให้รองรับทั้ง RemoteEvent/RemoteFunction
+local function sendRemote(remote, op, ...)
+    if not isRemote(remote) then return false, "no-remote" end
+    if remote:IsA("RemoteEvent") then
+        local ok, err = pcall(function() remote:FireServer(op, ...) end)
+        return ok, err
+    else
+        local ok, res = pcall(function() return remote:InvokeServer(op, ...) end)
+        return ok, res
+    end
+end
+
+-- หารีโมตสำรองที่เกี่ยวกับ chest/claim ใน ReplicatedStorage
+local function findChestRemotes()
+    local out = {}
+    for _,obj in ipairs(RS:GetDescendants()) do
+        if isRemote(obj) then
+            local n = obj.Name:lower()
+            if n:find("chest") or n:find("reward") or n:find("claim") then
+                table.insert(out, obj)
+            end
+        end
+    end
+    return out
+end
+
+-- ยิงหลายรูปแบบ payload + ชื่อคำสั่ง
+local CHEST_OPS = { "ClaimChest","RedeemChest","CollectChest","ClaimReward","RedeemReward" }
+local function tryClaimVia(remote, chestName)
+    if not isRemote(remote) then return false end
+    local payloads = {
+        {chestName, true},
+        {chestName},
+        {{chestName}},
+        {{Chest = chestName, Auto = true}},
+        {{Chest = chestName}},
+        {{Name = chestName}},
+    }
+    for _,op in ipairs(CHEST_OPS) do
+        for i,args in ipairs(payloads) do
+            local ok, err = sendRemote(remote, op, table.unpack(args))
+            if ok then
+                dbg(("Patch/Chest: %s via %s payload#%d OK"):format(op, remote.Name, i))
+                return true
+            else
+                --dbg(("Chest try failed: %s #%d -> %s"):format(op, i, tostring(err)))
+            end
+        end
+    end
+    return false
+end
+
+-- ทางเลือกสุดท้าย: กด ProximityPrompt ของหีบ
+local function tryProximity(chestName)
+    if not fireproximityprompt then return false end
+    local hit = 0
+    for _,pp in ipairs(workspace:GetDescendants()) do
+        if pp:IsA("ProximityPrompt") then
+            local parentName = (pp.Parent and pp.Parent.Name or ""):lower()
+            local thisName = (pp.Name or ""):lower()
+            if thisName:find("chest") or parentName:find("chest") or parentName:find(chestName:lower()) then
+                pcall(function() fireproximityprompt(pp, 5) end)
+                hit += 1
+            end
+        end
+    end
+    if hit > 0 then dbg(("Cleaner/Chest: fired %d proximity prompt(s)"):format(hit)) end
+    return hit > 0
+end
+
 ---------------------------------------------------------------------
 -- 🔄 Core Loops
 ---------------------------------------------------------------------
@@ -219,11 +295,40 @@ local function AutoClaimChestLoop()
         "Infinity Chest","Void Chest","Giant Chest","Ticket Chest",
         "Easy Obby Chest","Medium Obby Chest","Hard Obby Chest"
     }
-    for _,c in ipairs(chests) do
-        local ok,err = pcall(function() RemoteEvent:FireServer("ClaimChest", c, true) end)
-        if not ok then dbg("ClaimChest error:", c, err) end
+
+    -- รวม remote หลักของคุณ + รีโมตสำรองที่ค้นพบ
+    local candidates = {}
+    if RemoteEvent then table.insert(candidates, RemoteEvent) end
+    for _,r in ipairs(findChestRemotes()) do
+        if r ~= RemoteEvent then table.insert(candidates, r) end
     end
-    task.wait(3)
+    if #candidates == 0 then dbg("Error: no chest-related remotes found.") end
+
+    for _, chest in ipairs(chests) do
+        local claimed = false
+
+        -- 1) ลองผ่าน remote ที่มีอยู่ทั้งหมด
+        for _,remote in ipairs(candidates) do
+            if tryClaimVia(remote, chest) then
+                claimed = true
+                break
+            end
+            task.wait(0.05)
+        end
+
+        -- 2) ถ้าไม่สำเร็จ ลองผ่าน ProximityPrompt
+        if not claimed then
+            claimed = tryProximity(chest)
+        end
+
+        if not claimed then
+            dbg("ClaimChest failed for:", chest, "→ no route worked.")
+        end
+
+        task.wait(0.15) -- เว้นระยะต่อหีบ
+    end
+
+    task.wait(3) -- รอบถัดไป
 end
 
 local function AutoHatchEggLoop()
