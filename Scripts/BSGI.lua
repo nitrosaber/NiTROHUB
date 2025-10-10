@@ -300,7 +300,7 @@ local function AutoClaimChestLoop()
     end
 
     -- รอรอบต่อไป (สามารถปรับเวลาได้)
-    task.wait(5)
+    task.wait(1)
 end
 
 --AutoHatch
