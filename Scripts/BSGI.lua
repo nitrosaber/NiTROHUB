@@ -430,7 +430,7 @@ local Window = Rayfield:CreateWindow({
     Name="🌌 BGSI HUB / By NiTroHub",
     LoadingTitle="Loading NiTroHub...",
     LoadingSubtitle="By NiTroHub",
-    ConfigurationSaving={Enabled=true,FolderName="NiTroHub",FileName="BGSI-Default",Autosave=false,Autoload=false}
+    ConfigurationSaving={Enabled=true,FolderName="NiTroHub",FileName="BGSI-Default",Autosave=true,Autoload=true}
 })
 Rayfield:Notify({Title="✅ BGSI HUB Ready", Content="By NiTroHub | Systems Loaded", Duration=3})
 
