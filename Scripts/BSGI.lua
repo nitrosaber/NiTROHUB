@@ -15,8 +15,8 @@ local LocalPlayer = Players.LocalPlayer
 
 -- === Safe Wait ===
 local function safeWait(parent, childName, timeout)
-    local obj = parent:WaitForChild(childName, timeout or 10)
-    if not obj then warn("Missing:", childName) end
+    local ok, obj = pcall(function() return parent:WaitForChild(childName, timeout or 10) end)
+    if not ok or not obj then warn("Missing:", childName) end
     return obj
 end
 
@@ -38,7 +38,7 @@ local flags = {
     BlowBubble = false,
     AutoClaimChest = false,
     AutoHatchEgg = false,
-    DisableAnimation = true
+    DisableAnimation = false
 }
 
 local settings = {
@@ -50,8 +50,10 @@ local tasks, conns = {}, {}
 local hatchPatched = false
 
 --------------------------------------------------------------------
--- === 🧩 Disable Hatch Animation (Delta Auto-Rehook)
+-- === 🧩 Disable Hatch Animation (Delta Auto-Rehook) - Improved & Safe
 --------------------------------------------------------------------
+
+-- noop stub creator
 local function makeStub()
     local function noop(...) return nil end
     return setmetatable({
@@ -60,16 +62,62 @@ local function makeStub()
     }, { __call = noop, __index = function() return noop end })
 end
 
+-- patch module table in-place: turn all functions into noops
+local function patchModuleNoop(modTable)
+    if type(modTable) ~= "table" then return end
+    for k, v in pairs(modTable) do
+        if type(v) == "function" then
+            modTable[k] = function(...) return nil end
+        end
+    end
+end
+
+-- try to find the ModuleScript instance in getloadedmodules and patch its returned table
+local function tryPatchLoadedModules(targetModule)
+    if typeof(getloadedmodules) ~= "function" then return false end
+    for _, m in ipairs(getloadedmodules()) do
+        -- m may be the ModuleScript instance
+        if m == targetModule or (m.Name == "HatchEgg" and m.Parent and m.Parent.Name == "Effects") then
+            local ok, lib = pcall(require, m)
+            if ok and type(lib) == "table" then
+                patchModuleNoop(lib)
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- safer GUI cleanup: destroy any GUI with names containing hatch/egg/hatching
+local function cleanHatchGUI()
+    local player = Players.LocalPlayer
+    if not player then return end
+    local pg = player:FindFirstChild("PlayerGui") or player:WaitForChild("PlayerGui")
+    for _, d in ipairs(pg:GetDescendants()) do
+        if d:IsA("ScreenGui") or d:IsA("Frame") or d:IsA("Folder") then
+            local n = (d.Name or ""):lower()
+            if n:find("hatch") or n:find("egg") or n:find("hatching") then
+                pcall(function() d:Destroy() end)
+            end
+        end
+    end
+end
+
+-- main patch function: hooks require if possible, patches loaded modules, and sets up auto-rehook listener
 local function patchHatchEgg()
-    local Rep = game:GetService("ReplicatedStorage")
-    local client = Rep:FindFirstChild("Client")
+    local client = ReplicatedStorage:FindFirstChild("Client")
     local effects = client and client:FindFirstChild("Effects")
     local target = effects and effects:FindFirstChild("HatchEgg")
-
     if not target then return end
+
     local stub = makeStub()
 
-    local req = rawget(getrenv(), "require") or require
+    -- 1) If module already loaded, patch its exported table
+    pcall(function() tryPatchLoadedModules(target) end)
+
+    -- 2) Hook require (if available) so future requires return stub
+    local env = (rawget and pcall(function() return getrenv() end) and getrenv()) or _G
+    local req = (rawget(env or {}, "require") or require)
     if typeof(req) == "function" and hookfunction then
         local old; old = hookfunction(req, function(mod, ...)
             if typeof(mod) == "Instance" and mod:IsA("ModuleScript") then
@@ -81,57 +129,41 @@ local function patchHatchEgg()
         end)
     end
 
-    if getloadedmodules then
-        for _, m in ipairs(getloadedmodules()) do
-            if m == target then
-                local ok, lib = pcall(require, m)
-                if ok and type(lib) == "table" then
-                    for k, v in pairs(lib) do
-                        if type(v) == "function" then
-                            lib[k] = function(...) return nil end
+    -- 3) If effects container exists, listen for child added (auto rehook)
+    if effects and effects:IsA("Instance") then
+        if conns.HatchAuto then
+            pcall(function() conns.HatchAuto:Disconnect() end)
+            conns.HatchAuto = nil
+        end
+        conns.HatchAuto = effects.ChildAdded:Connect(function(child)
+            task.wait(0.5)
+            if child and child.Name == "HatchEgg" then
+                pcall(function()
+                    tryPatchLoadedModules(child)
+                    -- if child is a ModuleScript instance, attempt require+patch safely
+                    if typeof(require) == "function" and child:IsA("ModuleScript") then
+                        local ok, lib = pcall(require, child)
+                        if ok and type(lib) == "table" then
+                            patchModuleNoop(lib)
                         end
                     end
-                end
-                break
+                    cleanHatchGUI()
+                end)
             end
-        end
+        end)
     end
 end
 
-local function cleanHatchGUI()
-    local pg = Players.LocalPlayer:FindFirstChild("PlayerGui") or Players.LocalPlayer:WaitForChild("PlayerGui")
-    for _, d in ipairs(pg:GetDescendants()) do
-        if d:IsA("ScreenGui") or d:IsA("Frame") or d:IsA("Folder") then
-            local n = d.Name:lower()
-            if n:find("hatch") or n:find("egg") then
-                pcall(function() d:Destroy() end)
-            end
-        end
-    end
-end
-
+-- wrapper to enable disable flow and notification
 local function DisableHatchAnimation()
     if hatchPatched then return end
     hatchPatched = true
 
-    local exec = identifyexecutor and identifyexecutor() or "Unknown"
-    local isDelta = exec:lower():find("delta") ~= nil
+    local exec = (identifyexecutor and identifyexecutor() or "Unknown")
+    local isDelta = tostring(exec):lower():find("delta") ~= nil
 
-    patchHatchEgg()
-    cleanHatchGUI()
-
-    local Rep = game:GetService("ReplicatedStorage")
-    local client = Rep:WaitForChild("Client")
-    local effects = client:WaitForChild("Effects")
-
-    if conns.HatchAuto then conns.HatchAuto:Disconnect() end
-    conns.HatchAuto = effects.ChildAdded:Connect(function(child)
-        if child.Name == "HatchEgg" then
-            task.wait(1)
-            patchHatchEgg()
-            cleanHatchGUI()
-        end
-    end)
+    pcall(patchHatchEgg)
+    pcall(cleanHatchGUI)
 
     Rayfield:Notify({
         Title = "🎬 Hatch Animation Disabled",
@@ -171,7 +203,10 @@ end
 
 local function stopLoop(name)
     flags[name] = false
-    if tasks[name] then task.cancel(tasks[name]); tasks[name] = nil end
+    if tasks[name] then
+        pcall(function() task.cancel(tasks[name]) end)
+        tasks[name] = nil
+    end
 end
 
 local function startLoop(name, fn, delay)
@@ -337,7 +372,7 @@ Safety:CreateButton({
             for _, word in ipairs(keywords) do
                 if string.find(p.Name:lower(), word) then
                     for k in pairs(flags) do stopLoop(k) end
-                    Rayfield:Destroy()
+                    pcall(function() Rayfield:Destroy() end)
                     LocalPlayer:Kick("⚠️ Admin detected. Script terminated.")
                 end
             end
@@ -351,6 +386,6 @@ SettingsTab:CreateButton({
     Name = "Destroy UI",
     Callback = function()
         for k in pairs(flags) do stopLoop(k) end
-        Rayfield:Destroy()
+        pcall(function() Rayfield:Destroy() end)
     end
 })
