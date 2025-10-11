@@ -53,6 +53,14 @@ MainTab:CreateInput({
     end
 })
 
+MainTab:CreateInput({
+    Name = "GemT1",
+    PlaceholderText = "Input Number",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(value)
+        AddRewardEvent:FireServer("GemsT1", tonumber(value))
+    end
+})
 -- ♾️ Infinite Rewards
 MainTab:CreateButton({
     Name = "INF GEM , Cash",
