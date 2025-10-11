@@ -58,6 +58,13 @@ MainTab:CreateButton({
     Name = "INF GEM , Cash",
     Callback = function()
         AddRewardEvent:FireServer("Gems", 1/0)
+        AddRewardEvent:FireServer("GemsT1", 1/0)
+        AddRewardEvent:FireServer("GemsT2", 1/0)
+        AddRewardEvent:FireServer("GemsT3", 1/0)
+        AddRewardEvent:FireServer("GemsT4", 1/0)
+        AddRewardEvent:FireServer("Gold", 1/0)
+        AddRewardEvent:FireServer("LightShards", 1/0)
+        AddRewardEvent:FireServer("GalaxyStars", 1/0)
         AddRewardEvent:FireServer("Cash", 1/0)
     end
 })
