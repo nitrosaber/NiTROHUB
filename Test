@@ -82,7 +82,11 @@ MainTab:CreateDropdown({
     CurrentOption = "100 Gems",
     Flag = "RewardSelect",
     Callback = function(v)
-        _G.Rewards = table.find(Lis, v)
+        if type(v) == "table" then
+            _G.Rewards = table.find(Lis, v[1])
+        else
+            _G.Rewards = table.find(Lis, v)
+        end
     end
 })
 
@@ -91,6 +95,13 @@ MainTab:CreateButton({
     Callback = function()
         if _G.Rewards then
             SpinPrizeEvent:FireServer(_G.Rewards)
+        else
+            Rayfield:Notify({
+                Title = "Error",
+                Content = "Please select a reward first!",
+                Duration = 3,
+                Image = 4483362458
+            })
         end
     end
 })
@@ -109,7 +120,11 @@ MainTab:CreateDropdown({
     CurrentOption = "WalkSpeed",
     Flag = "UpgradeSelect",
     Callback = function(v)
-        _G.Upgrades = v
+        if type(v) == "table" then
+            _G.Upgrades = v[1]
+        else
+            _G.Upgrades = v
+        end
     end
 })
 
@@ -118,6 +133,19 @@ MainTab:CreateButton({
     Callback = function()
         if _G.Upgrades then
             UpgradeEvent:FireServer(_G.Upgrades, -1)
+            Rayfield:Notify({
+                Title = "NOOBHUB",
+                Content = "Upgrade applied: " .. tostring(_G.Upgrades),
+                Duration = 4,
+                Image = 4483362458
+            })
+        else
+            Rayfield:Notify({
+                Title = "Error",
+                Content = "Select upgrade first!",
+                Duration = 3,
+                Image = 4483362458
+            })
         end
     end
 })
@@ -134,7 +162,11 @@ MainTab:CreateDropdown({
     CurrentOption = PickaxeTable[1],
     Flag = "PickaxeSelect",
     Callback = function(v)
-        _G.SelectPickaxe = v
+        if type(v) == "table" then
+            _G.SelectPickaxe = v[1]
+        else
+            _G.SelectPickaxe = v
+        end
     end
 })
 
@@ -142,13 +174,26 @@ MainTab:CreateButton({
     Name = "Change Pickaxe Ability",
     Callback = function()
         local player = game.Players.LocalPlayer
-        if player:GetAttribute("SelectedPickaxe") then
-            player:SetAttribute("SelectedPickaxe", _G.SelectPickaxe)
+        if _G.SelectPickaxe and type(_G.SelectPickaxe) == "string" then
+            player:SetAttribute("SelectedPickaxe", tostring(_G.SelectPickaxe))
+            Rayfield:Notify({
+                Title = "NOOBHUB",
+                Content = "Changed Pickaxe to: " .. tostring(_G.SelectPickaxe),
+                Duration = 4,
+                Image = 4483362458
+            })
+        else
+            Rayfield:Notify({
+                Title = "Error",
+                Content = "Invalid or no pickaxe selected!",
+                Duration = 4,
+                Image = 4483362458
+            })
         end
     end
 })
 
--- ⚙️ แท็บ Settings
+-- ⚙️ SETTINGS TAB
 local SettingsTab = Window:CreateTab("SETTINGS", 7743872051)
 
 SettingsTab:CreateSection("Interface Options")
@@ -158,12 +203,6 @@ SettingsTab:CreateButton({
     Callback = function()
         if game.CoreGui:FindFirstChild("Rayfield") then
             game.CoreGui.Rayfield:Destroy()
-            Rayfield:Notify({
-                Title = "NOOBHUB",
-                Content = "UI Destroyed Successfully",
-                Duration = 4,
-                Image = 4483362458
-            })
         end
     end
 })
@@ -182,7 +221,7 @@ SettingsTab:CreateButton({
 })
 
 SettingsTab:CreateSection("About")
-SettingsTab:CreateLabel("NOOBHUB FREE SRC v2.0")
+SettingsTab:CreateLabel("NOOBHUB FREE SRC v3.0")
 SettingsTab:CreateLabel("Made with ❤️ by ChatGPT & Rayfield UI")
 
 -- ✅ โหลด Config
