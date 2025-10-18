@@ -1,4 +1,4 @@
--- Anti AFK System with Mobile Toggle Icon
+-- Anti AFK System with Draggable Toggle Icon (Mobile Friendly)
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local VirtualUser = game:GetService("VirtualUser")
@@ -25,6 +25,7 @@ MainFrame.Size = UDim2.new(0, 220, 0, 130)
 MainFrame.Position = UDim2.new(0.75, 0, 0.15, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 MainFrame.BorderSizePixel = 0
+MainFrame.Visible = true
 MainFrame.Parent = ScreenGui
 
 local Corner = Instance.new("UICorner")
@@ -66,10 +67,10 @@ TimeLabel.Parent = MainFrame
 -- === TOGGLE ICON BUTTON ===
 local ToggleIcon = Instance.new("TextButton")
 ToggleIcon.Name = "ToggleIcon"
-ToggleIcon.Size = UDim2.new(0, 40, 0, 40)
-ToggleIcon.Position = UDim2.new(0.92, 0, 0.05, 0)
+ToggleIcon.Size = UDim2.new(0, 50, 0, 50)
+ToggleIcon.Position = UDim2.new(0.9, 0, 0.1, 0)
 ToggleIcon.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-ToggleIcon.Text = "⚙️" -- gear icon
+ToggleIcon.Text = "⚙️"
 ToggleIcon.TextSize = 22
 ToggleIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleIcon.Font = Enum.Font.SourceSansBold
@@ -79,35 +80,46 @@ local IconCorner = Instance.new("UICorner")
 IconCorner.CornerRadius = UDim.new(1, 0)
 IconCorner.Parent = ToggleIcon
 
--- Dragging MainFrame
-local dragging, dragInput, dragStart, startPos
-local function update(input)
-    local delta = input.Position - dragStart
-    MainFrame.Position = UDim2.new(
-        startPos.X.Scale, startPos.X.Offset + delta.X,
-        startPos.Y.Scale, startPos.Y.Offset + delta.Y
-    )
+-- === Make Toggle Icon Draggable ===
+local draggingIcon = false
+local iconDragStart
+local iconStartPos
+
+local function updateIcon(input)
+	local delta = input.Position - iconDragStart
+	ToggleIcon.Position = UDim2.new(
+		iconStartPos.X.Scale,
+		iconStartPos.X.Offset + delta.X,
+		iconStartPos.Y.Scale,
+		iconStartPos.Y.Offset + delta.Y
+	)
 end
 
-MainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
-    end
+ToggleIcon.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		draggingIcon = true
+		iconDragStart = input.Position
+		iconStartPos = ToggleIcon.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				draggingIcon = false
+			end
+		end)
+	end
 end)
 
-MainFrame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
+ToggleIcon.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		if draggingIcon then
+			updateIcon(input)
+		end
+	end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then update(input) end
+	if draggingIcon and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		updateIcon(input)
+	end
 end)
 
 -- === Anti-AFK Logic ===
@@ -115,25 +127,25 @@ local startTime = tick()
 local connection
 
 local function updateTime()
-    local elapsed = tick() - startTime
-    local h = math.floor(elapsed / 3600)
-    local m = math.floor((elapsed % 3600) / 60)
-    local s = math.floor(elapsed % 60)
-    TimeLabel.Text = string.format("Time Active: %02d:%02d:%02d", h, m, s)
+	local elapsed = tick() - startTime
+	local h = math.floor(elapsed / 3600)
+	local m = math.floor((elapsed % 3600) / 60)
+	local s = math.floor(elapsed % 60)
+	TimeLabel.Text = string.format("Time Active: %02d:%02d:%02d", h, m, s)
 end
 
 local function startAntiAFK()
-    if connection then connection:Disconnect() end
-    connection = RunService.PreRender:Connect(updateTime)
+	if connection then connection:Disconnect() end
+	connection = RunService.PreRender:Connect(updateTime)
 
-    Status.Text = "Status: Active"
-    Status.TextColor3 = Color3.fromRGB(0, 255, 0)
+	Status.Text = "Status: Active"
+	Status.TextColor3 = Color3.fromRGB(0, 255, 0)
 
-    LocalPlayer.Idled:Connect(function()
-        VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    end)
+	LocalPlayer.Idled:Connect(function()
+		VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+		task.wait(1)
+		VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+	end)
 end
 
 startAntiAFK()
@@ -141,17 +153,20 @@ startAntiAFK()
 -- === Toggle GUI visibility when tapping icon ===
 local guiVisible = true
 ToggleIcon.MouseButton1Click:Connect(function()
-    guiVisible = not guiVisible
-    MainFrame.Visible = guiVisible
+	if draggingIcon then return end -- don't toggle when dragging
+	guiVisible = not guiVisible
+	MainFrame.Visible = guiVisible
 
-    if guiVisible then
-        ToggleIcon.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    else
-        ToggleIcon.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-    end
+	if guiVisible then
+		ToggleIcon.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	else
+		ToggleIcon.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
+	end
 end)
 
 -- Cleanup
 ScreenGui.Destroying:Connect(function()
-    if connection then connection:Disconnect() end
+	if connection then
+		connection:Disconnect()
+	end
 end)
