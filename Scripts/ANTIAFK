@@ -1,28 +1,13 @@
--- ✅ Anti-AFK for Delta (Fixed Line 1 Error)
+-- 🔰 ANTI AFK (VirtualInputManager Version - Delta Safe)
 repeat task.wait() until game:IsLoaded()
-repeat task.wait() until game:GetService("Players").LocalPlayer
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local VirtualUser = game:GetService("VirtualUser")
+local vim = game:GetService("VirtualInputManager")
 
--- เมื่อเกมตรวจว่า Idle จะจำลองการคลิก
-LocalPlayer.Idled:Connect(function()
+while task.wait(600) do  -- ทุก 10 นาที
     pcall(function()
-        VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        print("[Anti-AFK] Prevented kick for being idle.")
+        vim:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+        task.wait(0.1)
+        vim:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+        print("[ANTI-AFK] Simulated touch input.")
     end)
-end)
-
--- จำลองการคลิกทุก 10 นาทีเพื่อกันระบบเสริมของเกม
-task.spawn(function()
-    while task.wait(10 * 60) do
-        pcall(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-            print("[Anti-AFK] Periodic activity simulated.")
-        end)
-    end
-end)
+end
