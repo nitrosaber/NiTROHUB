@@ -1,13 +1,40 @@
--- 🔰 ANTI AFK (VirtualInputManager Version - Delta Safe)
+-- ✅ REAL ANTI-AFK for Delta Mobile (Safe & Working)
 repeat task.wait() until game:IsLoaded()
+repeat task.wait() until game:GetService("Players").LocalPlayer
 
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local VirtualUser = game:GetService("VirtualUser")
 local vim = game:GetService("VirtualInputManager")
 
-while task.wait(600) do  -- ทุก 10 นาที
+-- 🧠 ฟังก์ชันหลัก: กันการโดนเตะตอน AFK
+LocalPlayer.Idled:Connect(function()
     pcall(function()
-        vim:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-        task.wait(0.1)
-        vim:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-        print("[ANTI-AFK] Simulated touch input.")
+        VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        print("[ANTI-AFK] Simulated activity to prevent kick.")
     end)
-end
+end)
+
+-- 🔁 ฟังก์ชันเสริม: จำลองคลิก/แตะทุก 10 นาที (600 วินาที)
+task.spawn(function()
+    while task.wait(600) do
+        local success = pcall(function()
+            -- ลองใช้ VirtualUser ก่อน
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+        end)
+
+        -- ถ้าเกมบล็อก VirtualUser → ใช้ VirtualInputManager แทน
+        if not success then
+            pcall(function()
+                vim:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                task.wait(0.1)
+                vim:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+            end)
+        end
+
+        print("[ANTI-AFK] Periodic touch simulated (10 min).")
+    end
+end)
