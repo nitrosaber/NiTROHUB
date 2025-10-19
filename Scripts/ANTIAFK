@@ -1,17 +1,22 @@
--- 🧠 Anti-AFK Script for Delta (Mobile)
+-- ✅ Anti-AFK for Delta (Fixed Line 1 Error)
+repeat task.wait() until game:IsLoaded()
+repeat task.wait() until game:GetService("Players").LocalPlayer
+
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local VirtualUser = game:GetService("VirtualUser")
 
--- ป้องกันตอน Roblox ตรวจจับ AFK
+-- เมื่อเกมตรวจว่า Idle จะจำลองการคลิก
 LocalPlayer.Idled:Connect(function()
-    VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    print("[Anti-AFK] Prevented kick for being idle.")
+    pcall(function()
+        VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        print("[Anti-AFK] Prevented kick for being idle.")
+    end)
 end)
 
--- เพิ่มความปลอดภัย: จำลองการคลิกทุก ๆ 10 นาที
+-- จำลองการคลิกทุก 10 นาทีเพื่อกันระบบเสริมของเกม
 task.spawn(function()
     while task.wait(10 * 60) do
         pcall(function()
