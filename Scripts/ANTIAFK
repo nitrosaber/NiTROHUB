@@ -1,30 +1,23 @@
--- 🔒 Pure Anti-AFK Script (No GUI / No Icon)
+-- 🧠 Anti-AFK Script for Delta (Mobile)
 local Players = game:GetService("Players")
-local VirtualUser = game:GetService("VirtualUser")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+local VirtualUser = game:GetService("VirtualUser")
 
--- ระบบจะจำเวลาเริ่มต้นเพื่อเก็บเวลาใช้งาน (ไม่แสดง แต่เผื่อใช้ภายใน)
-local startTime = tick()
-
--- ฟังก์ชันหลัก: ป้องกัน AFK โดยจำลองคลิกทุกครั้งที่เกมตรวจจับการ Idle
+-- ป้องกันตอน Roblox ตรวจจับ AFK
 LocalPlayer.Idled:Connect(function()
     VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     task.wait(1)
     VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    print("[Anti-AFK] Prevented kick for being idle.")
 end)
 
--- ระบบจำลองการเคลื่อนไหวทุก ๆ 10 นาที เพื่อกันหลุดกรณีไม่มี input นาน
+-- เพิ่มความปลอดภัย: จำลองการคลิกทุก ๆ 10 นาที
 task.spawn(function()
     while task.wait(10 * 60) do
         pcall(function()
             VirtualUser:CaptureController()
             VirtualUser:ClickButton2(Vector2.new())
+            print("[Anti-AFK] Periodic activity simulated.")
         end)
     end
-end)
-
--- (ไม่จำเป็น แต่เสริมให้ทำงานต่อเนื่องแม้ lag)
-RunService.Heartbeat:Connect(function()
-    -- คุณสามารถเพิ่มการตรวจสถานะหรือตัวจับเวลาได้ตรงนี้
 end)
