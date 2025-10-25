@@ -51,7 +51,7 @@ local Mines  = {"Swintite Mine",
 local Collectors = {
 	["Candy Center"] = 500,
 	["Candy Factory"] = 3000,
-	["Candy Metropolis"] = 10000
+	["Candy Metropolis"] = 23000
 }
 
 function GetItems()
@@ -190,7 +190,7 @@ Run.Stepped:Connect(function()
         else
         	local Prompt = Mine.Model.Internal.ProximityPrompt
         	local Mag = (Prompt.Parent.Position-Player.Character.HumanoidRootPart.Position).Magnitude
-        	if Mag > 20 then 
+        	if Mag > 50 then 
         	    Player.Character.HumanoidRootPart.CFrame = Prompt.Parent.CFrame + Vector3.new(0,5,0)
             	end
 		fireproximityprompt(Prompt, 10)
