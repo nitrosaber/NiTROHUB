@@ -459,20 +459,35 @@ TruckerTab:CreateToggle({
                         ------------------------------------------------
                         -- ไปจุด UNLOAD (วาป)
                         ------------------------------------------------
-                        local beam2 = workspace.NavigationBeam
-                        workspace.Gravity = 0
+                        ------------------------------------------------
+local beam2 = workspace:FindFirstChild("NavigationBeam")
+if not beam2 or not getfenv().delivery then return end
 
-                        local unloadCFrame  = beam2.WorldPivot * CFrame.new(0, 50, -80)
-                        local trailerCFrame = beam2.WorldPivot * CFrame.new(0, 50, 0)
+-- ไม่ต้องปิดแรงโน้มถ่วง ให้ใช้ของเดิม
+workspace.Gravity = 196
 
-                        car:PivotTo(unloadCFrame)
-                        if car:FindFirstChild("Trailer") then
-                            car.Trailer:PivotTo(trailerCFrame)
-                        end
+-- เอารถไว้ด้านหลังโซนนิดหน่อย + สูงจากพื้นแค่ 3 studs
+local baseCF       = beam2.WorldPivot
+local unloadCFrame  = baseCF * CFrame.new(0, 3, -15) -- รถ
+local trailerCFrame = baseCF * CFrame.new(0, 3,   0) -- เทรลเลอร์บนโซน
 
-                        task.wait(2)
+car:PivotTo(unloadCFrame)
+local trailer = car:FindFirstChild("Trailer")
+if trailer then
+    trailer:PivotTo(trailerCFrame)
+end
 
-                        local credits = player.leaderstats.Credits.Value
+-- หยุดความเร็ว ไม่ให้รถยังเลื่อนไปมา
+if car.PrimaryPart then
+    car.PrimaryPart.Velocity = Vector3.new()
+end
+if trailer and trailer.PrimaryPart then
+    trailer.PrimaryPart.Velocity = Vector3.new()
+end
+
+task.wait(0.5) -- ให้เกมอัปเดตตำแหน่งนิดนึง
+
+local credits = player.leaderstats.Credits.Value
 
                         repeat
                             task.wait()
