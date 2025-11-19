@@ -1,0 +1,727 @@
+--========================================================--
+--                   ULTIMATE DRIVING SCRIPT              --
+--                 Rayfield UI Version                    --
+--========================================================--
+
+-- ANTI AFK
+warn("Anti afk running")
+
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    warn("Anti afk ran")
+    game:GetService("VirtualUser"):CaptureController()
+    game:GetService("VirtualUser"):ClickButton2(Vector2.new())
+end)
+
+-- STATS
+local earnedmoney   = 0
+local jobscompleted = 0
+local milesdriven   = 0
+
+local moneystat
+local delstat
+local milestat
+
+--////////////////////  RAYFIELD INIT  ////////////////////--
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "Ultimate Driving",
+    LoadingTitle = "Ultimate Driving",
+    LoadingSubtitle = "Rayfield UI",
+    ConfigurationSaving = {
+        Enabled = false,
+        FolderName = nil,
+        FileName = "UD_Config"
+    },
+    KeySystem = false
+})
+
+local AutoDriveTab = Window:CreateTab("Auto Drive", 4483362458)
+local TruckerTab   = Window:CreateTab("Trucker",   4483362458)
+local StatsTab     = Window:CreateTab("Stats",     4483362458)
+
+--========================================================--
+--                     AUTO DRIVE TAB                     --
+--========================================================--
+
+AutoDriveTab:CreateSection("Auto Drive Settings")
+
+AutoDriveTab:CreateLabel("Auto Drive Speed")
+
+AutoDriveTab:CreateInput({
+    Name = "Enter Speed Value",
+    PlaceholderText = "ex. 100",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(text)
+        getfenv().autospeed = tonumber(text)
+    end
+})
+
+AutoDriveTab:CreateToggle({
+    Name = "Auto Drive",
+    CurrentValue = false,
+    Flag = "AutoDriveToggle",
+    Callback = function(state)
+        getfenv().drive = state and true or false
+
+        local player = game.Players.LocalPlayer
+        local ls = player:WaitForChild("leaderstats")
+
+        -- เงิน
+        local cred = ls.Credits.Value
+        if getfenv().drive then
+            getfenv().run1 = ls.Credits:GetPropertyChangedSignal("Value"):Connect(function()
+                local newCred = ls.Credits.Value
+                earnedmoney = earnedmoney + (newCred - cred)
+                cred = newCred
+
+                if moneystat then
+                    moneystat:Set("Money Earned: $" .. earnedmoney)
+                end
+            end)
+        else
+            if getfenv().run1 then
+                getfenv().run1:Disconnect()
+                getfenv().run1 = nil
+            end
+        end
+
+        -- ไมล์
+        local mile = ls["Miles Driven"].Value
+        if getfenv().drive then
+            getfenv().run2 = ls["Miles Driven"]:GetPropertyChangedSignal("Value"):Connect(function()
+                local newMile = ls["Miles Driven"].Value
+                milesdriven = milesdriven + (newMile - mile)
+                mile = newMile
+
+                if milestat then
+                    milestat:Set("Miles Driven: " .. milesdriven)
+                end
+            end)
+        else
+            if getfenv().run2 then
+                getfenv().run2:Disconnect()
+                getfenv().run2 = nil
+            end
+        end
+
+        -- ถ้าปิด ก็ไม่ต้องทำ loop ด้านล่าง
+        if not getfenv().drive then return end
+
+        -- เทเลพอร์ตไปจุดเริ่มต้นครั้งแรก
+        do
+            local plr = player
+            local chr = plr.Character
+            if chr and chr:FindFirstChild("Humanoid") and chr:FindFirstChild("HumanoidRootPart") then
+                local seat = chr.Humanoid.SeatPart
+                if seat and seat.Parent then
+                    local car = seat.Parent
+                    car:PivotTo(
+                        CFrame.new(
+                            Vector3.new(-15307.2109375, 4.4645915031433105, -4566.3046875),
+                            Vector3.new(-9515.998046875, 4.491385459899902, -6827.9921875)
+                        )
+                    )
+                    if chr:FindFirstChild("Head") then
+                        chr.Head.Anchored = true
+                        task.wait(5)
+                        chr.Head.Anchored = false
+                    end
+                else
+                    warn("Auto Drive: you must be seated in a vehicle first.")
+                end
+            end
+        end
+
+        -- ลูป Auto Drive
+        while getfenv().drive do
+            task.wait()
+
+            local plr = player
+            local chr = plr.Character
+            if not (chr and chr:FindFirstChild("Humanoid") and chr:FindFirstChild("HumanoidRootPart")) then
+                warn("Auto Drive stopped: no character / humanoid.")
+                break
+            end
+
+            local seat = chr.Humanoid.SeatPart
+            if not seat then
+                warn("Auto Drive stopped: not seated in car.")
+                break
+            end
+
+            local car = seat.Parent
+            if not car then
+                warn("Auto Drive stopped: car not found.")
+                break
+            end
+
+            -- ตั้ง PrimaryPart
+            if car:FindFirstChild("Core") and car.Core:FindFirstChild("#Weight") then
+                car.PrimaryPart = car.Core["#Weight"]
+            end
+            local primary = car.PrimaryPart
+            if not primary then
+                warn("Auto Drive stopped: car.PrimaryPart is nil.")
+                break
+            end
+
+            primary.Velocity = primary.CFrame.LookVector * (getfenv().autospeed or 0)
+
+            -- waypoint function
+            local function driveTo(location)
+                repeat
+                    task.wait()
+                    primary.Velocity = primary.CFrame.LookVector * (getfenv().autospeed or 0)
+                    car:PivotTo(CFrame.new(car.PrimaryPart.Position, location))
+                until
+                    player:DistanceFromCharacter(location) < 30
+                    or not getfenv().drive
+            end
+
+            driveTo(Vector3.new(-9515.998, 4.491385, -6827.992))     -- wp1
+            if not getfenv().drive then break end
+
+            driveTo(Vector3.new(-9605.324, 4.466358, -7117.335))     -- wp2
+            if not getfenv().drive then break end
+
+            driveTo(Vector3.new(-15402.766, 4.467057, -4844.312))    -- wp3
+            if not getfenv().drive then break end
+
+            driveTo(Vector3.new(-15307.210, 4.464591, -4566.304))    -- wp4 (กลับจุดเริ่ม)
+        end
+    end
+})
+
+--========================================================--
+--                     TRUCKER TAB                        --
+--========================================================--
+
+local player = game.Players.LocalPlayer
+local rs     = game:GetService("ReplicatedStorage")
+local teams  = game:GetService("Teams")
+
+----------------------------------------------------------------
+-- AUTO DELIVERY [TRAILER]  (UNLOAD = วาปแล้ว)
+----------------------------------------------------------------
+TruckerTab:CreateSection("Trailer Delivery")
+
+TruckerTab:CreateToggle({
+    Name = "Auto Delivery [Trailer]",
+    CurrentValue = false,
+    Flag = "TrailerDeliveryToggle",
+    Callback = function(state)
+        getfenv().delivery = state and true or false
+        if not getfenv().delivery then return end
+
+        local donotdo = {}
+
+        local function candojob(jobType)
+            for _, v in ipairs(donotdo) do
+                if v == jobType then
+                    return false
+                end
+            end
+            return true
+        end
+
+        -- เปลี่ยนทีม + spawn รถ
+        if player.Team ~= teams.Trucker then
+            rs.Events.Admin.ChangeTeam:InvokeServer("Trucker")
+            task.wait(2)
+            rs.Events.RemoteFunction:InvokeServer("VehicleSpawn", {
+                [1] = "Freightliner",
+                [2] = "QuickSpawn",
+                [4] = false
+            })
+            task.wait(1)
+        end
+
+        workspace.Gravity = 196
+
+        while getfenv().delivery do
+            pcall(function()
+                task.wait()
+
+                local char = player.Character
+                if char and char:FindFirstChild("Humanoid") and char.Humanoid.Sit == false then
+                    -- ไม่ได้นั่งในรถ → spawn ใหม่
+                    rs.Events.RemoteFunction:InvokeServer("VehicleSpawn", {
+                        [1] = "Freightliner",
+                        [2] = "QuickSpawn",
+                        [4] = false
+                    })
+                    task.wait(1)
+                end
+
+                local gui = player.PlayerGui
+
+                ------------------------------------------------
+                -- เลือกงานที่ให้เงินสูงสุด
+                ------------------------------------------------
+                local jobtocheck
+
+                repeat
+                    task.wait()
+                    gui.TopRight.Container.NewTasksTrucker.Visible = true
+                    task.wait(0.1)
+
+                    local scroll = gui.TopRight.Container.NewTasksTrucker.Main.ScrollingFrame
+                    local ok, err = pcall(function()
+                        local bestJob  = nil
+                        local bestCash = 0
+
+                        for _, v in pairs(scroll:GetChildren()) do
+                            if v.Name == "Job"
+                                and v:FindFirstChild("Task")
+                                and v.Task.Value ~= nil
+                                and tonumber(v.Task.Value.RewardCash.Value) ~= nil
+                                and candojob(v.Task.Value.TaskType.Value)
+                            then
+                                local reward = tonumber(v.Task.Value.RewardCash.Value)
+                                if reward > bestCash then
+                                    bestCash = reward
+                                    bestJob  = v.Task.Value
+                                end
+                            end
+                        end
+
+                        if bestJob then
+                            jobtocheck = bestJob.TaskType.Value
+                            print("JobRewardMoney: " .. bestJob.RewardCash.Value)
+                            rs.Events.RemoteFunction:InvokeServer("TruckShipping", {
+                                [1] = "StartTask",
+                                [2] = bestJob
+                            })
+                        end
+                    end)
+
+                    print(ok, err)
+                    task.wait(1)
+
+                    gui.TopRight.Touch.MenuSelectTrailer.Visible   = false
+                    gui.TopRight.Container.MenuSelectTrailer.Visible = false
+                    gui.TopRight.Container.NewTasksTrucker.Visible   = false
+                until
+                    player.Tasks.Trucker.Active:FindFirstChild("Trucker")
+                    and workspace:FindFirstChild("NavigationBeam")
+                    or not getfenv().delivery
+                    or not player.Tasks.Trucker.Active:FindFirstChild("Trucker")
+
+                if not getfenv().delivery then return end
+
+                ------------------------------------------------
+                -- เข้ารถ + ไป Trailer Shop
+                ------------------------------------------------
+                local char = player.Character
+                if not (char and char:FindFirstChild("Humanoid")) then return end
+                local seat = char.Humanoid.SeatPart
+                if not seat then return end
+
+                local car = seat.Parent
+                if not car then return end
+
+                local trailerPad = workspace._Main.TrailerShops.TrailerShop.TrailerShopPad.TrailerShopPad
+                car:PivotTo(trailerPad.CFrame + Vector3.new(0, 5, 0))
+                task.wait(1)
+
+                -- ถ้ามี Trailer ติดอยู่ให้ถอดออกก่อน
+                if car:FindFirstChild("Trailer") then
+                    local removePrompt = trailerPad.TrailerShopRemovePrompt
+                    repeat
+                        task.wait()
+                        fireproximityprompt(removePrompt)
+                    until not car:FindFirstChild("Trailer") or not getfenv().delivery
+                end
+
+                local guiTop = gui.TopRight.Container
+
+                ------------------------------------------------
+                -- ถ้าบอกว่า "need compatible trailer" → ไปเลือก Trailer
+                ------------------------------------------------
+                if string.find(guiTop.Bar_Task.Directions.Text, "compatible trailer") then
+                    fireproximityprompt(trailerPad.TrailerShopPrompt)
+                    task.wait(1)
+
+                    local gottrailer = nil
+
+                    -- PC UI
+                    local trailerui = gui.TopRight.Container.MenuSelectTrailer
+                    for _, v in pairs(trailerui.ScrollingFrame:GetChildren()) do
+                        if v.ClassName == "ImageButton" and v.Visible and not v.Locked.Visible then
+                            gottrailer = v
+                            rs.Events.RemoteFunction:InvokeServer("TrailerSpawn", {
+                                [1] = v.Name,
+                                [2] = trailerPad,
+                                [3] = "Auto"
+                            })
+                            break
+                        end
+                    end
+
+                    -- Touch UI
+                    trailerui = gui.TopRight.Touch.MenuSelectTrailer
+                    if not gottrailer then
+                        for _, v in pairs(trailerui.ScrollingFrame:GetChildren()) do
+                            if v.ClassName == "ImageButton" and v.Visible and not v.Locked.Visible then
+                                gottrailer = v
+                                rs.Events.RemoteFunction:InvokeServer("TrailerSpawn", {
+                                    [1] = v.Name,
+                                    [2] = trailerPad,
+                                    [3] = "Auto"
+                                })
+                                break
+                            end
+                        end
+                    end
+
+                    if not gottrailer then
+                        table.insert(donotdo, jobtocheck)
+                    end
+
+                    repeat
+                        task.wait()
+                    until
+                        car:FindFirstChild("Trailer")
+                        or gottrailer == nil
+                        or not getfenv().delivery
+
+                    task.wait(1)
+
+                    -- ถ้าก็ยัง incompatible อยู่ → ยกเลิกงาน
+                    if not gottrailer
+                        or string.find(guiTop.Bar_Task.Directions.Text, "compatible trailer") then
+
+                        rs.Events.RemoteFunction:InvokeServer("TruckShipping", {
+                            [1] = "EndTask"
+                        })
+                    end
+                end
+
+                ------------------------------------------------
+                -- มี Trailer + Task จริง → เริ่ม LOAD/UNLOAD
+                ------------------------------------------------
+                if car:FindFirstChild("Trailer")
+                    and player.Tasks.Trucker.Active:FindFirstChild("Trucker")
+                    and getfenv().delivery then
+
+                    -- ถ้าไม่มีคำว่า compatible trailer แล้ว
+                    if not string.find(guiTop.Bar_Task.Directions.Text, "compatible trailer") then
+
+                        ------------------------------------------------
+                        -- ไปจุด LOAD (วาปด้านบน + ลูป LoadTruck)
+                        ------------------------------------------------
+                        repeat
+                            task.wait()
+                        until workspace:FindFirstChild("NavigationBeam") or not getfenv().delivery
+
+                        if not getfenv().delivery or not workspace:FindFirstChild("NavigationBeam") then
+                            return
+                        end
+
+                        local beam = workspace.NavigationBeam
+                        workspace.Gravity = 0
+
+                        car:PivotTo(beam.WorldPivot * CFrame.new(0, 100, -70))
+                        car.Trailer:PivotTo(beam.WorldPivot * CFrame.new(0, 100, 0))
+
+                        repeat
+                            task.wait()
+                            car:PivotTo(beam.WorldPivot * CFrame.new(0, 100, -70))
+                            car.Trailer:PivotTo(beam.WorldPivot * CFrame.new(0, 100, 0))
+
+                            rs.Events.RemoteFunction:InvokeServer("TruckShipping", {
+                                [1] = "LoadTruck"
+                            })
+                            task.wait(1)
+                            rs.Events.RemoteFunction:InvokeServer("TruckShipping", {
+                                [1] = "LoadTruck",
+                                [2] = true
+                            })
+                        until
+                            not workspace:FindFirstChild("NavigationBeam")
+                            or string.find(guiTop.Bar_Task.Directions.Text, "compatible trailer")
+                            or player:DistanceFromCharacter(beam.WorldPivot.Position) > 1000
+                            or not getfenv().delivery
+
+                        ------------------------------------------------
+                        -- รอ NavigationBeam จุดปลายทาง
+                        ------------------------------------------------
+                        repeat
+                            task.wait()
+                        until workspace:FindFirstChild("NavigationBeam") or not getfenv().delivery
+
+                        if not getfenv().delivery or not workspace:FindFirstChild("NavigationBeam") then
+                            return
+                        end
+
+                        ------------------------------------------------
+                        -- ไปจุด UNLOAD (วาป)
+                        ------------------------------------------------
+                        local beam2 = workspace.NavigationBeam
+                        workspace.Gravity = 0
+
+                        local unloadCFrame  = beam2.WorldPivot * CFrame.new(0, 50, -80)
+                        local trailerCFrame = beam2.WorldPivot * CFrame.new(0, 50, 0)
+
+                        car:PivotTo(unloadCFrame)
+                        if car:FindFirstChild("Trailer") then
+                            car.Trailer:PivotTo(trailerCFrame)
+                        end
+
+                        task.wait(2)
+
+                        local credits = player.leaderstats.Credits.Value
+
+                        repeat
+                            task.wait()
+                            rs.Events.RemoteFunction:InvokeServer("TruckShipping", {
+                                [1] = "UnloadTruck"
+                            })
+                            task.wait(1)
+                            rs.Events.RemoteFunction:InvokeServer("TruckShipping", {
+                                [1] = "UnloadTruck",
+                                [2] = true
+                            })
+                        until
+                            not workspace:FindFirstChild("NavigationBeam")
+                            or not getfenv().delivery
+
+                        workspace.Gravity = 196
+
+                        repeat
+                            task.wait()
+                        until not workspace:FindFirstChild("NavigationBeam") or not getfenv().delivery
+
+                        -- เช็คผลลัพธ์ + อัปเดต Stats
+                        if credits == player.leaderstats.Credits.Value then
+                            print("job was a failure")
+                        else
+                            local got = player.leaderstats.Credits.Value - credits
+                            print("job was a success you got: $" .. got)
+                            earnedmoney   = earnedmoney + got
+                            jobscompleted = jobscompleted + 1
+
+                            if moneystat then
+                                moneystat:Set("Money Earned: $" .. earnedmoney)
+                            end
+                            if delstat then
+                                delstat:Set("Jobs Completed: " .. jobscompleted)
+                            end
+                        end
+
+                        repeat
+                            task.wait()
+                        until
+                            not player.Tasks.Trucker.Active:FindFirstChild("Trucker")
+                            or not getfenv().delivery
+                    end
+                end
+            end)
+        end
+    end
+})
+
+----------------------------------------------------------------
+-- AUTO DELIVERY [NUKE]  (ใช้ NukeTruck)
+----------------------------------------------------------------
+TruckerTab:CreateSection("Nuke Delivery")
+
+TruckerTab:CreateToggle({
+    Name = "Auto Delivery [Nuke]",
+    CurrentValue = false,
+    Flag = "NukeDeliveryToggle",
+    Callback = function(state)
+        getfenv().delivery2 = state and true or false
+
+        local truckPoints = player.Values.Trucking.LifetimeTruckPoints.Value
+        if truckPoints < 25000 and getfenv().delivery2 then
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "Alert!",
+                Text  = "You can't do this yet",
+                Duration = 5
+            })
+            task.wait(5)
+            return
+        end
+
+        if not getfenv().delivery2 then return end
+
+        workspace.Gravity = 196
+
+        if player.Team ~= teams.Trucker then
+            rs.Events.Admin.ChangeTeam:InvokeServer("Trucker")
+            task.wait(2)
+            rs.Events.RemoteFunction:InvokeServer("VehicleSpawn", {
+                [1] = "NukeTruck",
+                [2] = "QuickSpawn",
+                [4] = false
+            })
+            task.wait(1)
+        end
+
+        while getfenv().delivery2 do
+            local ok, err = pcall(function()
+                task.wait()
+
+                local char = player.Character
+                if char and char:FindFirstChild("Humanoid") and char.Humanoid.Sit == false then
+                    rs.Events.RemoteFunction:InvokeServer("VehicleSpawn", {
+                        [1] = "NukeTruck",
+                        [2] = "QuickSpawn",
+                        [4] = false
+                    })
+                    task.wait(1)
+                end
+
+                ------------------------------------------------
+                -- เลือกงานที่ให้เงินเยอะสุด
+                ------------------------------------------------
+                repeat
+                    task.wait()
+                    local gui = player.PlayerGui
+                    gui.TopRight.Container.NewTasksTrucker.Visible = true
+                    task.wait(0.1)
+
+                    local scroll = gui.TopRight.Container.NewTasksTrucker.Main.ScrollingFrame
+                    pcall(function()
+                        local bestJob  = nil
+                        local bestCash = 0
+
+                        for _, v in pairs(scroll:GetChildren()) do
+                            if v.Name == "Job"
+                                and v:FindFirstChild("Task")
+                                and v.Task.Value ~= nil
+                                and tonumber(v.Task.Value.RewardCash.Value) ~= nil then
+
+                                local reward = tonumber(v.Task.Value.RewardCash.Value)
+                                if reward > bestCash then
+                                    bestCash = reward
+                                    bestJob  = v.Task.Value
+                                end
+                            end
+                        end
+
+                        if bestJob then
+                            print("JobRewardMoney: " .. bestJob.RewardCash.Value)
+                            rs.Events.RemoteFunction:InvokeServer("TruckShipping", {
+                                [1] = "StartTask",
+                                [2] = bestJob
+                            })
+                        end
+                    end)
+
+                    task.wait(1)
+                    gui.TopRight.Touch.MenuSelectTrailer.Visible    = false
+                    gui.TopRight.Container.MenuSelectTrailer.Visible = false
+                    gui.TopRight.Container.NewTasksTrucker.Visible   = false
+                until
+                    player.Tasks.Trucker.Active:FindFirstChild("Trucker")
+                    and workspace:FindFirstChild("NavigationBeam")
+                    or not getfenv().delivery2
+                    or not player.Tasks.Trucker.Active:FindFirstChild("Trucker")
+
+                if not getfenv().delivery2 then return end
+
+                ------------------------------------------------
+                -- ไปจุด LOAD (NukeTruck)
+                ------------------------------------------------
+                local char = player.Character
+                if not (char and char:FindFirstChild("Humanoid")) then return end
+                local seat = char.Humanoid.SeatPart
+                if not seat then return end
+
+                local car = seat.Parent
+                if not car then return end
+
+                local beam = workspace.NavigationBeam
+                workspace.Gravity = 0
+
+                -- วาปไปหลังจุดโหลด
+                car:PivotTo(beam.WorldPivot * CFrame.new(0, 5, -70))
+
+                repeat
+                    task.wait()
+                    car:PivotTo(beam.WorldPivot * CFrame.new(0, 5, -70))
+                    rs.Events.RemoteFunction:InvokeServer("TruckShipping", {
+                        [1] = "LoadTruck"
+                    })
+                    task.wait(1)
+                until
+                    not workspace:FindFirstChild("NavigationBeam")
+                    or player:DistanceFromCharacter(beam.WorldPivot.Position) > 1000
+                    or not getfenv().delivery2
+
+                ------------------------------------------------
+                -- รอ NavigationBeam ปลายทาง
+                ------------------------------------------------
+                repeat
+                    task.wait()
+                until workspace:FindFirstChild("NavigationBeam") or not getfenv().delivery2
+
+                if not getfenv().delivery2 or not workspace:FindFirstChild("NavigationBeam") then
+                    return
+                end
+
+                ------------------------------------------------
+                -- ไปจุด UNLOAD (NukeTruck)
+                ------------------------------------------------
+                local beam2 = workspace.NavigationBeam
+                car:PivotTo(beam2.WorldPivot * CFrame.new(0, 50, -80))
+                workspace.Gravity = 1
+
+                local credits = player.leaderstats.Credits.Value
+
+                repeat
+                    task.wait()
+                    rs.Events.RemoteFunction:InvokeServer("TruckShipping", {
+                        [1] = "UnloadTruck"
+                    })
+                    task.wait(1)
+                until
+                    not workspace:FindFirstChild("NavigationBeam")
+                    or not getfenv().delivery2
+
+                workspace.Gravity = 196
+
+                repeat
+                    task.wait()
+                until not workspace:FindFirstChild("NavigationBeam") or not getfenv().delivery2
+
+                if credits == player.leaderstats.Credits.Value then
+                    print("job was a failure")
+                else
+                    local got = player.leaderstats.Credits.Value - credits
+                    print("job was a success you got: $" .. got)
+                    earnedmoney   = earnedmoney + got
+                    jobscompleted = jobscompleted + 1
+
+                    if moneystat then
+                        moneystat:Set("Money Earned: $" .. earnedmoney)
+                    end
+                    if delstat then
+                        delstat:Set("Jobs Completed: " .. jobscompleted)
+                    end
+                end
+
+                repeat
+                    task.wait()
+                until
+                    not player.Tasks.Trucker.Active:FindFirstChild("Trucker")
+                    or not getfenv().delivery2
+            end)
+            print(ok, err)
+        end
+    end
+})
+
+--========================================================--
+--                        STATS TAB                       --
+--========================================================--
+
+StatsTab:CreateSection("Stats")
+
+moneystat = StatsTab:CreateLabel("Money Earned: $" .. earnedmoney)
+milestat  = StatsTab:CreateLabel("Miles Driven: " .. milesdriven)
+delstat   = StatsTab:CreateLabel("Jobs Completed: " .. jobscompleted)
