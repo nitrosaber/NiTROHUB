@@ -47,7 +47,7 @@ local function startAutoFarm(updateStatus)
             local location = Vector3.new(-6205.298, 100, 8219.853)
             repeat
                 task.wait()
-                local speed = 700
+                local speed = 600
                 car.PrimaryPart.Velocity = car.PrimaryPart.CFrame.LookVector * speed
                 car:PivotTo(CFrame.new(car.PrimaryPart.Position, location))
             until LocalPlayer:DistanceFromCharacter(location) < 50 or not autoFarmActive
@@ -56,7 +56,7 @@ local function startAutoFarm(updateStatus)
             location = Vector3.new(-7594.541, 100, 5130.952)
             repeat
                 task.wait()
-                local speed = 700
+                local speed = 600
                 car.PrimaryPart.Velocity = car.PrimaryPart.CFrame.LookVector * speed
                 car:PivotTo(CFrame.new(car.PrimaryPart.Position, location))
             until LocalPlayer:DistanceFromCharacter(location) < 50 or not autoFarmActive
