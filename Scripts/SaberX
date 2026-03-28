@@ -8,6 +8,7 @@ local LocalPlayer = Players.LocalPlayer
 
 -- [ Variables ]
 local SwingRemote = ReplicatedStorage:WaitForChild("Events"):WaitForChild("SwingSaber")
+local UIActionRemote = ReplicatedStorage:WaitForChild("Events"):WaitForChild("UIAction") -- ✨ เพิ่มสำหรับเปิดไข่
 local SwordModule = require(ReplicatedStorage.Modules.ItemInfo.Swords)
 
 local SwordNames = {}
@@ -26,6 +27,7 @@ local BossPath = workspace:WaitForChild("Gameplay", 10)
 local bossArgs = {{ BossPath }}
 _G.AutoBoss = false
 _G.AntiAFK = true
+_G.AutoEgg = false  -- ✨ เพิ่มตัวแปรเปิดไข่
 
 ------------------------------------------
 -- [ 🎨 UI Window Setup ]
@@ -49,7 +51,7 @@ EventTab:Section({ Title = "⚔️ Combat System" })
 
 EventTab:Toggle({
     Title = "Auto Easter Boss",
-    Desc = "ตีบอสกิจกรรมอัตโนมัติ (หยิบดาบมาถือก่อนเปิดนะ)",
+    Desc = "ตีบอสกิจกรรมอัตโนมัติ",
     Icon = "skull", -- ไอคอนหัวกะโหลก
     Value = false,
     Callback = function(state)
@@ -58,6 +60,21 @@ EventTab:Toggle({
             WindUI:Notify({Title = "System", Content = "🟢 เริ่มโจมตีบอส!", Duration = 3})
         else
             WindUI:Notify({Title = "System", Content = "🔴 หยุดการโจมตี", Duration = 3})
+        end
+    end
+})
+
+EventTab:Toggle({
+    Title = "Auto Open Egg",
+    Desc = "เปิดไข่ Event Egg 100",
+    Icon = "egg", -- ไอคอนไข่
+    Value = false,
+    Callback = function(state)
+        _G.AutoEgg = state
+        if state then
+            WindUI:Notify({Title = "System", Content = "🥚 เริ่มเปิดไข่!", Duration = 3})
+        else
+            WindUI:Notify({Title = "System", Content = "🔴 หยุดการเปิดไข่", Duration = 3})
         end
     end
 })
@@ -155,7 +172,22 @@ task.spawn(function()
     end
 end)
 
-
+-- ✨ [4] ระบบเปิดไข่ Easter Event
+task.spawn(function()
+    while true do
+        if _G.AutoEgg then
+            pcall(function()
+                local args = {
+                    "BuyEgg",
+                    "GA Egg"
+                }
+                UIActionRemote:FireServer(unpack(args))
+            end)
+            task.wait(1)
+        else
+            task.wait(0.1)
+        end
+    end
+end)
 
 WindUI:Notify({Title = "NiTroHub Loaded", Content = "✨ โหลด UI เวอร์ชั่นพรีเมียมเสร็จสิ้น!", Duration = 5})
-
