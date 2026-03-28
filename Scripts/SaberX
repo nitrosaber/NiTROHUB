@@ -28,7 +28,7 @@ _G.AutoBoss = false
 _G.AntiAFK = true
 
 ------------------------------------------
--- [ 🎨 UI Window Setup (ออกแบบใหม่) ]
+-- [ 🎨 UI Window Setup ]
 ------------------------------------------
 -- ตั้งค่าหน้าต่างหลัก
 local Window = WindUI:CreateWindow({
@@ -65,7 +65,7 @@ EventTab:Toggle({
 -- [ หมวดหมู่ Main ในหน้า Main ]
 MainTab:Section({ Title = "🛎 Main" })
 
-MainTab:Toggle({
+CilckTab:Toggle({
     Title = "Auto Cilck",
     Desc = "เทสก่อน",
     Icon = "badge-check", 
