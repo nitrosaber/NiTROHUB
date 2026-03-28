@@ -200,3 +200,5 @@ end)
 
 
 WindUI:Notify({Title = "NiTroHub Loaded", Content = "✨ โหลด UI เวอร์ชั่นพรีเมียมเสร็จสิ้น!", Duration = 5})
+
+Window:Destroy()
