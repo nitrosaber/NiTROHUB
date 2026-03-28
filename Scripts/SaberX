@@ -65,7 +65,7 @@ EventTab:Toggle({
 -- [ หมวดหมู่ Main ในหน้า Main ]
 MainTab:Section({ Title = "🛎 Main" })
 
-CilckTab:Toggle({
+MainTab:Toggle({
     Title = "Auto Cilck",
     Desc = "เทสก่อน",
     Icon = "badge-check", 
