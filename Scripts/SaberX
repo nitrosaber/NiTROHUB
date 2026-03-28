@@ -56,7 +56,7 @@ EventTab:Toggle({
     Title = "Auto Easter Boss",
     Desc = "ตีบอสกิจกรรมอัตโนมัติ",
     Icon = "skull", -- ไอคอนหัวกะโหลก
-    Value = false,
+    Value = true,
     Callback = function(state)
         _G.AutoBoss = state
         if state then
