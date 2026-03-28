@@ -69,7 +69,7 @@ MainTab:Toggle({
     Title = "Auto Cilck",
     Desc = "เทสก่อน",
     Icon = "badge-check", 
-    Value = true,
+    Value = false,
     Callback = function(state)
         
     end
@@ -154,6 +154,8 @@ task.spawn(function()
         end
     end
 end)
+
+
 
 WindUI:Notify({Title = "NiTroHub Loaded", Content = "✨ โหลด UI เวอร์ชั่นพรีเมียมเสร็จสิ้น!", Duration = 5})
 
