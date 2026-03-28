@@ -1,13 +1,19 @@
 -- 【 🛸 NiTroHub ]
 
-local ID = game.PlaceId
-if ID == 85896571713843 then
+local PlaceId = game.PlaceId
+
+if PlaceId == 85896571713843 then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/nitrosaber/NiTROHUB/refs/heads/main/Scripts/BSGI.lua"))()
-end
 
-local ID = game.PlaceId
-if ID == 3823781113 then
+elseif PlaceId == 3823781113 then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/nitrosaber/NiTROHUB/refs/heads/main/Scripts/SaberX"))()
+
+-- เพิ่มเกมอื่น ๆ ได้ง่าย ๆ แบบนี้
+-- elseif PlaceId == 1234567890 then
+--     loadstring(game:HttpGet("ลิงก์สคริปต์"))()
+
+
+
+
+
 end
-
-
