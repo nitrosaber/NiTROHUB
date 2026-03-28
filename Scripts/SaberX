@@ -25,9 +25,12 @@ local BossPath = workspace:WaitForChild("Gameplay", 10)
     :WaitForChild("Boss", 10)
 
 local bossArgs = {{ BossPath }}
-_G.AutoBoss = false
+_G.AutoBoss = true
+_G.AutoEgg = false
+
+_G.AutoClick = false
+
 _G.AntiAFK = true
-_G.AutoEgg = false  -- ✨ เพิ่มตัวแปรเปิดไข่
 
 ------------------------------------------
 -- [ 🎨 UI Window Setup ]
@@ -83,14 +86,15 @@ EventTab:Toggle({
 MainTab:Section({ Title = "🛎 Main" })
 
 MainTab:Toggle({
-    Title = "Auto Cilck",
-    Desc = "เทสก่อน",
-    Icon = "badge-check", 
+    Title = "Auto Click",
+    Desc = "แกว่งดาบฟาร์มพลังอัตโนมัติ",
+    Icon = "mouse-pointer-click", 
     Value = false,
     Callback = function(state)
-        
+        _G.AutoClick = state
     end
 })
+
 
 -- [ หมวดหมู่ Protection ในหน้า Settings ]
 SettingsTab:Section({ Title = "🛡️ Protection System" })
@@ -124,22 +128,13 @@ task.spawn(function()
 end)
 
 -- [2] ระบบ Anti-AFK
-task.spawn(function()
-    while true do
-        task.wait(60 * 14)
-        if _G.AntiAFK then
-            VirtualUser:Button1Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-            task.wait(1)
-            VirtualUser:Button1Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+pcall(function()
+    if getconnections then
+        for _, connection in pairs(getconnections(LocalPlayer.Idled)) do
+            if _G.AntiAFK then
+                connection:Disable()
+            end
         end
-    end
-end)
-
-LocalPlayer.Idled:Connect(function()
-    if _G.AntiAFK then
-        VirtualUser:Button1Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        VirtualUser:Button1Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
     end
 end)
 
@@ -172,7 +167,7 @@ task.spawn(function()
     end
 end)
 
--- ✨ [4] ระบบเปิดไข่ Easter Event
+-- [4] ระบบเปิดไข่ Easter Event
 task.spawn(function()
     while true do
         if _G.AutoEgg then
@@ -189,5 +184,19 @@ task.spawn(function()
         end
     end
 end)
+
+-- [5] ระบบ Auto Click
+task.spawn(function()
+    while true do
+        if _G.AutoClick then
+            -- ส่งคำสั่งแกว่งดาบ
+            SwingRemote:FireServer()
+            task.wait(0.01) -- ความเร็วในการคลิก
+        else
+            task.wait(0.1)
+        end
+    end
+end)
+
 
 WindUI:Notify({Title = "NiTroHub Loaded", Content = "✨ โหลด UI เวอร์ชั่นพรีเมียมเสร็จสิ้น!", Duration = 5})
