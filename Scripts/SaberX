@@ -356,19 +356,11 @@ task.spawn(function()
     while true do
         if _G.AntiAFK then
             pcall(function()
-                -- วิธีหลัก: VirtualUser (ใช้ได้กับเกือบทุก Executor)
                 VirtualUser:CaptureController()
                 VirtualUser:ClickButton2(Vector2.new(0, 0))
-
-                -- วิธีสำรองสำหรับมือถือ (หมุนตัวละครนิดเดียว ไม่ให้ idle)
-                local char = LocalPlayer.Character
-                if char and char:FindFirstChild("HumanoidRootPart") then
-                    local root = char.HumanoidRootPart
-                    root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(0.5), 0)  -- หมุนเล็กมาก
-                end
             end)
         end
-        task.wait(25)  -- ทุก 25 วินาที (ปลอดภัยและไม่กินทรัพยากร)
+        task.wait(60)   -- ทุก 60 วินาที (พอดีกับระบบ AFK ของ Roblox)
     end
 end)
 
