@@ -84,7 +84,22 @@ EventTab:Toggle({
     Icon = "egg", -- ไอคอนไข่
     Value = false,
     Callback = function(state)
-        _G.AutoEgg = state
+        _G.AutoEgg100 = state
+        if state then
+            WindUI:Notify({Title = "System", Content = "🥚 เริ่มเปิดไข่!", Duration = 3})
+        else
+            WindUI:Notify({Title = "System", Content = "🔴 หยุดการเปิดไข่", Duration = 3})
+        end
+    end
+})
+
+EventTab:Toggle({
+    Title = "Auto Open Egg",
+    Desc = "เปิดไข่ Event Egg 250",
+    Icon = "egg", -- ไอคอนไข่
+    Value = false,
+    Callback = function(state)
+        _G.AutoEgg250 = state
         if state then
             WindUI:Notify({Title = "System", Content = "🥚 เริ่มเปิดไข่!", Duration = 3})
         else
@@ -94,7 +109,7 @@ EventTab:Toggle({
 })
 
 -- [ Dungeon Tab Section ]
-DungeonTab:Section({ Title = "🚀 Space Dungeon Control" })
+DungeonTab:Section({ Title = "🚀 Dungeon" })
 
 DungeonTab:Dropdown({
     Title = "Select Difficulty",
@@ -189,7 +204,7 @@ SettingsTab:Toggle({
             RunService:Set3dRenderingEnabled(false)
             
             -- 3. ปรับ FPS ให้ต่ำลงเพื่อลดการใช้ CPU (Optional)
-            if setfpscap then setfpscap(10) end 
+            if setfpscap then setfpscap(120) end 
             
             WindUI:Notify({Title = "Battery Saver", Content = "โหมดประหยัดพลังงานทำงานแล้ว!", Duration = 3})
         else
@@ -202,7 +217,7 @@ SettingsTab:Toggle({
             RunService:Set3dRenderingEnabled(true)
             
             -- 3. คืนค่า FPS (ปรับตามที่คุณต้องการ)
-            if setfpscap then setfpscap(60) end
+            if setfpscap then setfpscap(165) end
             
             WindUI:Notify({Title = "Battery Saver", Content = "กลับสู่โหมดปกติ", Duration = 3})
         end
@@ -261,11 +276,28 @@ end)
 -- [3] ระบบเปิดไข่ Easter Event
 task.spawn(function()
     while true do
-        if _G.AutoEgg then
+        if _G.AutoEgg100 then
             pcall(function()
                 local args = {
                     "BuyEgg",
                     "GA Egg"
+                }
+                UIActionRemote:FireServer(unpack(args))
+            end)
+            task.wait(1)
+        else
+            task.wait(0.1)
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if _G.AutoEgg250 then
+            pcall(function()
+                local args = {
+                    "BuyEgg",
+                    "GB Egg"
                 }
                 UIActionRemote:FireServer(unpack(args))
             end)
@@ -282,6 +314,7 @@ task.spawn(function()
         if _G.AutoClick then
             -- ส่งคำสั่งแกว่งดาบ
             SwingRemote:FireServer()
+            Sword:Activate()
             task.wait(0.01) -- ความเร็วในการคลิก
         else
             task.wait(0.1)
@@ -390,8 +423,8 @@ task.spawn(function()
                                     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                                     
                                     if myRoot and head then
-                                        -- 💡 วาร์ปไปสิงบนหัวแบบในรูป! (สูงขึ้นมา 3.5 หน่วยเพื่อความปลอดภัย)
-                                        myRoot.CFrame = head.CFrame * CFrame.new(0, 3.5, 0)
+                                        -- 💡 วาร์ปไปสิงบนหัวแบบในรูป! (สูงขึ้นมา 7 หน่วยเพื่อความปลอดภัย)
+                                        myRoot.CFrame = head.CFrame * CFrame.new(0, 7, 0)
                                         -- หันหน้าลงไปหาหัวบอส
                                         myRoot.CFrame = CFrame.new(myRoot.Position, head.Position)
 
