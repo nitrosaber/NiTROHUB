@@ -37,7 +37,7 @@ _G.AutoRejoin = true
 -- [ Configuration ]
 _G.AutoDungeon = false
 _G.SelectedMap = "Space"
-_G.Difficulty = "Easy"
+_G.Difficulty = "Impossible"
 _G.AutoAttack = false
 
 ------------------------------------------
@@ -97,7 +97,7 @@ DungeonTab:Section({ Title = "🚀 Space Dungeon Control" })
 DungeonTab:Dropdown({
     Title = "Select Difficulty",
     Items = {"Easy", "Medium", "Hard", "Impossible"},
-    Value = "Easy",
+    Value = "Impossible",
     Callback = function(selected)
         _G.Difficulty = selected
         WindUI:Notify({Title = "System", Content = "เลือกความยาก: " .. selected, Duration = 2})
