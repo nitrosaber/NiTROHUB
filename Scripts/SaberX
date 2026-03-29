@@ -15,6 +15,7 @@ _G.AutoEgg100 = false
 _G.AutoEgg250 = false
 
 _G.AutoClick = false
+_G.AutoBuySabers = false
 
 _G.AntiAFK = true
 _G.AutoRejoin = true
@@ -107,6 +108,17 @@ MainTab:Toggle({
     Value = false,
     Callback = function(state)
         _G.AutoClick = state
+    end
+})
+
+MainTab:Section({ Title = "🛒 Auto Shop System" })
+MainTab:Toggle({
+    Title = "Auto Buy All Sabers",
+    Desc = "ซื้อดาบทั้งหมดอัตโนมัติ",
+    Icon = "shopping-bag",
+    Value = false,
+    Callback = function(state)
+        _G.AutoBuySabers = state
     end
 })
 
@@ -251,7 +263,21 @@ task.spawn(function()
         end
     end)
 
--- [5] ระบบ Dungeon (แก้ไขให้เสถียรขึ้น)
+     -- [5] ระบบ Auto Buy All Sabers
+    task.spawn(function()
+        while true do
+            if _G.AutoBuySabers then
+                pcall(function()
+                    UIActionRemote:FireServer("BuyAllSabers")   -- ถ้า error ลอง "BuyAllSwords" หรือ "BuySabers"
+                end)
+                task.wait(1.5)
+            else
+                task.wait(0.5)
+            end
+        end
+    end)
+
+-- [6] ระบบ Dungeon (แก้ไขให้เสถียรขึ้น)
     task.spawn(function()
         while true do
             if _G.AutoDungeon then
@@ -276,7 +302,7 @@ task.spawn(function()
         end
     end)
 
-    -- [6] ระบบ Auto Attack (แก้ไขสำคัญตรงนี้!)
+    -- [7] ระบบ Auto Attack (แก้ไขสำคัญตรงนี้!)
     task.spawn(function()
         while true do
             if _G.AutoAttack then
