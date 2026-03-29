@@ -76,6 +76,8 @@ EventTab:Toggle({
     end
 })
 
+EventTab:Section({ Title = "🥚 Egg Open" })
+
 EventTab:Toggle({
     Title = "Auto Open Egg",
     Desc = "เปิดไข่ Event Egg 100",
@@ -171,30 +173,42 @@ SettingsTab:Toggle({
     Icon = "moon",
     Value = false,
     Callback = function(state)
+        local RunService = game:GetService("RunService")
+        local CoreGui = game:GetService("CoreGui")
+        
         if state then
-            -- ปิดการมองเห็นหน้าจอ (เปลี่ยนเป็นสีดำ)
-            local Screen = Instance.new("Frame", game:GetService("CoreGui"))
-            Screen.Name = "BlackScreenOverlay"
-            Screen.Size = UDim2.new(1, 0, 1, 0)
-            Screen.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            Screen.ZIndex = 999
+            -- 1. สร้างหน้าจอสีดำปิดทับ (แต่ไม่ทับ UI ของเรา)
+            local BlackFrame = Instance.new("Frame")
+            BlackFrame.Name = "NiTroBlackScreen"
+            BlackFrame.Parent = CoreGui
+            BlackFrame.Size = UDim2.new(1, 0, 1, 0)
+            BlackFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            BlackFrame.ZIndex = 9 -- ปรับให้ต่ำกว่า UI ของ Hub เล็กน้อยเพื่อให้เรายังกดปิดโหมดนี้ได้
             
-            -- ปรับกราฟิกให้ต่ำสุด (ช่วยลด RAM)
-            settings().Rendering.QualityLevel = 1
-            game:GetService("RunService"):Set3dRenderingEnabled(false)
+            -- 2. หยุดการเรนเดอร์ภาพ 3D (หัวใจหลักที่ทำให้เครื่องเย็น)
+            RunService:Set3dRenderingEnabled(false)
             
-            WindUI:Notify({Title = "Power", Content = "เปิดโหมดประหยัดพลังงานแล้ว!", Duration = 3})
+            -- 3. ปรับ FPS ให้ต่ำลงเพื่อลดการใช้ CPU (Optional)
+            if setfpscap then setfpscap(10) end 
+            
+            WindUI:Notify({Title = "Battery Saver", Content = "โหมดประหยัดพลังงานทำงานแล้ว!", Duration = 3})
         else
-            -- เปิดหน้าจอคืน
-            if game:GetService("CoreGui"):FindFirstChild("BlackScreenOverlay") then
-                game:GetService("CoreGui").BlackScreenOverlay:Destroy()
+            -- 1. ลบหน้าจอสีดำออก
+            if CoreGui:FindFirstChild("NiTroBlackScreen") then
+                CoreGui.NiTroBlackScreen:Destroy()
             end
-            game:GetService("RunService"):Set3dRenderingEnabled(true)
             
-            WindUI:Notify({Title = "Power", Content = "ปิดโหมดประหยัดพลังงานแล้ว", Duration = 3})
+            -- 2. กลับมาเรนเดอร์ภาพ 3D ปกติ
+            RunService:Set3dRenderingEnabled(true)
+            
+            -- 3. คืนค่า FPS (ปรับตามที่คุณต้องการ)
+            if setfpscap then setfpscap(60) end
+            
+            WindUI:Notify({Title = "Battery Saver", Content = "กลับสู่โหมดปกติ", Duration = 3})
         end
     end
 })
+
 
 
 ------------------------------------------
