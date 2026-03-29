@@ -253,18 +253,21 @@ task.spawn(function()
         end
     end)
 
-    -- [5] ระบบ Dungeon
+    -- [5] ระบบ Dungeon (แก้ไขให้เสถียรขึ้น)
     task.spawn(function()
         while true do
             if _G.AutoDungeon then
                 pcall(function()
-                    local dungeonGroups = ReplicatedStorage:WaitForChild("DungeonGroups")
+                    local dungeonGroups = ReplicatedStorage:WaitForChild("DungeonGroups", 2)
                     local myGroupName = LocalPlayer.Name .. "'s Party"
                     local myGroup = dungeonGroups:FindFirstChild(myGroupName)
 
                     if not myGroup then
+                        -- สร้างกลุ่มใหม่
                         UIActionRemote:FireServer("CreateGroup", "Public", _G.SelectedMap, _G.Difficulty)
+                        task.wait(1.5) -- รอเกมสร้างกลุ่มเสร็จ
                     else
+                        -- เป็นเจ้าของกลุ่ม → เริ่มดันเจี้ยน
                         if myGroup:FindFirstChild("OwnerName") and myGroup.OwnerName.Value == LocalPlayer.Name then
                             UIActionRemote:FireServer("StartDungeon")
                         end
