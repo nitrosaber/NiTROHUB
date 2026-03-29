@@ -251,18 +251,21 @@ task.spawn(function()
         end
     end)
 
-    -- [5] ระบบ Dungeon
+-- [5] ระบบ Dungeon (แก้ไขให้เสถียรขึ้น)
     task.spawn(function()
         while true do
             if _G.AutoDungeon then
                 pcall(function()
-                    local dungeonGroups = ReplicatedStorage:WaitForChild("DungeonGroups")
+                    local dungeonGroups = ReplicatedStorage:WaitForChild("DungeonGroups", 2)
                     local myGroupName = LocalPlayer.Name .. "'s Party"
                     local myGroup = dungeonGroups:FindFirstChild(myGroupName)
 
                     if not myGroup then
+                        -- สร้างกลุ่มใหม่
                         UIActionRemote:FireServer("CreateGroup", "Public", _G.SelectedMap, _G.Difficulty)
+                        task.wait(1.5) -- รอเกมสร้างกลุ่มเสร็จ
                     else
+                        -- เป็นเจ้าของกลุ่ม → เริ่มดันเจี้ยน
                         if myGroup:FindFirstChild("OwnerName") and myGroup.OwnerName.Value == LocalPlayer.Name then
                             UIActionRemote:FireServer("StartDungeon")
                         end
@@ -273,38 +276,46 @@ task.spawn(function()
         end
     end)
 
-    -- [6] ระบบ Auto Warp To Enemy
+    -- [6] ระบบ Auto Attack (แก้ไขสำคัญตรงนี้!)
     task.spawn(function()
         while true do
             if _G.AutoAttack then
                 pcall(function()
                     local DungeonStorage = workspace:FindFirstChild("DungeonStorage")
-                    if not DungeonStorage then return end
+                    if not DungeonStorage then 
+                        task.wait(0.5)
+                        return 
+                    end
 
                     for _, dungeonFolder in pairs(DungeonStorage:GetChildren()) do
                         local important = dungeonFolder:FindFirstChild("Important")
-                        if important then
-                            local enemyFolder = dungeonFolder:FindFirstChild("Gameplay") or dungeonFolder:FindFirstChild("Enemies") or important
-                            
-                            for _, enemy in pairs(enemyFolder:GetDescendants()) do
-                                if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
-                                    local name = enemy.Name:lower()
-                                    if name:find("bot") or name:find("boss") or name:find("enemy") then
-                                        local head = enemy:FindFirstChild("Head")
-                                        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                                        
-                                        if myRoot and head then
-                                            myRoot.CFrame = head.CFrame * CFrame.new(0, 7, 0)
-                                            myRoot.CFrame = CFrame.new(myRoot.Position, head.Position)
+                        if not important then continue end
 
-                                            local sword = GetEquippedSword()
-                                            if sword then
-                                                sword.RemoteClick:FireServer({{ head }})
-                                                SwingRemote:FireServer()
-                                            end
-                                            break
-                                        end
+                        local enemyFolder = dungeonFolder:FindFirstChild("Gameplay") 
+                                       or dungeonFolder:FindFirstChild("Enemies") 
+                                       or important
+
+                        for _, enemy in pairs(enemyFolder:GetDescendants()) do
+                            if enemy:IsA("Model") 
+                               and enemy:FindFirstChild("Humanoid") 
+                               and enemy.Humanoid.Health > 0 then
+
+                                local head = enemy:FindFirstChild("Head") or enemy:FindFirstChild("HumanoidRootPart")
+                                local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+                                if myRoot and head then
+                                    -- Teleport + มองศัตรู
+                                    myRoot.CFrame = head.CFrame * CFrame.new(0, 7, 0)
+                                    myRoot.CFrame = CFrame.new(myRoot.Position, head.Position)
+
+                                    -- ตี (แก้ไขตรง RemoteClick ให้ตรงกับระบบบอส)
+                                    local sword = GetEquippedSword()
+                                    if sword then
+                                        sword.RemoteClick:FireServer({ enemy })   -- ← แก้ตรงนี้สำคัญ
+                                        SwingRemote:FireServer()
                                     end
+
+                                    break -- ตีตัวแรกที่เจอแล้วค่อยวนรอบใหม่
                                 end
                             end
                         end
@@ -314,16 +325,17 @@ task.spawn(function()
             task.wait(0.01)
         end
     end)
-end)
 
 -- [100] ระบบ Anti-AFK
-pcall(function()
-    if getconnections then
-        for _, connection in pairs(getconnections(LocalPlayer.Idled)) do
-            if _G.AntiAFK then
-                connection:Disable()
-            end
+task.spawn(function()
+    while true do
+        if _G.AntiAFK then
+            pcall(function()
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new(0, 0))
+            end)
         end
+        task.wait(30) -- ทุก 30 วินาที (พอดีกับระบบ AFK ของ Roblox)
     end
 end)
 
