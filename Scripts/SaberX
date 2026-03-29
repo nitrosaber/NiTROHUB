@@ -111,15 +111,6 @@ MainTab:Toggle({
 })
 
 MainTab:Section({ Title = "🛒 Auto Shop System" })
-MainTab:Toggle({
-    Title = "Auto Buy All Sabers",
-    Desc = "ซื้อดาบทั้งหมดอัตโนมัติ",
-    Icon = "shopping-bag",
-    Value = false,
-    Callback = function(state)
-        _G.AutoBuySabers = state
-    end
-})
 
 SettingsTab:Section({ Title = "🛡️ Protection System" })
 SettingsTab:Toggle({
@@ -262,35 +253,18 @@ task.spawn(function()
         end
     end)
 
-     -- [5] ระบบ Auto Buy All Sabers
-    task.spawn(function()
-        while true do
-            if _G.AutoBuySabers then
-                pcall(function()
-                    UIActionRemote:FireServer("BuyAllSabers")   -- ถ้า error ลอง "BuyAllSwords" หรือ "BuySabers"
-                end)
-                task.wait(1.5)
-            else
-                task.wait(0.5)
-            end
-        end
-    end)
-
--- [6] ระบบ Dungeon (แก้ไขให้เสถียรขึ้น)
+    -- [5] ระบบ Dungeon
     task.spawn(function()
         while true do
             if _G.AutoDungeon then
                 pcall(function()
-                    local dungeonGroups = ReplicatedStorage:WaitForChild("DungeonGroups", 2)
+                    local dungeonGroups = ReplicatedStorage:WaitForChild("DungeonGroups")
                     local myGroupName = LocalPlayer.Name .. "'s Party"
                     local myGroup = dungeonGroups:FindFirstChild(myGroupName)
 
                     if not myGroup then
-                        -- สร้างกลุ่มใหม่
                         UIActionRemote:FireServer("CreateGroup", "Public", _G.SelectedMap, _G.Difficulty)
-                        task.wait(1.5) -- รอเกมสร้างกลุ่มเสร็จ
                     else
-                        -- เป็นเจ้าของกลุ่ม → เริ่มดันเจี้ยน
                         if myGroup:FindFirstChild("OwnerName") and myGroup.OwnerName.Value == LocalPlayer.Name then
                             UIActionRemote:FireServer("StartDungeon")
                         end
@@ -301,46 +275,38 @@ task.spawn(function()
         end
     end)
 
-    -- [7] ระบบ Auto Attack (แก้ไขสำคัญตรงนี้!)
+    -- [6] ระบบ Auto Warp To Enemy
     task.spawn(function()
         while true do
             if _G.AutoAttack then
                 pcall(function()
                     local DungeonStorage = workspace:FindFirstChild("DungeonStorage")
-                    if not DungeonStorage then 
-                        task.wait(0.5)
-                        return 
-                    end
+                    if not DungeonStorage then return end
 
                     for _, dungeonFolder in pairs(DungeonStorage:GetChildren()) do
                         local important = dungeonFolder:FindFirstChild("Important")
-                        if not important then continue end
+                        if important then
+                            local enemyFolder = dungeonFolder:FindFirstChild("Gameplay") or dungeonFolder:FindFirstChild("Enemies") or important
+                            
+                            for _, enemy in pairs(enemyFolder:GetDescendants()) do
+                                if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+                                    local name = enemy.Name:lower()
+                                    if name:find("bot") or name:find("boss") or name:find("enemy") then
+                                        local head = enemy:FindFirstChild("Head")
+                                        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                                        
+                                        if myRoot and head then
+                                            myRoot.CFrame = head.CFrame * CFrame.new(0, 7, 0)
+                                            myRoot.CFrame = CFrame.new(myRoot.Position, head.Position)
 
-                        local enemyFolder = dungeonFolder:FindFirstChild("Gameplay") 
-                                       or dungeonFolder:FindFirstChild("Enemies") 
-                                       or important
-
-                        for _, enemy in pairs(enemyFolder:GetDescendants()) do
-                            if enemy:IsA("Model") 
-                               and enemy:FindFirstChild("Humanoid") 
-                               and enemy.Humanoid.Health > 0 then
-
-                                local head = enemy:FindFirstChild("Head") or enemy:FindFirstChild("HumanoidRootPart")
-                                local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-
-                                if myRoot and head then
-                                    -- Teleport + มองศัตรู
-                                    myRoot.CFrame = head.CFrame * CFrame.new(0, 7, 0)
-                                    myRoot.CFrame = CFrame.new(myRoot.Position, head.Position)
-
-                                    -- ตี (แก้ไขตรง RemoteClick ให้ตรงกับระบบบอส)
-                                    local sword = GetEquippedSword()
-                                    if sword then
-                                        sword.RemoteClick:FireServer({ enemy })   -- ← แก้ตรงนี้สำคัญ
-                                        SwingRemote:FireServer()
+                                            local sword = GetEquippedSword()
+                                            if sword then
+                                                sword.RemoteClick:FireServer({{ head }})
+                                                SwingRemote:FireServer()
+                                            end
+                                            break
+                                        end
                                     end
-
-                                    break -- ตีตัวแรกที่เจอแล้วค่อยวนรอบใหม่
                                 end
                             end
                         end
@@ -350,6 +316,7 @@ task.spawn(function()
             task.wait(0.01)
         end
     end)
+end)
 
 -- [100] ระบบ Anti-AFK
 task.spawn(function()
@@ -360,7 +327,7 @@ task.spawn(function()
                 VirtualUser:ClickButton2(Vector2.new(0, 0))
             end)
         end
-        task.wait(60)   -- ทุก 60 วินาที (พอดีกับระบบ AFK ของ Roblox)
+        task.wait(30)   -- ทุก 30 วินาที (พอดีกับระบบ AFK ของ Roblox)
     end
 end)
 
@@ -380,3 +347,4 @@ task.spawn(function()
         end)
     end)
 end)
+
