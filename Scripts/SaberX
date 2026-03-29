@@ -346,38 +346,58 @@ task.spawn(function()
     end
 end)
 
--- 2. ระบบโจมตี (Base on v4.Enemies & Combat Remote)
+--------------------------------------------------------
+-- [ ⚔️ ระบบ Auto Warp To Enemy (เจาะจง Spawner) ]
+--------------------------------------------------------
 task.spawn(function()
     while true do
-        if _G.AutoAttack then
+        if _G.AutoAttackHead then
             pcall(function()
-                local gameplay = workspace:FindFirstChild("Gameplay")
-                if gameplay then
-                    for _, v in pairs(gameplay:GetDescendants()) do
-                        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-                            -- ตรวจสอบมอนสเตอร์ตามลิสต์ที่ให้มา (Bot/Boss)
-                            if v.Name:find("Bot") or v.Name:find("Boss") then
-                                -- ดึงดาบที่ถืออยู่
-                                local sword = nil
-                                for _, tool in pairs(LocalPlayer.Character:GetChildren()) do
-                                    if tool:IsA("Tool") and tool:FindFirstChild("RemoteClick") then
-                                        sword = tool
-                                        break
+                local DungeonStorage = workspace:FindFirstChild("DungeonStorage")
+                if not DungeonStorage then return end
+
+                -- 1. วนลูปหา Folder ที่เข้ารหัส (GUID)
+                for _, dungeonFolder in pairs(DungeonStorage:GetChildren()) do
+                    local important = dungeonFolder:FindFirstChild("Important")
+                    if important then
+                        -- 2. สแกนหาศัตรูที่เกิดจาก Spawner (เช่น BlueEnemySpawner, PurpleBossEnemySpawner)
+                        -- โดยปกติศัตรูจะถูกสร้างไว้ในโฟลเดอร์ใกล้ๆ กัน หรือในโฟลเดอร์ชื่อ Enemies/Gameplay
+                        local enemyFolder = dungeonFolder:FindFirstChild("Gameplay") or dungeonFolder:FindFirstChild("Enemies") or important
+                        
+                        for _, enemy in pairs(enemyFolder:GetDescendants()) do
+                            -- ตรวจสอบว่าเป็นมอนสเตอร์ที่มีชีวิต (เลือด > 0)
+                            if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+                                
+                                -- เช็คชื่อให้ตรงตามที่คุณส่งมา (Green, Blue, Red, Purple, Boss)
+                                local name = enemy.Name:lower()
+                                if name:find("bot") or name:find("boss") or name:find("enemy") then
+                                    
+                                    local head = enemy:FindFirstChild("Head")
+                                    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                                    
+                                    if myRoot and head then
+                                        -- 💡 วาร์ปไปสิงบนหัวแบบในรูป! (สูงขึ้นมา 3.5 หน่วยเพื่อความปลอดภัย)
+                                        myRoot.CFrame = head.CFrame * CFrame.new(0, 3.5, 0)
+                                        -- หันหน้าลงไปหาหัวบอส
+                                        myRoot.CFrame = CFrame.new(myRoot.Position, head.Position)
+
+                                        -- ⚔️ สั่งโจมตี
+                                        local sword = GetEquippedSword()
+                                        if sword then
+                                            -- ยิง RemoteClick ไปที่หัวตรงๆ
+                                            sword.RemoteClick:FireServer({{ head }})
+                                            Events.SwingSaber:FireServer()
+                                        end
+                                        break -- ล็อคเป้าตัวนี้จนกว่าจะตาย
                                     end
                                 end
-                                
-                                if sword then
-                                    sword.RemoteClick:FireServer({{ v }})
-                                    Events.SwingSaber:FireServer()
-                                end
-                                break
                             end
                         end
                     end
                 end
             end)
         end
-        task.wait(0.01) -- ความเร็วสูงสุด
+        task.wait(0.01) -- ความเร็วระดับ Turbo สำหรับมือถือ
     end
 end)
 
