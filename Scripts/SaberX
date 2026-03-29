@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
+local Events = ReplicatedStorage:WaitForChild("Events")
 
 -- [ Variables ]
 local SwingRemote = ReplicatedStorage:WaitForChild("Events"):WaitForChild("SwingSaber")
@@ -31,6 +32,13 @@ _G.AutoEgg = false
 _G.AutoClick = false
 
 _G.AntiAFK = true
+_G.AutoRejoin = true
+
+-- [ Configuration ]
+_G.AutoDungeon = false
+_G.SelectedMap = "Space"
+_G.Difficulty = "Easy"
+_G.AutoAttack = false
 
 ------------------------------------------
 -- [ 🎨 UI Window Setup ]
@@ -46,6 +54,7 @@ local Window = WindUI:CreateWindow({
 
 -- สร้าง Tabs
 local EventTab = Window:Tab({ Title = "Events", Icon = "swords" })
+local DungeonTab = Window:Tab({ Title = "Dungeon", Icon = "castle" })
 local MainTab = Window:Tab({ Title = "Main", Icon = "geist:window" })
 local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
@@ -82,6 +91,41 @@ EventTab:Toggle({
     end
 })
 
+-- [ Dungeon Tab Section ]
+DungeonTab:Section({ Title = "🚀 Space Dungeon Control" })
+
+DungeonTab:Dropdown({
+    Title = "Select Difficulty",
+    Items = {"Easy", "Medium", "Hard", "Impossible"},
+    Value = "Easy",
+    Callback = function(selected)
+        _G.Difficulty = selected
+        WindUI:Notify({Title = "System", Content = "เลือกความยาก: " .. selected, Duration = 2})
+    end
+})
+
+DungeonTab:Toggle({
+    Title = "Auto Create & Join",
+    Desc = "สร้างห้องและเริ่มดันเจี้ยนอัตโนมัติ",
+    Value = false,
+    Callback = function(state)
+        _G.AutoDungeon = state
+        if state then
+            WindUI:Notify({Title = "System", Content = "🟢 เริ่มระบบดันเจี้ยน!", Duration = 3})
+        end
+    end
+})
+
+DungeonTab:Toggle({
+    Title = "Auto Attack",
+    Desc = "ตีมอนสเตอร์/บอสอัตโนมัติเมื่อเข้าดันเจี้ยน",
+    Value = false,
+    Callback = function(state)
+        _G.AutoAttack = state
+    end
+})
+
+
 -- [ หมวดหมู่ Main ในหน้า Main ]
 MainTab:Section({ Title = "🛎 Main" })
 
@@ -109,6 +153,50 @@ SettingsTab:Toggle({
     end
 })
 
+SettingsTab:Toggle({
+    Title = "Auto Rejoin",
+    Desc = "เข้าเกมใหม่ทันทีถ้าเน็ตหลุดหรือเซิร์ฟเวอร์เตะ",
+    Icon = "plug-zap", -- ไอคอนปลั๊กไฟ
+    Value = true,
+    Callback = function(state)
+        _G.AutoRejoin = state
+    end
+})
+
+SettingsTab:Section({ Title = "⚡ Performance" })
+
+SettingsTab:Toggle({
+    Title = "Black Screen Mode (Battery Saver)",
+    Desc = "ปิดการแสดงผลหน้าจอเพื่อประหยัดแบตเตอรี่ (เครื่องเย็นขึ้นมาก)",
+    Icon = "moon",
+    Value = false,
+    Callback = function(state)
+        if state then
+            -- ปิดการมองเห็นหน้าจอ (เปลี่ยนเป็นสีดำ)
+            local Screen = Instance.new("Frame", game:GetService("CoreGui"))
+            Screen.Name = "BlackScreenOverlay"
+            Screen.Size = UDim2.new(1, 0, 1, 0)
+            Screen.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            Screen.ZIndex = 999
+            
+            -- ปรับกราฟิกให้ต่ำสุด (ช่วยลด RAM)
+            settings().Rendering.QualityLevel = 1
+            game:GetService("RunService"):Set3dRenderingEnabled(false)
+            
+            WindUI:Notify({Title = "Power", Content = "เปิดโหมดประหยัดพลังงานแล้ว!", Duration = 3})
+        else
+            -- เปิดหน้าจอคืน
+            if game:GetService("CoreGui"):FindFirstChild("BlackScreenOverlay") then
+                game:GetService("CoreGui").BlackScreenOverlay:Destroy()
+            end
+            game:GetService("RunService"):Set3dRenderingEnabled(true)
+            
+            WindUI:Notify({Title = "Power", Content = "ปิดโหมดประหยัดพลังงานแล้ว", Duration = 3})
+        end
+    end
+})
+
+
 ------------------------------------------
 -- [ ⚙️ ระบบหลังบ้าน (ไม่แตะต้องระบบเดิม) ]
 ------------------------------------------
@@ -127,18 +215,7 @@ task.spawn(function()
     end
 end)
 
--- [2] ระบบ Anti-AFK
-pcall(function()
-    if getconnections then
-        for _, connection in pairs(getconnections(LocalPlayer.Idled)) do
-            if _G.AntiAFK then
-                connection:Disable()
-            end
-        end
-    end
-end)
-
--- [3] ระบบตีบอส
+-- [2] ระบบตีบอส
 local function GetEquippedSword()
     local char = LocalPlayer.Character
     if not char then return nil end
@@ -167,7 +244,7 @@ task.spawn(function()
     end
 end)
 
--- [4] ระบบเปิดไข่ Easter Event
+-- [3] ระบบเปิดไข่ Easter Event
 task.spawn(function()
     while true do
         if _G.AutoEgg then
@@ -185,7 +262,7 @@ task.spawn(function()
     end
 end)
 
--- [5] ระบบ Auto Click
+-- [4] ระบบ Auto Click
 task.spawn(function()
     while true do
         if _G.AutoClick then
@@ -195,6 +272,112 @@ task.spawn(function()
         else
             task.wait(0.1)
         end
+    end
+end)
+
+-- [100] ระบบ Anti-AFK
+pcall(function()
+    if getconnections then
+        for _, connection in pairs(getconnections(LocalPlayer.Idled)) do
+            if _G.AntiAFK then
+                connection:Disable()
+            end
+        end
+    end
+end)
+
+-- [101] ระบบ Auto Rejoin
+local CoreGui = game:GetService("CoreGui")
+local TeleportService = game:GetService("TeleportService")
+
+task.spawn(function()
+    pcall(function()
+        -- ตรวจจับหน้าต่าง Error ของ Roblox
+        local promptOverlay = CoreGui:WaitForChild("RobloxPromptGui"):WaitForChild("promptOverlay")
+        
+        promptOverlay.ChildAdded:Connect(function(child)
+            if _G.AutoRejoin and child.Name == "ErrorPrompt" then
+                print("NiTroHub: ตรวจพบการหลุด! กำลังเชื่อมต่อใหม่ใน 5 วินาที...")
+                
+                -- รอ 5 วินาทีให้เน็ตนิ่งก่อนเข้าใหม่ (กันเกมแครช)
+                task.wait(5)
+                
+                -- โค้ดสำหรับเข้าเกมใหม่ (Teleport)
+                if #Players:GetPlayers() <= 1 then
+                    -- ถ้าในเซิร์ฟไม่มีคนเลย ให้เข้าเซิร์ฟใหม่ไปเลย
+                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                else
+                    -- พยายามกลับเข้าเซิร์ฟเวอร์เดิม (ถ้ายังว่าง)
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+                end
+            end
+        end)
+    end)
+end)
+
+------------------------------------------
+-- [ ⚙️ Core Logic - Dungeon System ]
+------------------------------------------
+
+-- 1. ระบบจัดการห้อง (Create & Start)
+task.spawn(function()
+    while true do
+        if _G.AutoDungeon then
+            pcall(function()
+                local dungeonGroups = ReplicatedStorage:WaitForChild("DungeonGroups")
+                local myGroupName = LocalPlayer.Name .. "'s Party"
+                local myGroup = dungeonGroups:FindFirstChild(myGroupName)
+
+                if not myGroup then
+                    -- สร้างห้อง (อ้างอิงจาก v_u_1.CreateGroup)
+                    UIAction:FireServer("CreateGroup", "Public", _G.SelectedMap, _G.Difficulty)
+                else
+                    -- ถ้าเป็นเจ้าของห้อง ให้กดเริ่ม (CheckIsOwner)
+                    if myGroup:FindFirstChild("OwnerName") and myGroup.OwnerName.Value == LocalPlayer.Name then
+                        UIAction:FireServer("StartDungeon")
+                        -- สำรอง Remote Start เผื่อเวอร์ชั่นเปลี่ยน
+                        local startRem = Events:FindFirstChild("StartDungeon") or Events:FindFirstChild("DungeonStart")
+                        if startRem then startRem:FireServer() end
+                    end
+                end
+            end)
+        end
+        task.wait(3) -- หน่วงเวลาเช็ค
+    end
+end)
+
+-- 2. ระบบโจมตี (Base on v4.Enemies & Combat Remote)
+task.spawn(function()
+    while true do
+        if _G.AutoAttack then
+            pcall(function()
+                local gameplay = workspace:FindFirstChild("Gameplay")
+                if gameplay then
+                    for _, v in pairs(gameplay:GetDescendants()) do
+                        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                            -- ตรวจสอบมอนสเตอร์ตามลิสต์ที่ให้มา (Bot/Boss)
+                            if v.Name:find("Bot") or v.Name:find("Boss") then
+                                -- ดึงดาบที่ถืออยู่
+                                local sword = nil
+                                for _, tool in pairs(LocalPlayer.Character:GetChildren()) do
+                                    if tool:IsA("Tool") and tool:FindFirstChild("RemoteClick") then
+                                        sword = tool
+                                        break
+                                    end
+                                end
+                                
+                                if sword then
+                                    sword.RemoteClick:FireServer({{ v }})
+                                    Events.SwingSaber:FireServer()
+                                end
+                                break
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+        task.wait(0.01) -- ความเร็วสูงสุด
     end
 end)
 
