@@ -246,14 +246,17 @@ local Events = ReplicatedStorage:WaitForChild("Events")
 local SwingRemote = Events:WaitForChild("SwingSaber")
 local UIActionRemote = Events:WaitForChild("UIAction") 
 
--- ดึงข้อมูลชื่อดาบทั้งหมดในเกมเพื่อใช้เช็ค
+-- ดึง Module ไอเทมจากโฟลเดอร์เกม
+local ItemModules = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ItemInfo")
+local SwordModule = require(ItemModules:WaitForChild("Swords"))
+local DNAModule = require(ItemModules:WaitForChild("DNAs"))
+local ClassModule = require(ItemModules:WaitForChild("Classes"))
+
+-- แคชชื่อไอเทมสำหรับเช็คดาบที่ถือ
 local SwordNames = {}
-pcall(function()
-    local SwordModule = require(ReplicatedStorage.Modules.ItemInfo.Swords)
-    for name, _ in pairs(SwordModule) do 
-        SwordNames[name] = true 
-    end
-end)
+for name, _ in pairs(SwordModule) do 
+    SwordNames[name] = true 
+end
 
 -- ฟังก์ชันหาดาบที่ผู้เล่นกำลังถืออยู่
 local function GetEquippedSword()
@@ -340,30 +343,39 @@ task.spawn(function()
                 UIActionRemote:FireServer("ClaimClanQuest", 3)
             end)
         end
-        task.wait(10) -- หน่วงเวลา 10 วินาทีเพื่อไม่ให้เซิร์ฟเวอร์เตะ
+        task.wait(10)
     end
 end)
 
--- [ Auto Shop ]
+-- [ Improved Auto Shop Logic (ใช้วิธีวนลูปไอเทมจาก Module) ]
 task.spawn(function()
     while true do
         pcall(function()
+            -- ซื้อดาบทั้งหมด
             if _G.AutoBuySwords then 
-                local buySwords = Events:FindFirstChild("BuyAllSwords")
-                if buySwords then buySwords:FireServer() end
+                UIActionRemote:FireServer("BuyAllSwords")
+                for sName, _ in pairs(SwordModule) do
+                    UIActionRemote:FireServer("BuySword", sName)
+                end
             end
             
+            -- ซื้อ DNA (ใช้รูปแบบ args ที่คุณต้องการ)
             if _G.AutoBuyDNA then 
-                local buyDNA = Events:FindFirstChild("BuyAllBackpacks") or Events:FindFirstChild("BuyAllDNA")
-                if buyDNA then buyDNA:FireServer() end
+                UIActionRemote:FireServer("BuyAllBackpacks")
+                for dName, _ in pairs(DNAModule) do
+                    UIActionRemote:FireServer("BuyDNA", dName) -- เช่น "Boost DNA"
+                end
             end
             
+            -- ซื้อ Class
             if _G.AutoBuyClass then 
-                local buyClass = Events:FindFirstChild("BuyAllClasses") or Events:FindFirstChild("BuyClass")
-                if buyClass then buyClass:FireServer() end
+                UIActionRemote:FireServer("BuyAllClasses")
+                for cName, _ in pairs(ClassModule) do
+                    UIActionRemote:FireServer("BuyClass", cName)
+                end
             end
         end)
-        task.wait(3)
+        task.wait(5) -- หน่วงเวลา 5 วินาทีเพื่อความปลอดภัย
     end
 end)
 
@@ -372,16 +384,27 @@ task.spawn(function()
     while true do
         if _G.AutoMerchant then
             pcall(function()
-                for i = 1, 6 do
-                    if Events:FindFirstChild("BuyMerchantItem") then 
-                        Events.BuyMerchantItem:FireServer(i) 
+                -- ดึงข้อมูลสินค้าที่พ่อค้ากำลังขายอยู่ปัจจุบัน
+                local MerchantModule = require(ReplicatedStorage.Modules.TravelingMerchantInfo)
+                
+                -- ตรวจสอบว่ามีข้อมูลสินค้าหรือไม่ (ป้องกัน error ตอนพ่อค้ายังไม่มา)
+                if MerchantModule and type(MerchantModule) == "table" then
+                    for itemName, details in pairs(MerchantModule) do
+                        -- ใช้ UIAction ในการซื้อไอเทมจากพ่อค้าตามชื่อชิ้นนั้นๆ
+                        -- โครงสร้าง args จะคล้ายกับ BuyDNA ที่คุณให้มา
+                        local args = {
+                            "BuyMerchantItem", -- หรือ "MerchantBuy" ตามที่เกมกำหนด
+                            itemName
+                        }
+                        UIActionRemote:FireServer(unpack(args))
+                        
+                        -- ลองส่งแบบดั้งเดิมเผื่อไว้ด้วยเพื่อความชัวร์
+                        UIActionRemote:FireServer("MerchantBuy", itemName)
                     end
-                    UIActionRemote:FireServer("BuyMerchantItem", i)
-                    UIActionRemote:FireServer("MerchantBuy", i)
                 end
             end)
         end
-        task.wait(10)
+        task.wait(10) -- เช็คทุกๆ 10 วินาที (ไร้แลคและปลอดภัย)
     end
 end)
 
@@ -395,11 +418,9 @@ task.spawn(function()
                 local myGroup = dungeonGroups:FindFirstChild(myGroupName)
 
                 if not myGroup then
-                    -- สร้างปาร์ตี้ใหม่ถ้ายังไม่มี
                     UIActionRemote:FireServer("CreateGroup", "Public", _G.SelectedMap, _G.Difficulty)
                     task.wait(1.5)
                 else
-                    -- กดเริ่มดันเจี้ยนถ้าเป็นหัวหน้าปาร์ตี้
                     if myGroup:FindFirstChild("OwnerName") and myGroup.OwnerName.Value == LocalPlayer.Name then
                         UIActionRemote:FireServer("StartDungeon")
                     end
@@ -431,14 +452,13 @@ task.spawn(function()
                                     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                                     
                                     if myRoot and head then
-                                        -- ล็อกเป้าหมายไปที่มอนสเตอร์ในดันเจี้ยน
                                         myRoot.CFrame = CFrame.new(myRoot.Position, head.Position)
                                         local sword = GetEquippedSword()
                                         if sword and sword:FindFirstChild("RemoteClick") then
                                             sword.RemoteClick:FireServer({{ head }})
                                             SwingRemote:FireServer()
                                         end
-                                        break -- ตีทีละตัว
+                                        break
                                     end
                                 end
                             end
@@ -452,11 +472,10 @@ task.spawn(function()
 end)
 
 ------------------------------------------
--- [ 5. Elements System (ระบบ Cache ไร้แลค) ]
+-- [ 5. Elements System ]
 ------------------------------------------
 local WaterBossCache = {}
 
--- ตัวสแกนหาบอสน้ำ (ทำงานทุก 3 วินาทีเพื่อลดอาการกระตุก)
 task.spawn(function()
     while true do
         if _G.AutoWaterBoss then
@@ -467,26 +486,16 @@ task.spawn(function()
                     for _, obj in pairs(gameplay:GetDescendants()) do
                         if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
                             local name = obj.Name:lower()
-                            
                             if name:find("water") and (name:find("boss") or name:find("golem")) then
                                 local zoneMatch = false
-                                
-                                -- ตรวจสอบโซนที่ผู้เล่นเลือกไว้
-                                if _G.WaterZone == "All" then 
-                                    zoneMatch = true
-                                elseif _G.WaterZone == "Basic" and not name:find("advanced") and not name:find("master") then 
-                                    zoneMatch = true
-                                elseif _G.WaterZone == "Advanced" and name:find("advanced") then 
-                                    zoneMatch = true
-                                elseif _G.WaterZone == "Master" and name:find("master") and not name:find("grandmaster") then 
-                                    zoneMatch = true
-                                elseif _G.WaterZone == "Grandmaster" and name:find("grandmaster") then 
-                                    zoneMatch = true
+                                if _G.WaterZone == "All" then zoneMatch = true
+                                elseif _G.WaterZone == "Basic" and not name:find("advanced") and not name:find("master") then zoneMatch = true
+                                elseif _G.WaterZone == "Advanced" and name:find("advanced") then zoneMatch = true
+                                elseif _G.WaterZone == "Master" and name:find("master") and not name:find("grandmaster") then zoneMatch = true
+                                elseif _G.WaterZone == "Grandmaster" and name:find("grandmaster") then zoneMatch = true
                                 end
 
-                                if zoneMatch then 
-                                    table.insert(foundBosses, obj) 
-                                end
+                                if zoneMatch then table.insert(foundBosses, obj) end
                             end
                         end
                     end
@@ -500,7 +509,6 @@ task.spawn(function()
     end
 end)
 
--- ตัวโจมตีบอสน้ำแบบ Remote (โจมตีจากระยะไกล)
 task.spawn(function()
     while true do
         if _G.AutoWaterBoss then
@@ -524,7 +532,6 @@ end)
 -- [ 6. Protection & Anti-AFK ]
 ------------------------------------------
 
--- [ Anti-AFK ]
 task.spawn(function()
     while true do
         if _G.AntiAFK then 
@@ -537,7 +544,6 @@ task.spawn(function()
     end
 end)
 
--- [ Auto Rejoin ]
 task.spawn(function()
     pcall(function()
         local promptOverlay = CoreGui:WaitForChild("RobloxPromptGui"):WaitForChild("promptOverlay")
