@@ -28,7 +28,7 @@ _G.Difficulty = "Impossible"
 _G.AutoAttack = false
 
 ------------------------------------------
--- [ 🎨 UI Window Setup ] (ย้ายขึ้นมาบนสุดเพื่อให้เปิดทันที)
+-- [ 🎨 UI Window Setup ]
 ------------------------------------------
 local Window = WindUI:CreateWindow({
     Title = "NiTroHub 🐰",
@@ -38,13 +38,15 @@ local Window = WindUI:CreateWindow({
     Transparent = true 
 })
 
+-- สร้าง Tabs (แก้ไขชื่อ Icon ให้ถูกต้อง ป้องกัน UI พัง)
 local EventTab = Window:Tab({ Title = "Events", Icon = "swords" })
 local DungeonTab = Window:Tab({ Title = "Dungeon", Icon = "castle" })
-local MainTab = Window:Tab({ Title = "Main", Icon = "geist:window" })
-local MerchantTab = Window:Tab({ Title = "Merchant", Icon = "shop" })
-local ElementsTab = Window:Tab({ Title = "Elements", Icon = "Elements" })
+local MainTab = Window:Tab({ Title = "Main", Icon = "monitor" }) 
+local MerchantTab = Window:Tab({ Title = "Merchant", Icon = "shopping-cart" }) -- แก้ไอคอน shop
+local ElementsTab = Window:Tab({ Title = "Elements", Icon = "box" }) -- แก้จาก ElementsTap เป็น Tab และเปลี่ยนไอคอน
 local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
+-- [ Event Tab ]
 EventTab:Section({ Title = "⚔️ Combat System" })
 EventTab:Toggle({
     Title = "Auto Easter Boss",
@@ -61,7 +63,6 @@ EventTab:Section({ Title = "🥚 Egg Open" })
 EventTab:Toggle({
     Title = "Auto Open Egg (100)",
     Desc = "เปิดไข่ Event Egg 100",
-    Icon = "egg", 
     Value = false,
     Callback = function(state)
         _G.AutoEgg100 = state
@@ -71,13 +72,13 @@ EventTab:Toggle({
 EventTab:Toggle({
     Title = "Auto Open Egg (250)",
     Desc = "เปิดไข่ Event Egg 250",
-    Icon = "egg", 
     Value = false,
     Callback = function(state)
         _G.AutoEgg250 = state
     end
 })
 
+-- [ Dungeon Tab ]
 DungeonTab:Section({ Title = "🚀 Dungeon" })
 DungeonTab:Dropdown({
     Title = "Select Difficulty",
@@ -104,6 +105,7 @@ DungeonTab:Toggle({
     end
 })
 
+-- [ Main Tab ]
 MainTab:Section({ Title = "🛎 Main" })
 MainTab:Toggle({
     Title = "Auto Click",
@@ -115,43 +117,36 @@ MainTab:Toggle({
     end
 })
 
-MainTab:Section({ Title = "🛒 Shop" })
+MainTab:Section({ Title = "🛒 Auto Shop" })
 MainTab:Toggle({
     Title = "Auto Buy Swords",
     Desc = "ซื้อดาบอัตโนมัติ (จะซื้ออันที่ดีที่สุดที่เงินถึง)",
-    Icon = "sword", 
     Value = false,
     Callback = function(state)
         _G.AutoBuySwords = state
     end
 })
-
 MainTab:Toggle({
     Title = "Auto Buy DNA",
     Desc = "ซื้อ DNA / กระเป๋าอัตโนมัติ",
-    Icon = "backpack", 
     Value = false,
     Callback = function(state)
         _G.AutoBuyDNA = state
     end
 })
-
 MainTab:Toggle({
     Title = "Auto Buy Class",
     Desc = "อัปเกรดคลาส/แรงค์อัตโนมัติ",
-    Icon = "arrow-up-circle", 
     Value = false,
     Callback = function(state)
         _G.AutoBuyClass = state
     end
 })
 
-MerchantTab:Section({ Title = "🛒 Merchant" })
-
-
+-- [ Elements Tab ]
 ElementsTab:Section({ Title = "🧬 Elements" })
 
-
+-- [ Settings Tab ]
 SettingsTab:Section({ Title = "🛡️ Protection System" })
 SettingsTab:Toggle({
     Title = "Anti-AFK",
@@ -175,7 +170,7 @@ SettingsTab:Toggle({
 SettingsTab:Section({ Title = "⚡ Performance" })
 SettingsTab:Toggle({
     Title = "Black Screen Mode (Battery Saver)",
-    Desc = "ปิดการแสดงผลหน้าจอเพื่อประหยัดแบตเตอรี่ (เครื่องเย็นขึ้นมาก)",
+    Desc = "ปิดหน้าจอเพื่อประหยัดแบตเตอรี่ (เครื่องเย็นขึ้นมาก)",
     Icon = "moon",
     Value = false,
     Callback = function(state)
@@ -201,7 +196,7 @@ SettingsTab:Toggle({
 WindUI:Notify({Title = "NiTroHub Loaded", Content = "✨ โหลด UI เสร็จสิ้น!", Duration = 3})
 
 ------------------------------------------
--- [ ⚙️ โหลดข้อมูลเกม & ระบบหลังบ้าน (ไม่ทำให้ UI ค้าง) ]
+-- [ ⚙️ โหลดข้อมูลเกม & ระบบหลังบ้าน ]
 ------------------------------------------
 task.spawn(function()
     local Events = ReplicatedStorage:WaitForChild("Events")
@@ -293,7 +288,7 @@ task.spawn(function()
         end
     end)
 
-    -- [5] ระบบ Dungeon (แก้ไขให้เสถียรขึ้น)
+    -- [5] ระบบ Dungeon
     task.spawn(function()
         while true do
             if _G.AutoDungeon then
@@ -303,11 +298,9 @@ task.spawn(function()
                     local myGroup = dungeonGroups:FindFirstChild(myGroupName)
 
                     if not myGroup then
-                        -- สร้างกลุ่มใหม่
                         UIActionRemote:FireServer("CreateGroup", "Public", _G.SelectedMap, _G.Difficulty)
-                        task.wait(1.5) -- รอเกมสร้างกลุ่มเสร็จ
+                        task.wait(1.5)
                     else
-                        -- เป็นเจ้าของกลุ่ม → เริ่มดันเจี้ยน
                         if myGroup:FindFirstChild("OwnerName") and myGroup.OwnerName.Value == LocalPlayer.Name then
                             UIActionRemote:FireServer("StartDungeon")
                         end
@@ -359,36 +352,30 @@ task.spawn(function()
             task.wait(0.01)
         end
     end)
-end)
 
-    -- [7] ระบบ Auto Shop
+    -- [7] ระบบ Auto Shop (ย้ายเข้ามาไว้ในบล็อกที่หา Events เจอแล้ว)
     task.spawn(function()
         while true do
             pcall(function()
-                -- ฟังก์ชันซื้อดาบ
                 if _G.AutoBuySwords then
                     local buySwords = Events:FindFirstChild("BuyAllSwords")
                     if buySwords then buySwords:FireServer() end
                 end
                 
-                -- ฟังก์ชันซื้อ DNA (กระเป๋าเก็บพลัง)
                 if _G.AutoBuyDNA then
-                    -- บางเซิร์ฟเวอร์ใช้ชื่อ BuyAllBackpacks หรือ BuyAllDNA เราเลยดักไว้ทั้งคู่
                     local buyDNA = Events:FindFirstChild("BuyAllBackpacks") or Events:FindFirstChild("BuyAllDNA")
                     if buyDNA then buyDNA:FireServer() end
                 end
                 
-                -- ฟังก์ชันอัปเกรดคลาส
                 if _G.AutoBuyClass then
                     local buyClass = Events:FindFirstChild("BuyAllClasses") or Events:FindFirstChild("BuyClass")
                     if buyClass then buyClass:FireServer() end
                 end
             end)
-            
-            task.wait(0.5) -- หน่วงเวลา 0.5 วินาที ไม่ให้ส่งคำสั่งรัวเกินไปจนเกมค้างหรือโดนเตะ
+            task.wait(0.5)
         end
     end)
-
+end) -- สิ้นสุด Block โหลดระบบหลัก
 
 -- [100] ระบบ Anti-AFK
 task.spawn(function()
@@ -399,7 +386,7 @@ task.spawn(function()
                 VirtualUser:ClickButton2(Vector2.new(0, 0))
             end)
         end
-        task.wait(30)   -- ทุก 30 วินาที (พอดีกับระบบ AFK ของ Roblox)
+        task.wait(30)
     end
 end)
 
