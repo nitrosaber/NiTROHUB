@@ -398,40 +398,57 @@ task.spawn(function()
 end) -- สิ้นสุด Block โหลดระบบหลัก
 
 -- [50] ระบบ Element
-local WaterBossPath = nil
+    local WaterBossPath = nil
     local waterBossArgs = {}
 
-    -- อัปเดตตำแหน่ง Water Boss (ทุกโซน)
+    -- อัปเดตตำแหน่งบอสธาตุน้ำ (ค้นทั้ง Golem และ Boss ในทุกโซน)
     task.spawn(function()
         while true do
-            task.wait(2)
+            task.wait(1)
             if WaterBossPath == nil or not WaterBossPath.Parent then
                 pcall(function()
-                    local possiblePaths = {
-                        workspace.Gameplay.Map.ElementZones.Water.Water:FindFirstChild("Water Golem"),
-                        workspace.Gameplay.Map.ElementZones.Water.Water:FindFirstChild("Water Boss"),
+                    WaterBossPath = nil
 
+                    local zones = {
+                        -- Normal Water Zone
+                        workspace.Gameplay.Map.ElementZones:FindFirstChild("Water") and 
+                        workspace.Gameplay.Map.ElementZones.Water:FindFirstChild("Water"),
+
+                        -- Advanced Water Area
                         workspace.Gameplay.RegionsLoaded:FindFirstChild("AdvancedWaterArea") and 
-                        workspace.Gameplay.RegionsLoaded.AdvancedWaterArea.Important.Water:FindFirstChild("Water Golem"),
-                        workspace.Gameplay.RegionsLoaded:FindFirstChild("AdvancedWaterArea") and 
-                        workspace.Gameplay.RegionsLoaded.AdvancedWaterArea.Important.Water:FindFirstChild("Advanced Water Boss"),
+                        workspace.Gameplay.RegionsLoaded.AdvancedWaterArea:FindFirstChild("Important") and 
+                        workspace.Gameplay.RegionsLoaded.AdvancedWaterArea.Important:FindFirstChild("Water"),
 
+                        -- Master Water Area
                         workspace.Gameplay.RegionsLoaded:FindFirstChild("MasterWaterArea") and 
-                        workspace.Gameplay.RegionsLoaded.MasterWaterArea.Important.Water:FindFirstChild("Master Water Golem"),
-                        workspace.Gameplay.RegionsLoaded:FindFirstChild("MasterWaterArea") and 
-                        workspace.Gameplay.RegionsLoaded.MasterWaterArea.Important.Water:FindFirstChild("Master Water Boss"),
+                        workspace.Gameplay.RegionsLoaded.MasterWaterArea:FindFirstChild("Important") and 
+                        workspace.Gameplay.RegionsLoaded.MasterWaterArea.Important:FindFirstChild("Water"),
 
+                        -- Grandmaster Water Area
                         workspace.Gameplay.RegionsLoaded:FindFirstChild("GrandmasterWaterArea") and 
-                        workspace.Gameplay.RegionsLoaded.GrandmasterWaterArea.Important.Water:FindFirstChild("Grandmaster Water Golem"),
-                        workspace.Gameplay.RegionsLoaded:FindFirstChild("GrandmasterWaterArea") and 
-                        workspace.Gameplay.RegionsLoaded.GrandmasterWaterArea.Important.Water:FindFirstChild("Grandmaster Water Boss"),
+                        workspace.Gameplay.RegionsLoaded.GrandmasterWaterArea:FindFirstChild("Important") and 
+                        workspace.Gameplay.RegionsLoaded.GrandmasterWaterArea.Important:FindFirstChild("Water"),
                     }
 
-                    for _, boss in ipairs(possiblePaths) do
-                        if boss and boss.Parent then
-                            WaterBossPath = boss
-                            waterBossArgs = {{ WaterBossPath }}
-                            break
+                    for _, zone in ipairs(zones) do
+                        if zone then
+                            -- ค้นหาทั้ง Water Golem และ Water Boss (รวม Grandmaster)
+                            local bossNames = {"Water Golem", "Water Boss", "Advanced Water Golem", "Advanced Water Boss", "Master Water Golem", "Master Water Boss", "Grandmaster Water Golem", "Grandmaster Water Boss"}
+
+                            for _, name in ipairs(bossNames) do
+                                local boss = zone:FindFirstChild(name)
+                                if boss and boss.Parent then
+                                    WaterBossPath = boss
+                                    waterBossArgs = {{ WaterBossPath }}
+                                    
+                                    WindUI:Notify({
+                                        Title = "✅ Water Boss Found",
+                                        Content = "เจอบอส: " .. boss.Name .. "\n(โซน " .. zone.Parent.Name .. ")",
+                                        Duration = 3
+                                    })
+                                    return  -- เจอตัวไหนก่อนก็ใช้ตัวนั้น
+                                end
+                            end
                         end
                     end
                 end)
@@ -442,15 +459,15 @@ local WaterBossPath = nil
     -- ตี Water Boss
     task.spawn(function()
         while true do
-            if _G.AutoWaterBoss and WaterBossPath then
+            if _G.AutoWaterBoss and WaterBossPath and WaterBossPath.Parent then
                 local CurrentSword = GetEquippedSword()
-                if CurrentSword then
+                if CurrentSword and CurrentSword:FindFirstChild("RemoteClick") then
                     CurrentSword.RemoteClick:FireServer(unpack(waterBossArgs))
                     SwingRemote:FireServer()
                 end
-                task.wait(0.01)
+                task.wait(0.008)
             else
-                task.wait(0.1)
+                task.wait(0.2)
             end
         end
     end)
