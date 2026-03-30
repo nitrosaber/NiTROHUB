@@ -46,6 +46,10 @@ local Window = WindUI:CreateWindow({
     Transparent = true
 })
 
+-- [ Config Manager Setup ]
+local ConfigManager = Window.ConfigManager
+local myConfig = ConfigManager:CreateConfig("SaberX_Config")
+
 -- สร้าง Tabs
 local EventTab = Window:Tab({ Title = "Events", Icon = "swords" })
 local DungeonTab = Window:Tab({ Title = "Dungeon", Icon = "castle" })
@@ -62,9 +66,11 @@ EventTab:Toggle({
     Title = "Auto Easter Boss",
     Desc = "ตีบอสกิจกรรมอัตโนมัติ",
     Icon = "skull", 
-    Value = true,
+    Value = _G.AutoBoss,
+    Flag = "AutoEasterBoss",
     Callback = function(state) 
         _G.AutoBoss = state 
+        myConfig:Save()
     end
 })
 
@@ -72,15 +78,19 @@ EventTab:Section({ Title = "🥚 Egg Open" })
 EventTab:Toggle({
     Title = "Auto Open Egg (100)",
     Value = false,
+    Flag = "Egg100",
     Callback = function(state) 
         _G.AutoEgg100 = state 
+        myConfig:Save()
     end
 })
 EventTab:Toggle({
     Title = "Auto Open Egg (250)",
     Value = false,
+    Flag = "Egg250",
     Callback = function(state) 
         _G.AutoEgg250 = state 
+        myConfig:Save()
     end
 })
 
@@ -99,15 +109,19 @@ DungeonTab:Dropdown({
 DungeonTab:Toggle({
     Title = "Auto Create & Join",
     Value = false,
+    Flag = "AutoDungeon",
     Callback = function(state) 
         _G.AutoDungeon = state 
+        myConfig:Save()
     end
 })
 DungeonTab:Toggle({
     Title = "Auto Attack",
     Value = false,
+    Flag = "DungeonAttack",
     Callback = function(state) 
         _G.AutoAttack = state 
+        myConfig:Save()
     end
 })
 
@@ -120,8 +134,10 @@ MainTab:Toggle({
     Desc = "แกว่งดาบฟาร์มพลังอัตโนมัติ",
     Icon = "mouse-pointer-click", 
     Value = false,
+    Flag = "AutoClick",
     Callback = function(state) 
         _G.AutoClick = state 
+        myConfig:Save()
     end
 })
 MainTab:Toggle({
@@ -129,8 +145,10 @@ MainTab:Toggle({
     Desc = "กดรับของรางวัลเควสแคลนอัตโนมัติ",
     Icon = "shield-check", 
     Value = false,
+    Flag = "ClanQuest",
     Callback = function(state) 
         _G.AutoClanQuest = state 
+        myConfig:Save()
     end
 })
 
@@ -138,22 +156,28 @@ MainTab:Section({ Title = "🛒 Auto Shop" })
 MainTab:Toggle({
     Title = "Auto Buy Swords",
     Value = false,
+    Flag = "BuySwords",
     Callback = function(state) 
         _G.AutoBuySwords = state 
+        myConfig:Save()
     end
 })
 MainTab:Toggle({
     Title = "Auto Buy DNA",
     Value = false,
+    Flag = "BuyDNA",
     Callback = function(state) 
         _G.AutoBuyDNA = state 
+        myConfig:Save()
     end
 })
 MainTab:Toggle({
     Title = "Auto Buy Class",
     Value = false,
+    Flag = "BuyClass",
     Callback = function(state) 
         _G.AutoBuyClass = state 
+        myConfig:Save()
     end
 })
 
@@ -165,8 +189,10 @@ MerchantTab:Toggle({
     Title = "Auto Buy Merchant Items",
     Desc = "รอซื้อของอัตโนมัติเมื่อพ่อค้ามาขาย (ไร้แลค)",
     Value = false,
+    Flag = "AutoMerchant",
     Callback = function(state) 
         _G.AutoMerchant = state 
+        myConfig:Save()
     end
 })
 
@@ -176,7 +202,6 @@ MerchantTab:Toggle({
 ElementsTab:Section({ Title = "🌊 Water Element Boss" })
 ElementsTab:Dropdown({
     Title = "Select Water Zone",
-    Desc = "เลือกโซนที่ต้องการให้บอทตี",
     Values = {"All", "Basic", "Advanced", "Master", "Grandmaster"},
     Value = "All",
     Callback = function(selected) 
@@ -188,27 +213,53 @@ ElementsTab:Toggle({
     Desc = "ตีบอสธาตุน้ำแบบ Remote (ไม่ต้องเดินไปหา)",
     Icon = "droplets", 
     Value = false,
+    Flag = "AutoWaterBoss",
     Callback = function(state) 
         _G.AutoWaterBoss = state 
+        myConfig:Save()
     end
 })
 
 -- ==========================================
 -- [ Settings Tab ]
 -- ==========================================
+SettingsTab:Section({ Title = "💾 Configuration" })
+
+SettingsTab:Button({
+    Title = "Save Config",
+    Desc = "บันทึกการตั้งค่าปัจจุบัน",
+    Callback = function()
+        myConfig:Save()
+        WindUI:Notify({Title = "Success", Content = "Config Saved!", Duration = 2})
+    end
+})
+
+SettingsTab:Button({
+    Title = "Load Config",
+    Desc = "โหลดการตั้งค่าที่บันทึกไว้",
+    Callback = function()
+        myConfig:Load()
+        WindUI:Notify({Title = "Success", Content = "Config Loaded!", Duration = 2})
+    end
+})
+
 SettingsTab:Section({ Title = "🛡️ Protection System" })
 SettingsTab:Toggle({
     Title = "Anti-AFK",
     Value = true,
+    Flag = "AntiAFK",
     Callback = function(state) 
         _G.AntiAFK = state 
+        myConfig:Save()
     end
 })
 SettingsTab:Toggle({
     Title = "Auto Rejoin",
     Value = true,
+    Flag = "AutoRejoin",
     Callback = function(state) 
         _G.AutoRejoin = state 
+        myConfig:Save()
     end
 })
 
@@ -217,6 +268,7 @@ SettingsTab:Toggle({
     Title = "Black Screen Mode",
     Icon = "moon",
     Value = false,
+    Flag = "BlackScreen",
     Callback = function(state)
         if state then
             local BlackFrame = Instance.new("Frame")
@@ -234,10 +286,14 @@ SettingsTab:Toggle({
             RunService:Set3dRenderingEnabled(true)
             if setfpscap then setfpscap(165) end
         end
+        myConfig:Save()
     end
 })
 
-WindUI:Notify({Title = "NiTroHub", Content = "✨ โหลด UI ฉบับสมบูรณ์เรียบร้อย!", Duration = 3})
+-- โหลด Config อัตโนมัติเมื่อรันสคริปต์
+myConfig:Load()
+
+WindUI:Notify({Title = "NiTroHub", Content = "✨ โหลด UI และ Config เรียบร้อย!", Duration = 3})
 
 ------------------------------------------
 -- [ 3. Core Functions & Backend ]
