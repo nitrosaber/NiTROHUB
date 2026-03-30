@@ -41,8 +41,8 @@ local Window = WindUI:CreateWindow({
 local EventTab = Window:Tab({ Title = "Events", Icon = "swords" })
 local DungeonTab = Window:Tab({ Title = "Dungeon", Icon = "castle" })
 local MainTab = Window:Tab({ Title = "Main", Icon = "geist:window" })
-local ShopTab = Window:Tab({ Title = "Shop", Icon = "shop" })
-local ElementsTap = Window:Tab({ Title = "Elements", Icon = "Elements" })
+local MerchantTab = Window:Tab({ Title = "Merchant", Icon = "shop" })
+local ElementsTab = Window:Tab({ Title = "Elements", Icon = "Elements" })
 local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
 EventTab:Section({ Title = "⚔️ Combat System" })
@@ -146,7 +146,7 @@ MainTab:Toggle({
     end
 })
 
-ShopTab:Section({ Title = "🛒 Shop" })
+MerchantTab:Section({ Title = "🛒 Merchant" })
 
 
 ElementsTab:Section({ Title = "🧬 Elements" })
