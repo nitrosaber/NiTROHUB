@@ -41,6 +41,7 @@ local Window = WindUI:CreateWindow({
 local EventTab = Window:Tab({ Title = "Events", Icon = "swords" })
 local DungeonTab = Window:Tab({ Title = "Dungeon", Icon = "castle" })
 local MainTab = Window:Tab({ Title = "Main", Icon = "geist:window" })
+local ShopTab = Window:Tab({ Title = "Shop", Icon = "shop" })
 local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
 EventTab:Section({ Title = "⚔️ Combat System" })
@@ -113,7 +114,7 @@ MainTab:Toggle({
     end
 })
 
-MainTab:Section({ Title = "🛒 Auto Shop System" })
+MainTab:Section({ Title = "🛒 Shop" })
 MainTab:Toggle({
     Title = "Auto Buy Swords",
     Desc = "ซื้อดาบอัตโนมัติ (จะซื้ออันที่ดีที่สุดที่เงินถึง)",
@@ -144,6 +145,7 @@ MainTab:Toggle({
     end
 })
 
+ShopTab:Section({ Title = "🛒 Shop" })
 
 SettingsTab:Section({ Title = "🛡️ Protection System" })
 SettingsTab:Toggle({
@@ -412,4 +414,3 @@ task.spawn(function()
         end)
     end)
 end)
-
