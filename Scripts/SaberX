@@ -19,6 +19,11 @@ _G.AutoBuySwords = false
 _G.AutoBuyDNA = false
 _G.AutoBuyClass = false
 
+
+
+_G.AutoWaterBoss = false
+
+
 _G.AntiAFK = true
 _G.AutoRejoin = true
 
@@ -148,6 +153,18 @@ MerchantTab:Section({ Title = "🪞 Merchant" })
 
 -- [ Elements Tab ]
 ElementsTab:Section({ Title = "🧬 Elements" })
+
+ElementsTab:Section({ Title = "🌊 Water Element Boss" })
+ElementsTab:Toggle({
+    Title = "Auto Water Boss / Golem",
+    Desc = "ตีบอสธาตุน้ำทุกโซน (Water / Advanced / Master / Grandmaster)",
+    Icon = "droplets", 
+    Value = false,
+    Callback = function(state)
+        _G.AutoWaterBoss = state
+        WindUI:Notify({Title = "Elements", Content = state and "🟢 เริ่มตีบอสธาตุน้ำ!" or "🔴 หยุด", Duration = 3})
+    end
+})
 
 -- [ Settings Tab ]
 SettingsTab:Section({ Title = "🛡️ Protection System" })
@@ -379,6 +396,64 @@ task.spawn(function()
         end
     end)
 end) -- สิ้นสุด Block โหลดระบบหลัก
+
+-- [50] ระบบ Element
+local WaterBossPath = nil
+    local waterBossArgs = {}
+
+    -- อัปเดตตำแหน่ง Water Boss (ทุกโซน)
+    task.spawn(function()
+        while true do
+            task.wait(2)
+            if WaterBossPath == nil or not WaterBossPath.Parent then
+                pcall(function()
+                    local possiblePaths = {
+                        workspace.Gameplay.Map.ElementZones.Water.Water:FindFirstChild("Water Golem"),
+                        workspace.Gameplay.Map.ElementZones.Water.Water:FindFirstChild("Water Boss"),
+
+                        workspace.Gameplay.RegionsLoaded:FindFirstChild("AdvancedWaterArea") and 
+                        workspace.Gameplay.RegionsLoaded.AdvancedWaterArea.Important.Water:FindFirstChild("Water Golem"),
+                        workspace.Gameplay.RegionsLoaded:FindFirstChild("AdvancedWaterArea") and 
+                        workspace.Gameplay.RegionsLoaded.AdvancedWaterArea.Important.Water:FindFirstChild("Advanced Water Boss"),
+
+                        workspace.Gameplay.RegionsLoaded:FindFirstChild("MasterWaterArea") and 
+                        workspace.Gameplay.RegionsLoaded.MasterWaterArea.Important.Water:FindFirstChild("Master Water Golem"),
+                        workspace.Gameplay.RegionsLoaded:FindFirstChild("MasterWaterArea") and 
+                        workspace.Gameplay.RegionsLoaded.MasterWaterArea.Important.Water:FindFirstChild("Master Water Boss"),
+
+                        workspace.Gameplay.RegionsLoaded:FindFirstChild("GrandmasterWaterArea") and 
+                        workspace.Gameplay.RegionsLoaded.GrandmasterWaterArea.Important.Water:FindFirstChild("Grandmaster Water Golem"),
+                        workspace.Gameplay.RegionsLoaded:FindFirstChild("GrandmasterWaterArea") and 
+                        workspace.Gameplay.RegionsLoaded.GrandmasterWaterArea.Important.Water:FindFirstChild("Grandmaster Water Boss"),
+                    }
+
+                    for _, boss in ipairs(possiblePaths) do
+                        if boss and boss.Parent then
+                            WaterBossPath = boss
+                            waterBossArgs = {{ WaterBossPath }}
+                            break
+                        end
+                    end
+                end)
+            end
+        end
+    end)
+
+    -- ตี Water Boss
+    task.spawn(function()
+        while true do
+            if _G.AutoWaterBoss and WaterBossPath then
+                local CurrentSword = GetEquippedSword()
+                if CurrentSword then
+                    CurrentSword.RemoteClick:FireServer(unpack(waterBossArgs))
+                    SwingRemote:FireServer()
+                end
+                task.wait(0.01)
+            else
+                task.wait(0.1)
+            end
+        end
+    end)
 
 -- [100] ระบบ Anti-AFK
 task.spawn(function()
