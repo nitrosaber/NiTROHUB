@@ -199,8 +199,29 @@ MerchantTab:Toggle({
 -- ==========================================
 -- [ Elements Tab ]
 -- ==========================================
-ElementsTab:Section({ Title = "🌊 Water Element Boss" })
-ElementsTab:Dropdown({
+local ElementsSection = Window:Section({
+    Title = "Farm Element",
+    Icon = "droplets",
+    Opened = true, -- ให้กางออกเพื่อเห็น Tabs ย่อยทันที
+})
+
+-- 2. สร้าง Tabs ย่อยภายใน Section นี้
+local WaterTab = ElementsSection:Tab({ 
+    Title = "Water Element", 
+    Icon = "waves" 
+})
+
+local FireTab = ElementsSection:Tab({ 
+    Title = "Fire Element", 
+    Icon = "flame" 
+})
+
+-- ==========================================
+-- [ Water Element Tab Content ]
+-- ==========================================
+WaterTab:Section({ Title = "🌊 Water Boss Farm" })
+
+WaterTab:Dropdown({
     Title = "Select Water Zone",
     Values = {"All", "Basic", "Advanced", "Master", "Grandmaster"},
     Value = "All",
@@ -208,10 +229,10 @@ ElementsTab:Dropdown({
         _G.WaterZone = selected 
     end
 })
-ElementsTab:Toggle({
-    Title = "Auto Water Boss / Golem",
-    Desc = "ตีบอสธาตุน้ำแบบ Remote (ไม่ต้องเดินไปหา)",
-    Icon = "droplets", 
+
+WaterTab:Toggle({
+    Title = "Auto Water Boss",
+    Desc = "โจมตีบอสน้ำอัตโนมัติ",
     Value = false,
     Flag = "AutoWaterBoss",
     Callback = function(state) 
@@ -219,6 +240,13 @@ ElementsTab:Toggle({
         myConfig:Save()
     end
 })
+
+-- ==========================================
+-- [ Fire Element Tab Content ]
+-- ==========================================
+FireTab:Section({ Title = "🔥 Fire Boss Farm" })
+-- ใส่ Toggle หรือ Dropdown ของธาตุไฟที่นี่...
+
 
 -- ==========================================
 -- [ Settings Tab ]
