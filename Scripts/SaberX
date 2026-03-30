@@ -15,12 +15,15 @@ _G.AutoEgg100 = false
 _G.AutoEgg250 = false
 
 _G.AutoClick = false
+_G.AutoClanQuest = false
+
 _G.AutoBuySwords = false
 _G.AutoBuyDNA = false
 _G.AutoBuyClass = false
 
 _G.AutoMerchant = false
 _G.AutoWaterBoss = false
+_G.WaterZone = "All" -- All, Basic, Advanced, Master, Grandmaster
 
 _G.AntiAFK = true
 _G.AutoRejoin = true
@@ -55,9 +58,7 @@ EventTab:Toggle({
     Desc = "ตีบอสกิจกรรมอัตโนมัติ",
     Icon = "skull", 
     Value = true,
-    Callback = function(state)
-        _G.AutoBoss = state
-    end
+    Callback = function(state) _G.AutoBoss = state end
 })
 
 EventTab:Section({ Title = "🥚 Egg Open" })
@@ -95,9 +96,17 @@ DungeonTab:Toggle({
 MainTab:Section({ Title = "🛎 Main" })
 MainTab:Toggle({
     Title = "Auto Click",
+    Desc = "แกว่งดาบฟาร์มพลังอัตโนมัติ",
     Icon = "mouse-pointer-click", 
     Value = false,
     Callback = function(state) _G.AutoClick = state end
+})
+MainTab:Toggle({
+    Title = "Auto Claim Clan Quest",
+    Desc = "กดรับของรางวัลเควสแคลนอัตโนมัติ (ตรวจจับและรับเมื่อพร้อม)",
+    Icon = "shield-check", 
+    Value = false,
+    Callback = function(state) _G.AutoClanQuest = state end
 })
 
 MainTab:Section({ Title = "🛒 Auto Shop" })
@@ -121,22 +130,26 @@ MainTab:Toggle({
 MerchantTab:Section({ Title = "🎪 Wandering Merchant" })
 MerchantTab:Toggle({
     Title = "Auto Buy Merchant Items",
-    Desc = "เหมาของทุกชิ้นที่พ่อค้าเร่เอามาขายอัตโนมัติ",
+    Desc = "รอซื้อของอัตโนมัติเฉพาะตอนที่พ่อค้ามาขาย (ไม่ทำให้แลค)",
     Value = false,
     Callback = function(state) _G.AutoMerchant = state end
 })
 
 -- [ Elements Tab ]
 ElementsTab:Section({ Title = "🌊 Water Element Boss" })
+ElementsTab:Dropdown({
+    Title = "Select Water Zone",
+    Desc = "เลือกโซนที่ต้องการให้บอทตี (แยกโซนเพื่อลดอาการแลค)",
+    Items = {"All", "Basic", "Advanced", "Master", "Grandmaster"},
+    Value = "All",
+    Callback = function(selected) _G.WaterZone = selected end
+})
 ElementsTab:Toggle({
     Title = "Auto Water Boss / Golem",
-    Desc = "ตีบอสธาตุน้ำทุกโซนแบบ Remote (ไม่ต้องเดินไปหา)",
+    Desc = "ตีบอสธาตุน้ำแบบ Remote (ไม่ต้องเดินไปหา)",
     Icon = "droplets", 
     Value = false,
-    Callback = function(state)
-        _G.AutoWaterBoss = state
-        WindUI:Notify({Title = "Elements", Content = state and "🟢 เริ่มฟาร์มบอสน้ำ!" or "🔴 หยุด", Duration = 3})
-    end
+    Callback = function(state) _G.AutoWaterBoss = state end
 })
 
 -- [ Settings Tab ]
@@ -177,7 +190,7 @@ SettingsTab:Toggle({
     end
 })
 
-WindUI:Notify({Title = "NiTroHub Loaded", Content = "✨ โหลด UI เสร็จสิ้น!", Duration = 3})
+WindUI:Notify({Title = "NiTroHub Loaded", Content = "✨ โหลด UI เสร็จสิ้นพร้อมฉบับสมบูรณ์!", Duration = 3})
 
 ------------------------------------------
 -- [ ⚙️ โหลดข้อมูลเกม & ระบบหลังบ้าน ]
@@ -189,14 +202,12 @@ task.spawn(function()
     local SwordModule = require(ReplicatedStorage.Modules.ItemInfo.Swords)
 
     local SwordNames = {}
-    for name, _ in pairs(SwordModule) do
-        SwordNames[name] = true
-    end
+    for name, _ in pairs(SwordModule) do SwordNames[name] = true end
 
     local BossPath = nil
     local bossArgs = {}
 
-    -- [ ฟังก์ชันหาดาบที่ใช้งานอยู่ ]
+    -- [ ฟังก์ชันหาดาบ (เอามาไว้ข้างนอกให้ทุกคนใช้ได้) ]
     local function GetEquippedSword()
         local char = LocalPlayer.Character
         if not char then return nil end
@@ -208,16 +219,16 @@ task.spawn(function()
         return nil
     end
 
-    -- [1] ระบบอัปเดตบอส Easter (กิจกรรม)
+    -- [1] ระบบอัปเดตบอส Easter (ทุกๆ 2 วินาที)
     task.spawn(function()
         while true do
-            task.wait(2)
             if BossPath == nil or not BossPath.Parent then
                 pcall(function()
                     BossPath = workspace.Gameplay.RegionsLoaded.EasterEvent.Boss.BossHolder:WaitForChild("Boss", 5)
                     bossArgs = {{ BossPath }}
                 end)
             end
+            task.wait(2)
         end
     end)
 
@@ -231,36 +242,40 @@ task.spawn(function()
                     SwingRemote:FireServer()
                 end
                 task.wait(0.01)
-            else
-                task.wait(0.1)
-            end
+            else task.wait(0.1) end
         end
     end)
 
     -- [3] ระบบเปิดไข่
     task.spawn(function()
         while true do
-            if _G.AutoEgg100 then
-                pcall(function() UIActionRemote:FireServer("BuyEgg", "GA Egg") end)
-                task.wait(1)
-            end
-            if _G.AutoEgg250 then
-                pcall(function() UIActionRemote:FireServer("BuyEgg", "GB Egg") end)
-                task.wait(1)
-            end
+            if _G.AutoEgg100 then pcall(function() UIActionRemote:FireServer("BuyEgg", "GA Egg") end) task.wait(1) end
+            if _G.AutoEgg250 then pcall(function() UIActionRemote:FireServer("BuyEgg", "GB Egg") end) task.wait(1) end
             task.wait(0.1)
         end
     end)
 
-    -- [4] ระบบ Auto Click
+    -- [4] ระบบ Auto Click & Clan Quest
     task.spawn(function()
         while true do
             if _G.AutoClick then
                 SwingRemote:FireServer()
                 task.wait(0.01)
-            else
-                task.wait(0.1)
+            else task.wait(0.1) end
+        end
+    end)
+
+    -- เช็ค Clan Quest แบบไม่แลค (รันทุกๆ 10 วิ ให้เซิร์ฟเวอร์เช็คให้เอง ไม่เปลืองแรม)
+    task.spawn(function()
+        while true do
+            if _G.AutoClanQuest then
+                pcall(function()
+                    for i = 1, 3 do
+                        UIActionRemote:FireServer("ClaimClanQuest", i)
+                    end
+                end)
             end
+            task.wait(10)
         end
     end)
 
@@ -307,9 +322,7 @@ task.spawn(function()
                                         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                                         
                                         if myRoot and head then
-                                            myRoot.CFrame = head.CFrame * CFrame.new(0, 7, 0)
                                             myRoot.CFrame = CFrame.new(myRoot.Position, head.Position)
-
                                             local sword = GetEquippedSword()
                                             if sword then
                                                 sword.RemoteClick:FireServer({{ head }})
@@ -328,81 +341,88 @@ task.spawn(function()
         end
     end)
 
-    -- [7] ระบบ Auto Shop & Merchant
+    -- [7] ระบบ Auto Shop & Merchant 
+    -- (แยก Merchant ออกมาเช็คทุก 10 วิ ไม่ให้รกเกม)
     task.spawn(function()
         while true do
-            pcall(function()
-                if _G.AutoBuySwords then
-                    local buySwords = Events:FindFirstChild("BuyAllSwords")
-                    if buySwords then buySwords:FireServer() end
-                end
-                
-                if _G.AutoBuyDNA then
-                    local buyDNA = Events:FindFirstChild("BuyAllBackpacks") or Events:FindFirstChild("BuyAllDNA")
-                    if buyDNA then buyDNA:FireServer() end
-                end
-                
-                if _G.AutoBuyClass then
-                    local buyClass = Events:FindFirstChild("BuyAllClasses") or Events:FindFirstChild("BuyClass")
-                    if buyClass then buyClass:FireServer() end
-                end
-
-                if _G.AutoMerchant then
-                    local merchantRemote = Events:FindFirstChild("BuyMerchantItem") or Events:FindFirstChild("MerchantBuy")
-                    if merchantRemote then
-                        for i = 1, 6 do merchantRemote:FireServer(i) end
-                    end
-                end
-            end)
+            if _G.AutoBuySwords then pcall(function() Events:FindFirstChild("BuyAllSwords"):FireServer() end) end
+            if _G.AutoBuyDNA then pcall(function() (Events:FindFirstChild("BuyAllBackpacks") or Events:FindFirstChild("BuyAllDNA")):FireServer() end) end
+            if _G.AutoBuyClass then pcall(function() (Events:FindFirstChild("BuyAllClasses") or Events:FindFirstChild("BuyClass")):FireServer() end) end
             task.wait(0.5)
         end
     end)
 
-    -- [8] ระบบ Elements (ตีมอนสเตอร์ธาตุน้ำแบบ Remote 100%)
     task.spawn(function()
-        local currentWaterTarget = nil
+        while true do
+            if _G.AutoMerchant then
+                pcall(function()
+                    local merchantRemote = Events:FindFirstChild("BuyMerchantItem") or Events:FindFirstChild("MerchantBuy")
+                    if merchantRemote then
+                        for i = 1, 6 do merchantRemote:FireServer(i) end
+                    end
+                end)
+            end
+            task.wait(10) -- หน่วงเวลาไว้เยอะๆ ตอนซื้อของ Merchant จะได้ไม่แลคเครื่อง 
+        end
+    end)
+
+    -- [8] ระบบ Elements ฉบับแก้แลค 100% (ชี้เป้าโดยตรง ไม่ Scan ทั่วแมพแล้ว)
+    task.spawn(function()
+        -- รวมที่อยู่ของโฟลเดอร์บอสน้ำแต่ละระดับ
+        local waterLocations = {
+            Basic = function() return workspace:FindFirstChild("Gameplay") and workspace.Gameplay:FindFirstChild("Map") and workspace.Gameplay.Map:FindFirstChild("ElementZones") and workspace.Gameplay.Map.ElementZones:FindFirstChild("Water") and workspace.Gameplay.Map.ElementZones.Water:FindFirstChild("Water") end,
+            Advanced = function() return workspace:FindFirstChild("Gameplay") and workspace.Gameplay:FindFirstChild("RegionsLoaded") and workspace.Gameplay.RegionsLoaded:FindFirstChild("AdvancedWaterArea") and workspace.Gameplay.RegionsLoaded.AdvancedWaterArea:FindFirstChild("Important") and workspace.Gameplay.RegionsLoaded.AdvancedWaterArea.Important:FindFirstChild("Water") end,
+            Master = function() return workspace:FindFirstChild("Gameplay") and workspace.Gameplay:FindFirstChild("RegionsLoaded") and workspace.Gameplay.RegionsLoaded:FindFirstChild("MasterWaterArea") and workspace.Gameplay.RegionsLoaded.MasterWaterArea:FindFirstChild("Important") and workspace.Gameplay.RegionsLoaded.MasterWaterArea.Important:FindFirstChild("Water") end,
+            Grandmaster = function() return workspace:FindFirstChild("Gameplay") and workspace.Gameplay:FindFirstChild("RegionsLoaded") and workspace.Gameplay.RegionsLoaded:FindFirstChild("GrandmasterWaterArea") and workspace.Gameplay.RegionsLoaded.GrandmasterWaterArea:FindFirstChild("Important") and workspace.Gameplay.RegionsLoaded.GrandmasterWaterArea.Important:FindFirstChild("Water") end
+        }
+
+        local function getTargetFolders()
+            local folders = {}
+            if _G.WaterZone == "All" then
+                for k, v in pairs(waterLocations) do
+                    local f = v()
+                    if f then table.insert(folders, f) end
+                end
+            else
+                if waterLocations[_G.WaterZone] then
+                    local f = waterLocations[_G.WaterZone]()
+                    if f then table.insert(folders, f) end
+                end
+            end
+            return folders
+        end
 
         while true do
             if _G.AutoWaterBoss then
                 pcall(function()
-                    -- เช็คว่าเป้าหมายเดิมตายหรือยัง ถ้าตายให้หาตัวใหม่
-                    if not currentWaterTarget or not currentWaterTarget.Parent or not currentWaterTarget:FindFirstChild("Humanoid") or currentWaterTarget.Humanoid.Health <= 0 then
-                        currentWaterTarget = nil
-                        
-                        -- ฟังก์ชันสแกนหามอนสเตอร์ทั้งหมดในแมพที่มีคำว่า "water"
-                        local function findWaterEnemy(folder)
-                            if not folder then return nil end
-                            for _, obj in pairs(folder:GetDescendants()) do
-                                if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
-                                    local name = obj.Name:lower()
-                                    if name:find("water") and (name:find("boss") or name:find("golem")) then
-                                        return obj
+                    local targetFolders = getTargetFolders()
+                    local targetFound = false
+
+                    -- ค้นหาเฉพาะในโฟลเดอร์บอสเท่านั้น ไม่วนสแกนของที่ไม่เกี่ยวข้อง (ใช้ GetChildren ไม่ใช่ GetDescendants)
+                    for _, folder in ipairs(targetFolders) do
+                        for _, obj in ipairs(folder:GetChildren()) do 
+                            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
+                                local name = obj.Name:lower()
+                                if name:find("water") and (name:find("boss") or name:find("golem")) then
+                                    local CurrentSword = GetEquippedSword()
+                                    if CurrentSword and CurrentSword:FindFirstChild("RemoteClick") then
+                                        CurrentSword.RemoteClick:FireServer({ obj })
+                                        SwingRemote:FireServer()
+                                        targetFound = true
                                     end
                                 end
                             end
-                            return nil
-                        end
-
-                        currentWaterTarget = findWaterEnemy(workspace:FindFirstChild("Gameplay"))
-                    end
-
-                    -- ถ่าเจอมอนสเตอร์น้ำ ให้ยืนฟันจากที่ที่เราอยู่ได้เลย
-                    if currentWaterTarget then
-                        local CurrentSword = GetEquippedSword()
-                        if CurrentSword and CurrentSword:FindFirstChild("RemoteClick") then
-                            CurrentSword.RemoteClick:FireServer({ currentWaterTarget })
-                            SwingRemote:FireServer()
                         end
                     end
+                    
+                    if not targetFound then task.wait(0.5) end -- ถ้าตายหมดให้รอสปาวน์ใหม่
                 end)
-                task.wait(0.01) -- ฟันรัวๆ
+                task.wait(0.01) -- ฟันรัวๆ เฉพาะตอนตีบอส
             else
-                currentWaterTarget = nil
                 task.wait(0.5)
             end
         end
     end)
-
 end) -- สิ้นสุด Block โหลดระบบหลัก
 
 -- [100] ระบบ Anti-AFK
@@ -434,4 +454,3 @@ task.spawn(function()
         end)
     end)
 end)
-
