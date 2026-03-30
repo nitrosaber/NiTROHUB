@@ -55,7 +55,7 @@ local EventTab = Window:Tab({ Title = "Events", Icon = "swords" })
 local DungeonTab = Window:Tab({ Title = "Dungeon", Icon = "castle" })
 local MainTab = Window:Tab({ Title = "Main", Icon = "monitor" }) 
 local MerchantTab = Window:Tab({ Title = "Merchant", Icon = "shopping-cart" }) 
-local ElementsTab = Window:Tab({ Title = "Elements", Icon = "box" }) 
+--local ElementsTab = Window:Tab({ Title = "Elements", Icon = "box" }) 
 local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
 -- ==========================================
@@ -231,10 +231,10 @@ WaterTab:Dropdown({
 })
 
 WaterTab:Toggle({
-    Title = "Auto Water Boss",
+    Title = "Auto Water Farm",
     Desc = "โจมตีบอสน้ำอัตโนมัติ",
     Value = false,
-    Flag = "AutoWaterBoss",
+    Flag = "AutoWaterFarm",
     Callback = function(state) 
         _G.AutoWaterBoss = state 
         myConfig:Save()
