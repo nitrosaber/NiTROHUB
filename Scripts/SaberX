@@ -15,6 +15,9 @@ _G.AutoEgg100 = false
 _G.AutoEgg250 = false
 
 _G.AutoClick = false
+_G.AutoBuySwords = false
+_G.AutoBuyDNA = false
+_G.AutoBuyClass = false
 
 _G.AntiAFK = true
 _G.AutoRejoin = true
@@ -111,6 +114,36 @@ MainTab:Toggle({
 })
 
 MainTab:Section({ Title = "🛒 Auto Shop System" })
+MainTab:Toggle({
+    Title = "Auto Buy Swords",
+    Desc = "ซื้อดาบอัตโนมัติ (จะซื้ออันที่ดีที่สุดที่เงินถึง)",
+    Icon = "sword", 
+    Value = false,
+    Callback = function(state)
+        _G.AutoBuySwords = state
+    end
+})
+
+MainTab:Toggle({
+    Title = "Auto Buy DNA",
+    Desc = "ซื้อ DNA / กระเป๋าอัตโนมัติ",
+    Icon = "backpack", 
+    Value = false,
+    Callback = function(state)
+        _G.AutoBuyDNA = state
+    end
+})
+
+MainTab:Toggle({
+    Title = "Auto Buy Class",
+    Desc = "อัปเกรดคลาส/แรงค์อัตโนมัติ",
+    Icon = "arrow-up-circle", 
+    Value = false,
+    Callback = function(state)
+        _G.AutoBuyClass = state
+    end
+})
+
 
 SettingsTab:Section({ Title = "🛡️ Protection System" })
 SettingsTab:Toggle({
@@ -320,6 +353,35 @@ task.spawn(function()
         end
     end)
 end)
+
+    -- [7] ระบบ Auto Shop
+    task.spawn(function()
+        while true do
+            pcall(function()
+                -- ฟังก์ชันซื้อดาบ
+                if _G.AutoBuySwords then
+                    local buySwords = Events:FindFirstChild("BuyAllSwords")
+                    if buySwords then buySwords:FireServer() end
+                end
+                
+                -- ฟังก์ชันซื้อ DNA (กระเป๋าเก็บพลัง)
+                if _G.AutoBuyDNA then
+                    -- บางเซิร์ฟเวอร์ใช้ชื่อ BuyAllBackpacks หรือ BuyAllDNA เราเลยดักไว้ทั้งคู่
+                    local buyDNA = Events:FindFirstChild("BuyAllBackpacks") or Events:FindFirstChild("BuyAllDNA")
+                    if buyDNA then buyDNA:FireServer() end
+                end
+                
+                -- ฟังก์ชันอัปเกรดคลาส
+                if _G.AutoBuyClass then
+                    local buyClass = Events:FindFirstChild("BuyAllClasses") or Events:FindFirstChild("BuyClass")
+                    if buyClass then buyClass:FireServer() end
+                end
+            end)
+            
+            task.wait(0.5) -- หน่วงเวลา 0.5 วินาที ไม่ให้ส่งคำสั่งรัวเกินไปจนเกมค้างหรือโดนเตะ
+        end
+    end)
+
 
 -- [100] ระบบ Anti-AFK
 task.spawn(function()
