@@ -39,11 +39,11 @@ _G.AutoRejoin = true
 -- [ 2. UI Window Setup ]
 ------------------------------------------
 local Window = WindUI:CreateWindow({
-    Title = "NiTroHub 🐰 | Saber Simulator",
+    Title = "NiTroHub 🐰 | SaberX",
     Icon = "gamepad-2", 
     Author = "NiTroHub",
     Folder = "NiTroHubConfig",
-    Transparent = true 
+    Transparent = true
 })
 
 -- สร้าง Tabs
