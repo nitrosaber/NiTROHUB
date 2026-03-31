@@ -459,7 +459,7 @@ task.spawn(function()
                 end
             end
         end)
-        task.wait(0.01) -- หน่วงเวลา 5 วินาทีเพื่อความปลอดภัย
+        task.wait(0.5) -- หน่วงเวลา 5 วินาทีเพื่อความปลอดภัย
     end
 end)
 
