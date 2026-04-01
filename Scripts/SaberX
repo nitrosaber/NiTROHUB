@@ -432,7 +432,7 @@ task.spawn(function()
                 UIActionRemote:FireServer("ClaimClanQuest", 3)
             end)
         end
-        task.wait(10)
+        task.wait(3)
     end
 end)
 
