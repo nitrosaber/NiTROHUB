@@ -26,6 +26,8 @@ _G.AutoMerchant = false
 
 _G.AutoWaterBoss = false
 _G.WaterZone = "All"
+_G.AutoFireBoss = false
+_G.FireZone = "All"
 
 _G.AutoDungeon = false
 _G.SelectedMap = "Space"
@@ -184,10 +186,10 @@ MainTab:Toggle({
 -- ==========================================
 -- [ Merchant Tab ]
 -- ==========================================
-MerchantTab:Section({ Title = "🎪 Wandering Merchant" })
+MerchantTab:Section({ Title = "🎪 Merchant" })
 MerchantTab:Toggle({
     Title = "Auto Buy Merchant Items",
-    Desc = "รอซื้อของอัตโนมัติเมื่อพ่อค้ามาขาย (ไร้แลค)",
+    Desc = "รอซื้อของอัตโนมัติเมื่อพ่อค้ามาขาย",
     Value = false,
     Flag = "AutoMerchant",
     Callback = function(state) 
@@ -227,22 +229,18 @@ WaterTab:Dropdown({
     Values = {"All", "Basic", "Advanced", "Master", "Grandmaster"},
     Value = "All",
     Callback = function(selected) 
-        _G.WaterZone = selected 
-        print("Selected Zone: " .. selected)
+        _G.WaterZone = selected
     end
 })
 
 WaterTab:Toggle({
     Title = "Auto Water Boss / Golem",
-    Desc = "โจมตีบอสธาตุน้ำแบบอัตโนมัติ (ไม่ต้องเดินไปหา)",
+    Desc = "โจมตีบอสธาตุน้ำแบบอัตโนมัติ",
     Value = false,
     Flag = "AutoWaterBoss",
     Callback = function(state) 
-        _G.AutoWaterBoss = state 
-        if state then
-            WindUI:Notify({Title = "Elements", Content = "เริ่มระบบฟาร์มบอสน้ำ...", Duration = 2})
-        end
-        if myConfig then myConfig:Save() end
+        _G.AutoWaterBoss = state
+        myConfig:Save()
     end
 })
 
@@ -250,7 +248,27 @@ WaterTab:Toggle({
 -- [ Fire Element Tab Content ]
 -- ==========================================
 FireTab:Section({ Title = "🔥 Fire Boss Farm" })
--- ใส่ Toggle หรือ Dropdown ของธาตุไฟที่นี่...
+
+FireTab:Dropdown({
+    Title = "Select Fire Zone",
+    Desc = "เลือกโซนบอสที่ต้องการฟาร์ม",
+    Values = {"All", "Basic", "Advanced", "Master", "Grandmaster"},
+    Value = "All",
+    Callback = function(selected) 
+        _G.FireZone = selected
+    end
+})
+
+FireTab:Toggle({
+    Title = "Auto Fire Boss / Golem",
+    Desc = "โจมตีบอสธาตุไฟแบบอัตโนมัติ",
+    Value = false,
+    Flag = "AutoFireBoss",
+    Callback = function(state) 
+        _G.AutoFireBoss = state
+        myConfig:Save()
+    end
+})
 
 
 -- ==========================================
