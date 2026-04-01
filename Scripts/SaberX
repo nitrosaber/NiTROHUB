@@ -223,21 +223,26 @@ WaterTab:Section({ Title = "🌊 Water Boss Farm" })
 
 WaterTab:Dropdown({
     Title = "Select Water Zone",
+    Desc = "เลือกโซนบอสที่ต้องการฟาร์ม",
     Values = {"All", "Basic", "Advanced", "Master", "Grandmaster"},
     Value = "All",
     Callback = function(selected) 
         _G.WaterZone = selected 
+        print("Selected Zone: " .. selected)
     end
 })
 
 WaterTab:Toggle({
-    Title = "Auto Water Farm",
-    Desc = "โจมตีบอสน้ำอัตโนมัติ",
+    Title = "Auto Water Boss / Golem",
+    Desc = "โจมตีบอสธาตุน้ำแบบอัตโนมัติ (ไม่ต้องเดินไปหา)",
     Value = false,
-    Flag = "AutoWaterFarm",
+    Flag = "AutoWaterBoss",
     Callback = function(state) 
         _G.AutoWaterBoss = state 
-        myConfig:Save()
+        if state then
+            WindUI:Notify({Title = "Elements", Content = "เริ่มระบบฟาร์มบอสน้ำ...", Duration = 2})
+        end
+        if myConfig then myConfig:Save() end
     end
 })
 
@@ -558,57 +563,62 @@ end)
 ------------------------------------------
 -- [ 5. Elements System ]
 ------------------------------------------
-local WaterBossCache = {}
+local function GetSword()
+    local char = game.Players.LocalPlayer.Character
+    if not char then return nil end
+    return char:FindFirstChildOfClass("Tool") -- หาดาบที่ถืออยู่
+end
 
 task.spawn(function()
     while true do
         if _G.AutoWaterBoss then
-            local foundBosses = {}
             pcall(function()
-                local gameplay = workspace:FindFirstChild("Gameplay")
-                if gameplay then
-                    for _, obj in pairs(gameplay:GetDescendants()) do
-                        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
-                            local name = obj.Name:lower()
-                            if name:find("water") and (name:find("boss") or name:find("golem")) then
-                                local zoneMatch = false
-                                if _G.WaterZone == "All" then zoneMatch = true
-                                elseif _G.WaterZone == "Basic" and not name:find("advanced") and not name:find("master") then zoneMatch = true
-                                elseif _G.WaterZone == "Advanced" and name:find("advanced") then zoneMatch = true
-                                elseif _G.WaterZone == "Master" and name:find("master") and not name:find("grandmaster") then zoneMatch = true
-                                elseif _G.WaterZone == "Grandmaster" and name:find("grandmaster") then zoneMatch = true
-                                end
+                local target = nil
+                local shortestDistance = math.huge
+                
+                -- สแกนหาบอสใน Gameplay
+                for _, v in pairs(workspace.Gameplay:GetDescendants()) do
+                    if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                        local name = v.Name:lower()
+                        
+                        -- เช็คว่าเป็นบอสน้ำหรือไม่
+                        if name:find("water") and (name:find("boss") or name:find("golem")) then
+                            -- เช็คโซนตามที่เลือก
+                            local isMatch = false
+                            if _G.WaterZone == "All" then isMatch = true
+                            elseif _G.WaterZone == "Basic" and not name:find("advanced") and not name:find("master") then isMatch = true
+                            elseif _G.WaterZone == "Advanced" and name:find("advanced") then isMatch = true
+                            elseif _G.WaterZone == "Master" and name:find("master") and not name:find("grandmaster") then isMatch = true
+                            elseif _G.WaterZone == "Grandmaster" and name:find("grandmaster") then isMatch = true
+                            end
 
-                                if zoneMatch then table.insert(foundBosses, obj) end
+                            if isMatch then
+                                target = v
+                                -- ถ้ายากเน้นตัวใกล้สุดให้เปิดใช้ Distance เช็ค (แต่ปกติ Remote ตีได้ทั่วแมพ)
+                                break 
                             end
                         end
                     end
                 end
-            end)
-            WaterBossCache = foundBosses
-        else
-            WaterBossCache = {}
-        end
-        task.wait(3)
-    end
-end)
 
-task.spawn(function()
-    while true do
-        if _G.AutoWaterBoss then
-            local sword = GetEquippedSword()
-            if sword and sword:FindFirstChild("RemoteClick") then
-                for _, boss in pairs(WaterBossCache) do
-                    if boss and boss.Parent and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
-                        pcall(function()
-                            sword.RemoteClick:FireServer({ boss })
-                            SwingRemote:FireServer()
-                        end)
+                -- ถ้าเจอเป้าหมาย ให้ทำการโจมตี
+                if target then
+                    local sword = GetSword()
+                    local remote = sword and sword:FindFirstChild("RemoteClick")
+                    local swing = game.ReplicatedStorage.Events:FindFirstChild("SwingSaber")
+                    
+                    if remote then
+                        -- ส่งคำสั่งตีไปที่ตัวบอสตรงๆ
+                        remote:FireServer({ target })
+                    end
+                    if swing then
+                        -- สวิงดาบเพื่อรับพลังเพิ่ม
+                        swing:FireServer()
                     end
                 end
-            end
+            end)
         end
-        task.wait(0.01)
+        task.wait(0.01) -- ความเร็วในการตี (ปรับลดได้ถ้าแลค)
     end
 end)
 
