@@ -517,163 +517,188 @@ end)
 
 -- [ Dungeon System: Create & Join ]
 task.spawn(function()
+    local Events = game:GetService("ReplicatedStorage"):WaitForChild("Events")
+    local UIActionRemote = Events:FindFirstChild("UIAction")
+
     while true do
-        if _G.AutoDungeon then
+        if _G.AutoDungeon and UIActionRemote then
             pcall(function()
-                local dungeonGroups = ReplicatedStorage:WaitForChild("DungeonGroups", 2)
+                local dungeonGroups = game:GetService("ReplicatedStorage"):WaitForChild("DungeonGroups", 2)
                 local myGroupName = LocalPlayer.Name .. "'s Party"
                 local myGroup = dungeonGroups:FindFirstChild(myGroupName)
 
                 if not myGroup then
+                    -- สร้างห้อง (ปรับ Arguments ให้ครอบคลุม)
                     UIActionRemote:FireServer("CreateGroup", "Public", _G.SelectedMap, _G.Difficulty)
-                    task.wait(1.5)
                 else
-                    if myGroup:FindFirstChild("OwnerName") and myGroup.OwnerName.Value == LocalPlayer.Name then
+                    -- ถ้าเป็นหัวหน้าห้อง ให้กด Start
+                    local owner = myGroup:FindFirstChild("OwnerName")
+                    if owner and owner.Value == LocalPlayer.Name then
                         UIActionRemote:FireServer("StartDungeon")
                     end
                 end
             end)
         end
-        task.wait(3)
+        task.wait(2)
     end
 end)
 
--- [ Dungeon System: Auto Attack ]
+-- [ Dungeon System: Auto Attack (ไร้แลค + วาร์ปตี) ]
+local dungeonEnemies = {}
+
+-- ลูปหาศัตรูในดันเจี้ยน (ทำงานทุก 1 วินาที)
 task.spawn(function()
     while true do
         if _G.AutoAttack then
+            local found = {}
             pcall(function()
-                local DungeonStorage = workspace:FindFirstChild("DungeonStorage")
-                if not DungeonStorage then return end
-
-                for _, dungeonFolder in pairs(DungeonStorage:GetChildren()) do
-                    local important = dungeonFolder:FindFirstChild("Important")
-                    if important then
-                        local enemyFolder = dungeonFolder:FindFirstChild("Gameplay") or dungeonFolder:FindFirstChild("Enemies") or important
-                        
-                        for _, enemy in pairs(enemyFolder:GetDescendants()) do
-                            if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
-                                local name = enemy.Name:lower()
-                                if name:find("bot") or name:find("boss") or name:find("enemy") then
-                                    local head = enemy:FindFirstChild("Head")
-                                    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                                    
-                                    if myRoot and head then
-                                        myRoot.CFrame = CFrame.new(myRoot.Position, head.Position)
-                                        local sword = GetEquippedSword()
-                                        if sword and sword:FindFirstChild("RemoteClick") then
-                                            sword.RemoteClick:FireServer({{ head }})
-                                            SwingRemote:FireServer()
-                                        end
-                                        break
-                                    end
-                                end
-                            end
+                local ds = workspace:FindFirstChild("DungeonStorage")
+                if ds then
+                    -- สแกนเฉพาะในดันเจี้ยน (มีมอนสเตอร์ไม่เยอะ ไม่ทำให้แลค)
+                    for _, v in ipairs(ds:GetDescendants()) do
+                        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                            table.insert(found, v)
                         end
                     end
                 end
             end)
+            dungeonEnemies = found
+        else
+            dungeonEnemies = {}
         end
-        task.wait(0.01)
+        task.wait(1)
+    end
+end)
+
+-- ลูปโจมตีศัตรูในดันเจี้ยน (วาร์ปไปฟันรัวๆ)
+task.spawn(function()
+    local Events = game:GetService("ReplicatedStorage"):WaitForChild("Events")
+    local SwingSaber = Events:FindFirstChild("SwingSaber")
+
+    while true do
+        if _G.AutoAttack and #dungeonEnemies > 0 then
+            local sword = GetEquippedSword() -- เรียกใช้ฟังก์ชัน GetEquippedSword ที่มีอยู่แล้ว
+            local remote = sword and sword:FindFirstChild("RemoteClick")
+            
+            if remote then
+                for i = #dungeonEnemies, 1, -1 do
+                    local enemy = dungeonEnemies[i]
+                    if enemy and enemy.Parent and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+                        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        local enemyRoot = enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Head")
+                        
+                        if myRoot and enemyRoot then
+                            -- วาร์ปไปด้านหลังมอนสเตอร์ระยะ 3 Studs
+                            myRoot.CFrame = enemyRoot.CFrame * CFrame.new(0, 0, 3) 
+                            pcall(function() 
+                                remote:FireServer({ enemy }) -- ส่ง { enemy } ไปตรงๆ แบบนี้ถึงจะทำดาเมจได้
+                            end)
+                        end
+                    else
+                        table.remove(dungeonEnemies, i)
+                    end
+                end
+            end
+            if SwingSaber then pcall(function() SwingSaber:FireServer() end) end
+        end
+        task.wait(0.05)
     end
 end)
 
 ------------------------------------------
 -- [ 5. Elements System ]
 ------------------------------------------
-local function GetSword()
-    local char = game.Players.LocalPlayer.Character
-    if not char then return nil end
-    return char:FindFirstChildOfClass("Tool") -- หาดาบที่ถืออยู่
-end
+local targetWaterBosses = {}
 
--- รวมที่อยู่ของโฟลเดอร์บอสน้ำแต่ละระดับ (ตามภาพของคุณ)
-local waterLocations = {
-    Basic = function()
-        local w = workspace:FindFirstChild("Gameplay")
-        if w and w:FindFirstChild("Map") and w.Map:FindFirstChild("ElementZones") and w.Map.ElementZones:FindFirstChild("Water") then
-            return w.Map.ElementZones.Water:FindFirstChild("Water")
-        end
-        return nil
-    end,
+-- ฟังก์ชันดึงโฟลเดอร์ "โซน" ของธาตุน้ำ
+local function GetWaterAreas()
+    local w = workspace:FindFirstChild("Gameplay")
+    if not w then return {} end
     
-    Advanced = function()
-        local w = workspace:FindFirstChild("Gameplay")
-        if w and w:FindFirstChild("RegionsLoaded") and w.RegionsLoaded:FindFirstChild("AdvancedWaterArea") and w.RegionsLoaded.AdvancedWaterArea:FindFirstChild("Important") then
-            return w.RegionsLoaded.AdvancedWaterArea.Important:FindFirstChild("Water")
-        end
-        return nil
-    end,
+    local areas = {}
     
-    Master = function()
-        local w = workspace:FindFirstChild("Gameplay")
-        if w and w:FindFirstChild("RegionsLoaded") and w.RegionsLoaded:FindFirstChild("MasterWaterArea") and w.RegionsLoaded.MasterWaterArea:FindFirstChild("Important") then
-            return w.RegionsLoaded.MasterWaterArea.Important:FindFirstChild("Water")
-        end
-        return nil
-    end,
-    
-    Grandmaster = function()
-        local w = workspace:FindFirstChild("Gameplay")
-        if w and w:FindFirstChild("RegionsLoaded") and w.RegionsLoaded:FindFirstChild("GrandmasterWaterArea") and w.RegionsLoaded.GrandmasterWaterArea:FindFirstChild("Important") then
-            return w.RegionsLoaded.GrandmasterWaterArea.Important:FindFirstChild("Water")
-        end
-        return nil
+    -- Basic Zone
+    if _G.WaterZone == "All" or _G.WaterZone == "Basic" then
+        local basic = w:FindFirstChild("Map") and w.Map:FindFirstChild("ElementZones") and w.Map.ElementZones:FindFirstChild("Water")
+        if basic then table.insert(areas, basic) end
     end
-}
-
--- ฟังก์ชันดึงโฟลเดอร์ตามโซนที่เลือกใน UI
-local function getTargetFolders()
-    local folders = {}
-    if _G.WaterZone == "All" then
-        for k, getFolderFunc in pairs(waterLocations) do
-            local folder = getFolderFunc()
-            if folder then table.insert(folders, folder) end
+    
+    -- Advanced, Master, Grandmaster Zones
+    local regions = w:FindFirstChild("RegionsLoaded")
+    if regions then
+        if _G.WaterZone == "All" or _G.WaterZone == "Advanced" then
+            local adv = regions:FindFirstChild("AdvancedWaterArea")
+            if adv then table.insert(areas, adv) end
         end
-    else
-        if waterLocations[_G.WaterZone] then
-            local folder = waterLocations[_G.WaterZone]()
-            if folder then table.insert(folders, folder) end
+        if _G.WaterZone == "All" or _G.WaterZone == "Master" then
+            local mas = regions:FindFirstChild("MasterWaterArea")
+            if mas then table.insert(areas, mas) end
+        end
+        if _G.WaterZone == "All" or _G.WaterZone == "Grandmaster" then
+            local gm = regions:FindFirstChild("GrandmasterWaterArea")
+            if gm then table.insert(areas, gm) end
         end
     end
-    return folders
+    
+    return areas
 end
 
--- ==========================================
--- ลูปโจมตี (ลื่นปรื๊ด สั่งตีรัวๆ ได้เลย)
--- ==========================================
+-- ลูปสแกนหาบอสในโซนที่เลือก
+task.spawn(function()
+    while true do
+        if _G.AutoWaterBoss then
+            local found = {}
+            pcall(function()
+                local areas = GetWaterAreas()
+                for _, area in ipairs(areas) do
+                    -- สแกนเฉพาะในโฟลเดอร์ของโซนนั้นๆ (เจอบอสแน่นอน ไม่ว่าจะซ่อนใน Important หรือ Enemies)
+                    for _, v in ipairs(area:GetDescendants()) do
+                        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                            local name = v.Name:lower()
+                            -- เช็คชื่อว่าเป็นบอสธาตุน้ำจริงๆ
+                            if name:find("water") and (name:find("boss") or name:find("golem")) then
+                                table.insert(found, v)
+                            end
+                        end
+                    end
+                end
+            end)
+            targetWaterBosses = found
+        else
+            targetWaterBosses = {}
+        end
+        task.wait(2) -- รีเฟรชตำแหน่งบอสทุกๆ 2 วินาที
+    end
+end)
+
+-- ลูปโจมตีบอสน้ำ (ยิง Remote ใส่รัวๆ ไม่ต้องเดินไปหา)
 task.spawn(function()
     local Events = game:GetService("ReplicatedStorage"):WaitForChild("Events")
     local SwingSaber = Events:FindFirstChild("SwingSaber")
 
     while true do
-        if _G.AutoWaterBoss then
-            local sword = GetSword()
+        if _G.AutoWaterBoss and #targetWaterBosses > 0 then
+            local sword = GetEquippedSword()
             local remote = sword and sword:FindFirstChild("RemoteClick")
             
             if remote then
-                -- 1. ดึงโฟลเดอร์เป้าหมายมา
-                local targetFolders = getTargetFolders()
-                
-                -- 2. เข้าไปดู "เฉพาะ" ในโฟลเดอร์นั้นๆ (ไม่สแกนทั้งแมพแล้ว)
-                for _, folder in ipairs(targetFolders) do
-                    for _, enemy in ipairs(folder:GetChildren()) do
-                        if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
-                            pcall(function()
-                                -- ส่งคำสั่งตีบอส
-                                remote:FireServer({ enemy })
-                            end)
-                        end
+                for i = #targetWaterBosses, 1, -1 do
+                    local boss = targetWaterBosses[i]
+                    if boss and boss.Parent and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
+                        pcall(function()
+                            remote:FireServer({ boss })
+                        end)
+                    else
+                        table.remove(targetWaterBosses, i)
                     end
                 end
             end
             
-            -- แกว่งดาบไปด้วย
             if SwingSaber then 
                 pcall(function() SwingSaber:FireServer() end) 
             end
         end
-        task.wait(0.05) -- ปรับได้ตามชอบ (0.01-0.1) ตอนนี้คอม/มือถือ ไม่โหลดหนักแล้ว
+        task.wait(0.05)
     end
 end)
 
