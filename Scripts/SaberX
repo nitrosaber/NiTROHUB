@@ -444,7 +444,6 @@ task.spawn(function()
     while true do
         if _G.AutoClanQuest then
             pcall(function()
-                UIActionRemote:FireServer("ClaimClanQuest", 1, 2, 3) 
                 UIActionRemote:FireServer("ClaimClanQuest", 1)
                 UIActionRemote:FireServer("ClaimClanQuest", 2)
                 UIActionRemote:FireServer("ClaimClanQuest", 3)
@@ -482,7 +481,7 @@ task.spawn(function()
                 end
             end
         end)
-        task.wait(0.5) -- หน่วงเวลา 5 วินาทีเพื่อความปลอดภัย
+        task.wait(3) -- หน่วงเวลา 3 วินาทีเพื่อความปลอดภัย
     end
 end)
 
@@ -516,25 +515,25 @@ task.spawn(function()
 end)
 
 -- [ Dungeon System: Create & Join ]
-task.spawn(function()
-    local Events = game:GetService("ReplicatedStorage"):WaitForChild("Events")
-    local UIActionRemote = Events:FindFirstChild("UIAction")
+local dungeonEnemies = {}
 
+-- ลูปสร้าง/เริ่มดันเจี้ยน
+task.spawn(function()
     while true do
         if _G.AutoDungeon and UIActionRemote then
             pcall(function()
-                local dungeonGroups = game:GetService("ReplicatedStorage"):WaitForChild("DungeonGroups", 2)
-                local myGroupName = LocalPlayer.Name .. "'s Party"
-                local myGroup = dungeonGroups:FindFirstChild(myGroupName)
+                local dungeonGroups = ReplicatedStorage:WaitForChild("DungeonGroups", 2)
+                if dungeonGroups then
+                    local myGroupName = LocalPlayer.Name .. "'s Party"
+                    local myGroup = dungeonGroups:FindFirstChild(myGroupName)
 
-                if not myGroup then
-                    -- สร้างห้อง (ปรับ Arguments ให้ครอบคลุม)
-                    UIActionRemote:FireServer("CreateGroup", "Public", _G.SelectedMap, _G.Difficulty)
-                else
-                    -- ถ้าเป็นหัวหน้าห้อง ให้กด Start
-                    local owner = myGroup:FindFirstChild("OwnerName")
-                    if owner and owner.Value == LocalPlayer.Name then
-                        UIActionRemote:FireServer("StartDungeon")
+                    if not myGroup then
+                        UIActionRemote:FireServer("CreateGroup", "Public", _G.SelectedMap, _G.Difficulty)
+                    else
+                        local owner = myGroup:FindFirstChild("OwnerName")
+                        if owner and owner.Value == LocalPlayer.Name then
+                            UIActionRemote:FireServer("StartDungeon")
+                        end
                     end
                 end
             end)
@@ -543,10 +542,7 @@ task.spawn(function()
     end
 end)
 
--- [ Dungeon System: Auto Attack (ไร้แลค + วาร์ปตี) ]
-local dungeonEnemies = {}
-
--- ลูปหาศัตรูในดันเจี้ยน (ทำงานทุก 1 วินาที)
+-- ลูปสแกนมอนสเตอร์ในดันเจี้ยน
 task.spawn(function()
     while true do
         if _G.AutoAttack then
@@ -554,7 +550,6 @@ task.spawn(function()
             pcall(function()
                 local ds = workspace:FindFirstChild("DungeonStorage")
                 if ds then
-                    -- สแกนเฉพาะในดันเจี้ยน (มีมอนสเตอร์ไม่เยอะ ไม่ทำให้แลค)
                     for _, v in ipairs(ds:GetDescendants()) do
                         if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
                             table.insert(found, v)
@@ -570,14 +565,11 @@ task.spawn(function()
     end
 end)
 
--- ลูปโจมตีศัตรูในดันเจี้ยน (วาร์ปไปฟันรัวๆ)
+-- ลูปโจมตีในดันเจี้ยน (วาร์ปชิดตัวแล้วฟัน)
 task.spawn(function()
-    local Events = game:GetService("ReplicatedStorage"):WaitForChild("Events")
-    local SwingSaber = Events:FindFirstChild("SwingSaber")
-
     while true do
         if _G.AutoAttack and #dungeonEnemies > 0 then
-            local sword = GetEquippedSword() -- เรียกใช้ฟังก์ชัน GetEquippedSword ที่มีอยู่แล้ว
+            local sword = GetEquippedSword()
             local remote = sword and sword:FindFirstChild("RemoteClick")
             
             if remote then
@@ -588,18 +580,16 @@ task.spawn(function()
                         local enemyRoot = enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Head")
                         
                         if myRoot and enemyRoot then
-                            -- วาร์ปไปด้านหลังมอนสเตอร์ระยะ 3 Studs
+                            -- วาร์ปไปใกล้ๆ (ระยะ 3 Studs) เพื่อให้ Hitbox โดนแน่นอน
                             myRoot.CFrame = enemyRoot.CFrame * CFrame.new(0, 0, 3) 
-                            pcall(function() 
-                                remote:FireServer({ enemy }) -- ส่ง { enemy } ไปตรงๆ แบบนี้ถึงจะทำดาเมจได้
-                            end)
+                            pcall(function() remote:FireServer({ enemy }) end)
                         end
                     else
                         table.remove(dungeonEnemies, i)
                     end
                 end
             end
-            if SwingSaber then pcall(function() SwingSaber:FireServer() end) end
+            if SwingRemote then pcall(function() SwingRemote:FireServer() end) end
         end
         task.wait(0.05)
     end
