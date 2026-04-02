@@ -598,72 +598,74 @@ end)
 ------------------------------------------
 -- [ 5. Elements System ]
 ------------------------------------------
--- ฟังก์ชันดึงโฟลเดอร์บอสตามข้อมูล Path จริงจากเกม (Spy Logs)
-local function GetWaterFolders()
-    local folders = {}
-    local w = workspace:FindFirstChild("Gameplay")
-    if not w then return folders end
+-- ฟังก์ชันชี้เป้าโฟลเดอร์ตามที่คุณส่ง Log มาเป๊ะๆ
+local function GetExactWaterTargets()
+    local targets = {}
+    local gameplay = workspace:FindFirstChild("Gameplay")
+    if not gameplay then return targets end
 
-    -- ฟังก์ชันช่วยหา Path แบบเรียงลำดับ
-    local function addFolder(parent, ...)
-        local current = parent
-        local paths = {...}
-        for _, name in ipairs(paths) do
-            if current then current = current:FindFirstChild(name) else return end
+    -- ฟังก์ชันช่วยยัดมอนสเตอร์เข้า Array
+    local function InsertEnemies(folder)
+        if not folder then return end
+        for _, enemy in ipairs(folder:GetChildren()) do
+            -- เช็คว่าเป็น Golem หรือ Boss และยังมีชีวิตอยู่
+            if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+                if enemy.Name:match("Water Golem") or enemy.Name:match("Water Boss") then
+                    table.insert(targets, enemy)
+                end
+            end
         end
-        if current then table.insert(folders, current) end
     end
 
-    -- โซน Basic (Main Water Zone)
-    if _G.WaterZone == "All" or _G.WaterZone == "Basic" then
-        addFolder(w, "Map", "ElementZones", "Water", "Water")
+    local map = gameplay:FindFirstChild("Map")
+    local regions = gameplay:FindFirstChild("RegionsLoaded")
+
+    -- 1. Main Water Zone (Basic)
+    if (_G.WaterZone == "All" or _G.WaterZone == "Basic") and map then
+        local basicFolder = map:FindFirstChild("ElementZones") and map.ElementZones:FindFirstChild("Water") and map.ElementZones.Water:FindFirstChild("Water")
+        InsertEnemies(basicFolder)
     end
 
-    local regions = w:FindFirstChild("RegionsLoaded")
     if regions then
-        -- โซน Advanced
+        -- 2. Advanced Zone
         if _G.WaterZone == "All" or _G.WaterZone == "Advanced" then
-            addFolder(regions, "AdvancedWaterArea", "Important", "Water")
+            local advFolder = regions:FindFirstChild("AdvancedWaterArea") and regions.AdvancedWaterArea:FindFirstChild("Important") and regions.AdvancedWaterArea.Important:FindFirstChild("Water")
+            InsertEnemies(advFolder)
         end
-        -- โซน Master
+
+        -- 3. Master Zone
         if _G.WaterZone == "All" or _G.WaterZone == "Master" then
-            addFolder(regions, "MasterWaterArea", "Important", "Water")
+            local masFolder = regions:FindFirstChild("MasterWaterArea") and regions.MasterWaterArea:FindFirstChild("Important") and regions.MasterWaterArea.Important:FindFirstChild("Water")
+            InsertEnemies(masFolder)
         end
-        -- โซน Grandmaster
+
+        -- 4. Grandmaster Zone
         if _G.WaterZone == "All" or _G.WaterZone == "Grandmaster" then
-            addFolder(regions, "GrandmasterWaterArea", "Important", "Water")
+            local gmFolder = regions:FindFirstChild("GrandmasterWaterArea") and regions.GrandmasterWaterArea:FindFirstChild("Important") and regions.GrandmasterWaterArea.Important:FindFirstChild("Water")
+            InsertEnemies(gmFolder)
         end
     end
 
-    return folders
+    return targets
 end
 
--- ลูปโจมตีธาตุน้ำ (แบบเหมากลุ่ม ตามการทำงานจริงของเกม)
+-- ลูปโจมตี
 task.spawn(function()
+    local Events = game:GetService("ReplicatedStorage"):WaitForChild("Events", 5)
+    local SwingRemote = Events and Events:FindFirstChild("SwingSaber")
+
     while true do
         if _G.AutoWaterBoss then
-            local targetsToHit = {}
+            -- ดึงเป้าหมายตาม Path จริง
+            local targetsToHit = GetExactWaterTargets()
             
-            pcall(function()
-                local folders = GetWaterFolders()
-                for _, folder in ipairs(folders) do
-                    -- ดึงมอนสเตอร์/บอส ทุกตัวในโฟลเดอร์นั้น
-                    for _, enemy in ipairs(folder:GetChildren()) do
-                        if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
-                            table.insert(targetsToHit, enemy)
-                        end
-                    end
-                end
-            end)
-
-            -- ถ้าเจอศัตรู ให้ส่งคำสั่งตีพร้อมกัน (Group Attack)
             if #targetsToHit > 0 then
                 local sword = GetEquippedSword()
                 local remote = sword and sword:FindFirstChild("RemoteClick")
                 
                 if remote then
                     pcall(function()
-                        -- ส่ง array ของศัตรูเข้าไปในวงเล็บปีกกาตรงๆ ตามโครงสร้าง Log ของคุณ
+                        -- ส่งค่าแบบเดียวกับสคริปต์ Log (รวมศัตรูทั้งหมดไว้ในปีกกาเดียว)
                         remote:FireServer(targetsToHit)
                     end)
                 end
@@ -673,9 +675,10 @@ task.spawn(function()
                 end
             end
         end
-        task.wait(0.05) -- ความเร็วในการตี 
+        task.wait(0.05) -- ปรับความเร็วการตี
     end
 end)
+
 
 ------------------------------------------
 -- [ 6. Protection & Anti-AFK ]
