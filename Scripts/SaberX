@@ -598,97 +598,82 @@ end)
 ------------------------------------------
 -- [ 5. Elements System ]
 ------------------------------------------
-local targetWaterBosses = {}
-
--- ฟังก์ชันดึงโฟลเดอร์ "โซน" ของธาตุน้ำ
-local function GetWaterAreas()
+-- ฟังก์ชันดึงโฟลเดอร์บอสตามข้อมูล Path จริงจากเกม (Spy Logs)
+local function GetWaterFolders()
+    local folders = {}
     local w = workspace:FindFirstChild("Gameplay")
-    if not w then return {} end
-    
-    local areas = {}
-    
-    -- Basic Zone
-    if _G.WaterZone == "All" or _G.WaterZone == "Basic" then
-        local basic = w:FindFirstChild("Map") and w.Map:FindFirstChild("ElementZones") and w.Map.ElementZones:FindFirstChild("Water")
-        if basic then table.insert(areas, basic) end
+    if not w then return folders end
+
+    -- ฟังก์ชันช่วยหา Path แบบเรียงลำดับ
+    local function addFolder(parent, ...)
+        local current = parent
+        local paths = {...}
+        for _, name in ipairs(paths) do
+            if current then current = current:FindFirstChild(name) else return end
+        end
+        if current then table.insert(folders, current) end
     end
-    
-    -- Advanced, Master, Grandmaster Zones
+
+    -- โซน Basic (Main Water Zone)
+    if _G.WaterZone == "All" or _G.WaterZone == "Basic" then
+        addFolder(w, "Map", "ElementZones", "Water", "Water")
+    end
+
     local regions = w:FindFirstChild("RegionsLoaded")
     if regions then
+        -- โซน Advanced
         if _G.WaterZone == "All" or _G.WaterZone == "Advanced" then
-            local adv = regions:FindFirstChild("AdvancedWaterArea")
-            if adv then table.insert(areas, adv) end
+            addFolder(regions, "AdvancedWaterArea", "Important", "Water")
         end
+        -- โซน Master
         if _G.WaterZone == "All" or _G.WaterZone == "Master" then
-            local mas = regions:FindFirstChild("MasterWaterArea")
-            if mas then table.insert(areas, mas) end
+            addFolder(regions, "MasterWaterArea", "Important", "Water")
         end
+        -- โซน Grandmaster
         if _G.WaterZone == "All" or _G.WaterZone == "Grandmaster" then
-            local gm = regions:FindFirstChild("GrandmasterWaterArea")
-            if gm then table.insert(areas, gm) end
+            addFolder(regions, "GrandmasterWaterArea", "Important", "Water")
         end
     end
-    
-    return areas
+
+    return folders
 end
 
--- ลูปสแกนหาบอสในโซนที่เลือก
+-- ลูปโจมตีธาตุน้ำ (แบบเหมากลุ่ม ตามการทำงานจริงของเกม)
 task.spawn(function()
     while true do
         if _G.AutoWaterBoss then
-            local found = {}
+            local targetsToHit = {}
+            
             pcall(function()
-                local areas = GetWaterAreas()
-                for _, area in ipairs(areas) do
-                    -- สแกนเฉพาะในโฟลเดอร์ของโซนนั้นๆ (เจอบอสแน่นอน ไม่ว่าจะซ่อนใน Important หรือ Enemies)
-                    for _, v in ipairs(area:GetDescendants()) do
-                        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-                            local name = v.Name:lower()
-                            -- เช็คชื่อว่าเป็นบอสธาตุน้ำจริงๆ
-                            if name:find("water") and (name:find("boss") or name:find("golem")) then
-                                table.insert(found, v)
-                            end
+                local folders = GetWaterFolders()
+                for _, folder in ipairs(folders) do
+                    -- ดึงมอนสเตอร์/บอส ทุกตัวในโฟลเดอร์นั้น
+                    for _, enemy in ipairs(folder:GetChildren()) do
+                        if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+                            table.insert(targetsToHit, enemy)
                         end
                     end
                 end
             end)
-            targetWaterBosses = found
-        else
-            targetWaterBosses = {}
-        end
-        task.wait(2) -- รีเฟรชตำแหน่งบอสทุกๆ 2 วินาที
-    end
-end)
 
--- ลูปโจมตีบอสน้ำ (ยิง Remote ใส่รัวๆ ไม่ต้องเดินไปหา)
-task.spawn(function()
-    local Events = game:GetService("ReplicatedStorage"):WaitForChild("Events")
-    local SwingSaber = Events:FindFirstChild("SwingSaber")
-
-    while true do
-        if _G.AutoWaterBoss and #targetWaterBosses > 0 then
-            local sword = GetEquippedSword()
-            local remote = sword and sword:FindFirstChild("RemoteClick")
-            
-            if remote then
-                for i = #targetWaterBosses, 1, -1 do
-                    local boss = targetWaterBosses[i]
-                    if boss and boss.Parent and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
-                        pcall(function()
-                            remote:FireServer({ boss })
-                        end)
-                    else
-                        table.remove(targetWaterBosses, i)
-                    end
+            -- ถ้าเจอศัตรู ให้ส่งคำสั่งตีพร้อมกัน (Group Attack)
+            if #targetsToHit > 0 then
+                local sword = GetEquippedSword()
+                local remote = sword and sword:FindFirstChild("RemoteClick")
+                
+                if remote then
+                    pcall(function()
+                        -- ส่ง array ของศัตรูเข้าไปในวงเล็บปีกกาตรงๆ ตามโครงสร้าง Log ของคุณ
+                        remote:FireServer(targetsToHit)
+                    end)
+                end
+                
+                if SwingRemote then 
+                    pcall(function() SwingRemote:FireServer() end) 
                 end
             end
-            
-            if SwingSaber then 
-                pcall(function() SwingSaber:FireServer() end) 
-            end
         end
-        task.wait(0.05)
+        task.wait(0.05) -- ความเร็วในการตี 
     end
 end)
 
