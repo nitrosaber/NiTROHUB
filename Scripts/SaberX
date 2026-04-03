@@ -222,12 +222,13 @@ local FireTab = ElementsSection:Tab({
 WaterTab:Section({ Title = "🌊 Water Boss Farm" })
 
 WaterTab:Toggle({
-    Title = "Auto Water Boss / Golem",
+    Title = "Auto Water Farm",
     Desc = "โจมตีบอสธาตุน้ำแบบอัตโนมัติ",
-    Value = false,
+    Icon = "skull", 
+    Value = _G.AutoWaterBoss,
     Flag = "AutoWaterBoss",
     Callback = function(state) 
-        _G.AutoWaterBoss = state
+        _G.AutoWaterBoss = state 
         myConfig:Save()
     end
 })
@@ -238,16 +239,16 @@ WaterTab:Toggle({
 FireTab:Section({ Title = "🔥 Fire Boss Farm" })
 
 FireTab:Toggle({
-    Title = "Auto Fire Boss / Golem",
+    Title = "Auto Fire Farm",
     Desc = "โจมตีบอสธาตุไฟแบบอัตโนมัติ",
-    Value = false,
+    Icon = "skull", 
+    Value = _G.AutoFireBoss,
     Flag = "AutoFireBoss",
     Callback = function(state) 
-        _G.AutoFireBoss = state
+        _G.AutoFireBoss = state 
         myConfig:Save()
     end
 })
-
 
 -- ==========================================
 -- [ Settings Tab ]
