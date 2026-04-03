@@ -708,7 +708,6 @@ task.spawn(function()
         task.wait(0.05)
     end
 end)
-ฝฝฝ
 
 ------------------------------------------
 -- [ 6. Protection & Anti-AFK ]
