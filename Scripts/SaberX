@@ -598,87 +598,125 @@ end)
 ------------------------------------------
 -- [ 5. Elements System ]
 ------------------------------------------
--- ฟังก์ชันชี้เป้าโฟลเดอร์ตามที่คุณส่ง Log มาเป๊ะๆ
-local function GetExactWaterTargets()
-    local targets = {}
-    local gameplay = workspace:FindFirstChild("Gameplay")
-    if not gameplay then return targets end
-
-    -- ฟังก์ชันช่วยยัดมอนสเตอร์เข้า Array
-    local function InsertEnemies(folder)
-        if not folder then return end
-        for _, enemy in ipairs(folder:GetChildren()) do
-            -- เช็คว่าเป็น Golem หรือ Boss และยังมีชีวิตอยู่
-            if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
-                if enemy.Name:match("Water Golem") or enemy.Name:match("Water Boss") then
-                    table.insert(targets, enemy)
-                end
-            end
-        end
-    end
-
-    local map = gameplay:FindFirstChild("Map")
-    local regions = gameplay:FindFirstChild("RegionsLoaded")
-
-    -- 1. Main Water Zone (Basic)
-    if (_G.WaterZone == "All" or _G.WaterZone == "Basic") and map then
-        local basicFolder = map:FindFirstChild("ElementZones") and map.ElementZones:FindFirstChild("Water") and map.ElementZones.Water:FindFirstChild("Water")
-        InsertEnemies(basicFolder)
-    end
-
-    if regions then
-        -- 2. Advanced Zone
-        if _G.WaterZone == "All" or _G.WaterZone == "Advanced" then
-            local advFolder = regions:FindFirstChild("AdvancedWaterArea") and regions.AdvancedWaterArea:FindFirstChild("Important") and regions.AdvancedWaterArea.Important:FindFirstChild("Water")
-            InsertEnemies(advFolder)
-        end
-
-        -- 3. Master Zone
-        if _G.WaterZone == "All" or _G.WaterZone == "Master" then
-            local masFolder = regions:FindFirstChild("MasterWaterArea") and regions.MasterWaterArea:FindFirstChild("Important") and regions.MasterWaterArea.Important:FindFirstChild("Water")
-            InsertEnemies(masFolder)
-        end
-
-        -- 4. Grandmaster Zone
-        if _G.WaterZone == "All" or _G.WaterZone == "Grandmaster" then
-            local gmFolder = regions:FindFirstChild("GrandmasterWaterArea") and regions.GrandmasterWaterArea:FindFirstChild("Important") and regions.GrandmasterWaterArea.Important:FindFirstChild("Water")
-            InsertEnemies(gmFolder)
-        end
-    end
-
-    return targets
+-- ฟังก์ชันดึงดาบที่ถืออยู่ (ไม่ล็อคว่าต้องเป็น Heaven Sacred Axe เท่านั้น จะถืออะไรก็ตีได้)
+local function GetEquippedSword()
+    local char = game.Players.LocalPlayer.Character
+    if not char then return nil end
+    return char:FindFirstChildOfClass("Tool")
 end
 
--- ลูปโจมตี
+-- ฟังก์ชันส่งค่าโจมตีตามที่คุณเขียนมาเป๊ะๆ
+local function Attack(targets)
+    if not targets or #targets == 0 then return end
+    local sword = GetEquippedSword()
+    local remote = sword and sword:FindFirstChild("RemoteClick")
+    
+    if remote then
+        pcall(function()
+            remote:FireServer(targets)
+        end)
+    end
+end
+
+-- ฟังก์ชันช่วยหา Path แบบปลอดภัย ไม่ค้างเมื่อบอสตาย
+local function GetFromPath(parent, ...)
+    local current = parent
+    local paths = {...}
+    for _, name in ipairs(paths) do
+        if not current then return nil end
+        current = current:FindFirstChild(name)
+    end
+    return current
+end
+
+-- =============================================
+-- ZONE FUNCTIONS (ตรงตามที่คุณต้องการ 100%)
+-- =============================================
+local function AttackMainWater()
+    local w = workspace:FindFirstChild("Gameplay")
+    local golem = GetFromPath(w, "Map", "ElementZones", "Water", "Water", "Water Golem")
+    local boss = GetFromPath(w, "Map", "ElementZones", "Water", "Water", "Water Boss")
+    
+    if golem and golem:FindFirstChild("Humanoid") and golem.Humanoid.Health > 0 then 
+        Attack({golem, golem, golem}) -- ส่ง 3 ตัวตาม Log เกม
+    end
+    if boss and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then 
+        Attack({boss}) 
+    end
+end
+
+local function AttackAdvancedWater()
+    local w = workspace:FindFirstChild("Gameplay")
+    local golem = GetFromPath(w, "RegionsLoaded", "AdvancedWaterArea", "Important", "Water", "Water Golem")
+    local boss = GetFromPath(w, "RegionsLoaded", "AdvancedWaterArea", "Important", "Water", "Advanced Water Boss")
+
+    if golem and golem:FindFirstChild("Humanoid") and golem.Humanoid.Health > 0 then 
+        Attack({golem, golem, golem}) 
+    end
+    if boss and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then 
+        Attack({boss}) 
+    end
+end
+
+local function AttackMasterWater()
+    local w = workspace:FindFirstChild("Gameplay")
+    local golem = GetFromPath(w, "RegionsLoaded", "MasterWaterArea", "Important", "Water", "Water Golem")
+    local boss = GetFromPath(w, "RegionsLoaded", "MasterWaterArea", "Important", "Water", "Master Water Boss")
+
+    if golem and golem:FindFirstChild("Humanoid") and golem.Humanoid.Health > 0 then 
+        Attack({golem, golem, golem}) 
+    end
+    if boss and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then 
+        Attack({boss}) 
+    end
+end
+
+local function AttackGrandmasterWater()
+    local w = workspace:FindFirstChild("Gameplay")
+    local golem = GetFromPath(w, "RegionsLoaded", "GrandmasterWaterArea", "Important", "Water", "Water Golem")
+    local boss = GetFromPath(w, "RegionsLoaded", "GrandmasterWaterArea", "Important", "Water", "Grandmaster Water Boss")
+
+    if golem and golem:FindFirstChild("Humanoid") and golem.Humanoid.Health > 0 then 
+        Attack({golem, golem, golem}) 
+    end
+    if boss and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then 
+        Attack({boss}) 
+    end
+end
+
+-- =============================================
+-- AUTO FARM LOOP
+-- =============================================
 task.spawn(function()
     local Events = game:GetService("ReplicatedStorage"):WaitForChild("Events", 5)
     local SwingRemote = Events and Events:FindFirstChild("SwingSaber")
 
     while true do
         if _G.AutoWaterBoss then
-            -- ดึงเป้าหมายตาม Path จริง
-            local targetsToHit = GetExactWaterTargets()
+            -- โจมตีตามโซนที่เลือกใน UI
+            if _G.WaterZone == "All" then
+                AttackMainWater()
+                AttackAdvancedWater()
+                AttackMasterWater()
+                AttackGrandmasterWater()
+            elseif _G.WaterZone == "Basic" then
+                AttackMainWater()
+            elseif _G.WaterZone == "Advanced" then
+                AttackAdvancedWater()
+            elseif _G.WaterZone == "Master" then
+                AttackMasterWater()
+            elseif _G.WaterZone == "Grandmaster" then
+                AttackGrandmasterWater()
+            end
             
-            if #targetsToHit > 0 then
-                local sword = GetEquippedSword()
-                local remote = sword and sword:FindFirstChild("RemoteClick")
-                
-                if remote then
-                    pcall(function()
-                        -- ส่งค่าแบบเดียวกับสคริปต์ Log (รวมศัตรูทั้งหมดไว้ในปีกกาเดียว)
-                        remote:FireServer(targetsToHit)
-                    end)
-                end
-                
-                if SwingRemote then 
-                    pcall(function() SwingRemote:FireServer() end) 
-                end
+            -- สวิงดาบรับพลังควบคู่ไปด้วย
+            if SwingRemote then 
+                pcall(function() SwingRemote:FireServer() end) 
             end
         end
-        task.wait(0.05) -- ปรับความเร็วการตี
+        task.wait(0.05) -- ปรับความเร็วได้ (ถ้ารู้สึกตีช้าไป ปรับเป็น 0.01 ได้เลย เพราะตอนนี้โค้ดเบามาก)
     end
 end)
-
 
 ------------------------------------------
 -- [ 6. Protection & Anti-AFK ]
