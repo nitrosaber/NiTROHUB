@@ -48,14 +48,21 @@ local Window = WindUI:CreateWindow({
 
 -- [ Config Manager Setup ]
 local ConfigManager = Window.ConfigManager
-local myConfig = ConfigManager:CreateConfig("SaberX_Config")
+local myConfig = nil
+if ConfigManager then
+    myConfig = ConfigManager:CreateConfig("SaberX_Config")
+end
+
+-- ฟังก์ชันช่วยเซฟ Config (เผื่อ WindUI บางเวอร์ชันไม่รองรับ)
+local function SaveConfig()
+    if myConfig and myConfig.Save then pcall(function() myConfig:Save() end) end
+end
 
 -- สร้าง Tabs
 local EventTab = Window:Tab({ Title = "Events", Icon = "swords" })
 local DungeonTab = Window:Tab({ Title = "Dungeon", Icon = "castle" })
 local MainTab = Window:Tab({ Title = "Main", Icon = "monitor" }) 
 local MerchantTab = Window:Tab({ Title = "Merchant", Icon = "shopping-cart" }) 
---local ElementsTab = Window:Tab({ Title = "Elements", Icon = "box" }) 
 local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 
 -- ==========================================
@@ -70,7 +77,7 @@ EventTab:Toggle({
     Flag = "AutoEasterBoss",
     Callback = function(state) 
         _G.AutoBoss = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 
@@ -81,7 +88,7 @@ EventTab:Toggle({
     Flag = "Egg100",
     Callback = function(state) 
         _G.AutoEgg100 = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 EventTab:Toggle({
@@ -90,7 +97,7 @@ EventTab:Toggle({
     Flag = "Egg250",
     Callback = function(state) 
         _G.AutoEgg250 = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 
@@ -112,7 +119,7 @@ DungeonTab:Toggle({
     Flag = "AutoDungeon",
     Callback = function(state) 
         _G.AutoDungeon = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 DungeonTab:Toggle({
@@ -121,7 +128,7 @@ DungeonTab:Toggle({
     Flag = "DungeonAttack",
     Callback = function(state) 
         _G.AutoAttack = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 
@@ -137,7 +144,7 @@ MainTab:Toggle({
     Flag = "AutoClick",
     Callback = function(state) 
         _G.AutoClick = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 MainTab:Toggle({
@@ -148,7 +155,7 @@ MainTab:Toggle({
     Flag = "ClanQuest",
     Callback = function(state) 
         _G.AutoClanQuest = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 
@@ -159,7 +166,7 @@ MainTab:Toggle({
     Flag = "BuySwords",
     Callback = function(state) 
         _G.AutoBuySwords = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 MainTab:Toggle({
@@ -168,7 +175,7 @@ MainTab:Toggle({
     Flag = "BuyDNA",
     Callback = function(state) 
         _G.AutoBuyDNA = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 MainTab:Toggle({
@@ -177,7 +184,7 @@ MainTab:Toggle({
     Flag = "BuyClass",
     Callback = function(state) 
         _G.AutoBuyClass = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 
@@ -192,7 +199,7 @@ MerchantTab:Toggle({
     Flag = "AutoMerchant",
     Callback = function(state) 
         _G.AutoMerchant = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 
@@ -202,25 +209,13 @@ MerchantTab:Toggle({
 local ElementsSection = Window:Section({
     Title = "Farm Element",
     Icon = "droplets",
-    Opened = true, -- ให้กางออกเพื่อเห็น Tabs ย่อยทันที
+    Opened = true, 
 })
 
--- 2. สร้าง Tabs ย่อยภายใน Section นี้
-local WaterTab = ElementsSection:Tab({ 
-    Title = "Water Element", 
-    Icon = "waves" 
-})
+local WaterTab = ElementsSection:Tab({ Title = "Water Element", Icon = "waves" })
+local FireTab = ElementsSection:Tab({ Title = "Fire Element", Icon = "flame" })
 
-local FireTab = ElementsSection:Tab({ 
-    Title = "Fire Element", 
-    Icon = "flame" 
-})
-
--- ==========================================
--- [ Water Element Tab Content ]
--- ==========================================
 WaterTab:Section({ Title = "🌊 Water Boss Farm" })
-
 WaterTab:Toggle({
     Title = "Auto Water Farm",
     Desc = "โจมตีบอสธาตุน้ำแบบอัตโนมัติ",
@@ -229,15 +224,11 @@ WaterTab:Toggle({
     Flag = "AutoWaterBoss",
     Callback = function(state) 
         _G.AutoWaterBoss = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 
--- ==========================================
--- [ Fire Element Tab Content ]
--- ==========================================
 FireTab:Section({ Title = "🔥 Fire Boss Farm" })
-
 FireTab:Toggle({
     Title = "Auto Fire Farm",
     Desc = "โจมตีบอสธาตุไฟแบบอัตโนมัติ",
@@ -246,7 +237,7 @@ FireTab:Toggle({
     Flag = "AutoFireBoss",
     Callback = function(state) 
         _G.AutoFireBoss = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 
@@ -254,21 +245,19 @@ FireTab:Toggle({
 -- [ Settings Tab ]
 -- ==========================================
 SettingsTab:Section({ Title = "💾 Configuration" })
-
 SettingsTab:Button({
     Title = "Save Config",
     Desc = "บันทึกการตั้งค่าปัจจุบัน",
     Callback = function()
-        myConfig:Save()
+        SaveConfig()
         WindUI:Notify({Title = "Success", Content = "Config Saved!", Duration = 2})
     end
 })
-
 SettingsTab:Button({
     Title = "Load Config",
     Desc = "โหลดการตั้งค่าที่บันทึกไว้",
     Callback = function()
-        myConfig:Load()
+        if myConfig and myConfig.Load then pcall(function() myConfig:Load() end) end
         WindUI:Notify({Title = "Success", Content = "Config Loaded!", Duration = 2})
     end
 })
@@ -280,7 +269,7 @@ SettingsTab:Toggle({
     Flag = "AntiAFK",
     Callback = function(state) 
         _G.AntiAFK = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 SettingsTab:Toggle({
@@ -289,7 +278,7 @@ SettingsTab:Toggle({
     Flag = "AutoRejoin",
     Callback = function(state) 
         _G.AutoRejoin = state 
-        myConfig:Save()
+        SaveConfig()
     end
 })
 
@@ -316,13 +305,12 @@ SettingsTab:Toggle({
             RunService:Set3dRenderingEnabled(true)
             if setfpscap then setfpscap(165) end
         end
-        myConfig:Save()
+        SaveConfig()
     end
 })
 
 -- โหลด Config อัตโนมัติเมื่อรันสคริปต์
-myConfig:Load()
-
+if myConfig and myConfig.Load then pcall(function() myConfig:Load() end) end
 WindUI:Notify({Title = "NiTroHub", Content = "✨ โหลด UI และ Config เรียบร้อย!", Duration = 3})
 
 ------------------------------------------
@@ -332,23 +320,19 @@ local Events = ReplicatedStorage:WaitForChild("Events")
 local SwingRemote = Events:WaitForChild("SwingSaber")
 local UIActionRemote = Events:WaitForChild("UIAction") 
 
--- ดึง Module ไอเทมจากโฟลเดอร์เกม
 local ItemModules = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ItemInfo")
 local SwordModule = require(ItemModules:WaitForChild("Swords"))
 local DNAModule = require(ItemModules:WaitForChild("DNAs"))
 local ClassModule = require(ItemModules:WaitForChild("Classes"))
 
--- แคชชื่อไอเทมสำหรับเช็คดาบที่ถือ
 local SwordNames = {}
 for name, _ in pairs(SwordModule) do 
     SwordNames[name] = true 
 end
 
--- ฟังก์ชันหาดาบที่ผู้เล่นกำลังถืออยู่
 local function GetEquippedSword()
     local char = LocalPlayer.Character
     if not char then return nil end
-    
     for _, item in pairs(char:GetChildren()) do
         if SwordNames[item.Name] or item:FindFirstChild("RemoteClick") then
             return item
@@ -366,61 +350,43 @@ local BossPath = nil
 local bossArgs = {}
 
 task.spawn(function()
-    while true do
+    while task.wait(0.01) do
         if _G.AutoClick then 
-            pcall(function() 
-                SwingRemote:FireServer() 
-            end) 
+            pcall(function() SwingRemote:FireServer() end) 
         end
-        
         if _G.AutoBoss and BossPath then
             pcall(function()
                 local sword = GetEquippedSword()
                 if sword and sword:FindFirstChild("RemoteClick") then
                     sword.RemoteClick:FireServer(unpack(bossArgs))
-                    SwingRemote:FireServer()
                 end
             end)
         end
-        task.wait(0.01)
     end
 end)
 
 -- [ Update Easter Boss Path ]
 task.spawn(function()
-    while true do
+    while task.wait(2) do
         if _G.AutoBoss then
             pcall(function()
                 BossPath = workspace.Gameplay.RegionsLoaded.EasterEvent.Boss.BossHolder:WaitForChild("Boss", 3)
-                if BossPath then 
-                    bossArgs = {{ BossPath }} 
-                end
+                if BossPath then bossArgs = {{ BossPath }} end
             end)
         end
-        task.wait(2)
     end
 end)
 
--- [ Auto Open Eggs ]
+-- [ Auto Open Eggs & Clan Quest ]
 task.spawn(function()
-    while true do
-        if _G.AutoEgg100 then 
-            pcall(function() 
-                UIActionRemote:FireServer("BuyEgg", "GA Egg") 
-            end) 
-        end
-        if _G.AutoEgg250 then 
-            pcall(function() 
-                UIActionRemote:FireServer("BuyEgg", "GB Egg") 
-            end) 
-        end
-        task.wait(1)
+    while task.wait(1) do
+        if _G.AutoEgg100 then pcall(function() UIActionRemote:FireServer("BuyEgg", "GA Egg") end) end
+        if _G.AutoEgg250 then pcall(function() UIActionRemote:FireServer("BuyEgg", "GB Egg") end) end
     end
 end)
 
--- [ Auto Clan Quest ]
 task.spawn(function()
-    while true do
+    while task.wait(5) do
         if _G.AutoClanQuest then
             pcall(function()
                 UIActionRemote:FireServer("ClaimClanQuest", 1)
@@ -428,80 +394,60 @@ task.spawn(function()
                 UIActionRemote:FireServer("ClaimClanQuest", 3)
             end)
         end
-        task.wait(3)
     end
 end)
 
--- [ Improved Auto Shop Logic (ใช้วิธีวนลูปไอเทมจาก Module) ]
+-- [ Improved Auto Shop Logic ]
 task.spawn(function()
-    while true do
+    while task.wait(2) do
         pcall(function()
-            -- ซื้อดาบทั้งหมด
             if _G.AutoBuySwords then 
+                local buySwords = Events:FindFirstChild("BuyAllSwords")
+                if buySwords then buySwords:FireServer() end
                 UIActionRemote:FireServer("BuyAllSwords")
-                for sName, _ in pairs(SwordModule) do
-                    UIActionRemote:FireServer("BuySword", sName)
-                end
             end
-            
-            -- ซื้อ DNA (ใช้รูปแบบ args ที่คุณต้องการ)
             if _G.AutoBuyDNA then 
+                local buyDNA = Events:FindFirstChild("BuyAllBackpacks") or Events:FindFirstChild("BuyAllDNA")
+                if buyDNA then buyDNA:FireServer() end
                 UIActionRemote:FireServer("BuyAllBackpacks")
-                for dName, _ in pairs(DNAModule) do
-                    UIActionRemote:FireServer("BuyDNA", dName) -- เช่น "Boost DNA"
-                end
             end
-            
-            -- ซื้อ Class
             if _G.AutoBuyClass then 
+                local buyClass = Events:FindFirstChild("BuyAllClasses") or Events:FindFirstChild("BuyClass")
+                if buyClass then buyClass:FireServer() end
                 UIActionRemote:FireServer("BuyAllClasses")
-                for cName, _ in pairs(ClassModule) do
-                    UIActionRemote:FireServer("BuyClass", cName)
-                end
             end
         end)
-        task.wait(3) -- หน่วงเวลา 3 วินาทีเพื่อความปลอดภัย
     end
 end)
 
 -- [ Auto Merchant ]
 task.spawn(function()
-    while true do
+    while task.wait(10) do
         if _G.AutoMerchant then
             pcall(function()
-                -- ดึงข้อมูลสินค้าที่พ่อค้ากำลังขายอยู่ปัจจุบัน
                 local MerchantModule = require(ReplicatedStorage.Modules.TravelingMerchantInfo)
-                
-                -- ตรวจสอบว่ามีข้อมูลสินค้าหรือไม่ (ป้องกัน error ตอนพ่อค้ายังไม่มา)
                 if MerchantModule and type(MerchantModule) == "table" then
                     for itemName, details in pairs(MerchantModule) do
-                        -- ใช้ UIAction ในการซื้อไอเทมจากพ่อค้าตามชื่อชิ้นนั้นๆ
-                        -- โครงสร้าง args จะคล้ายกับ BuyDNA ที่คุณให้มา
-                        local args = {
-                            "BuyMerchantItem", -- หรือ "MerchantBuy" ตามที่เกมกำหนด
-                            itemName
-                        }
-                        UIActionRemote:FireServer(unpack(args))
-                        
-                        -- ลองส่งแบบดั้งเดิมเผื่อไว้ด้วยเพื่อความชัวร์
+                        UIActionRemote:FireServer("BuyMerchantItem", itemName)
                         UIActionRemote:FireServer("MerchantBuy", itemName)
+                        if Events:FindFirstChild("BuyMerchantItem") then 
+                            Events.BuyMerchantItem:FireServer(itemName) 
+                        end
                     end
                 end
             end)
         end
-        task.wait(10) -- เช็คทุกๆ 10 วินาที (ไร้แลคและปลอดภัย)
     end
 end)
 
 -- [ Dungeon System: Create & Join ]
 local dungeonEnemies = {}
 
--- ลูปสร้าง/เริ่มดันเจี้ยน
 task.spawn(function()
-    while true do
+    while task.wait(2) do
         if _G.AutoDungeon and UIActionRemote then
             pcall(function()
-                local dungeonGroups = ReplicatedStorage:WaitForChild("DungeonGroups", 2)
+                local dungeonGroups = ReplicatedStorage:FindFirstChild("DungeonGroups")
                 if dungeonGroups then
                     local myGroupName = LocalPlayer.Name .. "'s Party"
                     local myGroup = dungeonGroups:FindFirstChild(myGroupName)
@@ -517,13 +463,11 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait(2)
     end
 end)
 
--- ลูปสแกนมอนสเตอร์ในดันเจี้ยน
 task.spawn(function()
-    while true do
+    while task.wait(1) do
         if _G.AutoAttack then
             local found = {}
             pcall(function()
@@ -540,13 +484,11 @@ task.spawn(function()
         else
             dungeonEnemies = {}
         end
-        task.wait(1)
     end
 end)
 
--- ลูปโจมตีในดันเจี้ยน (วาร์ปชิดตัวแล้วฟัน)
 task.spawn(function()
-    while true do
+    while task.wait(0.05) do
         if _G.AutoAttack and #dungeonEnemies > 0 then
             local sword = GetEquippedSword()
             local remote = sword and sword:FindFirstChild("RemoteClick")
@@ -559,25 +501,22 @@ task.spawn(function()
                         local enemyRoot = enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Head")
                         
                         if myRoot and enemyRoot then
-                            -- วาร์ปไปใกล้ๆ (ระยะ 3 Studs) เพื่อให้ Hitbox โดนแน่นอน
                             myRoot.CFrame = enemyRoot.CFrame * CFrame.new(0, 0, 3) 
                             pcall(function() remote:FireServer({ enemy }) end)
+                            break -- โจมตีและวาร์ปทีละตัวเท่านั้น ป้องกันตัวละครหลุดแมพ
                         end
                     else
                         table.remove(dungeonEnemies, i)
                     end
                 end
             end
-            if SwingRemote then pcall(function() SwingRemote:FireServer() end) end
         end
-        task.wait(0.05)
     end
 end)
 
 ------------------------------------------
 -- [ 5. Elements System ]
 ------------------------------------------
--- ฟังก์ชันช่วยค้นหาโฟลเดอร์แบบปลอดภัย (ไม่ค้าง ไม่พังถ้าแมพยังไม่โหลด)
 local function SafeGet(parent, ...)
     local current = parent
     for _, name in ipairs({...}) do
@@ -587,28 +526,22 @@ local function SafeGet(parent, ...)
     return current
 end
 
--- ตารางเก็บเป้าหมายที่พร้อมจะโจมตี
 local WaterTargets = {}
 local FireTargets = {}
 
--- ==========================================
--- [ Update Loop: สแกนหาบอสและโกเลมแบบไม่แลค ]
--- ==========================================
 task.spawn(function()
-    while true do
+    while task.wait(1) do
         local newWater = {}
         local newFire = {}
         local w = workspace:FindFirstChild("Gameplay")
         
         if w then
             pcall(function()
-                -- ฟังก์ชันช่วยเช็คและยัดมอนสเตอร์เข้าตารางเป้าหมาย
-                local function AddTargets(tableToUse, element, folderPath, golemName, bossName)
+                local function AddTargets(tableToUse, folderPath, golemName, bossName)
                     local folder = SafeGet(w, unpack(folderPath))
                     if folder then
                         local golem = folder:FindFirstChild(golemName)
                         local boss = folder:FindFirstChild(bossName)
-                        
                         if golem and golem:FindFirstChild("Humanoid") and golem.Humanoid.Health > 0 then
                             table.insert(tableToUse, golem)
                         end
@@ -618,58 +551,44 @@ task.spawn(function()
                     end
                 end
 
-                -- [ อัปเดตเป้าหมาย ธาตุน้ำ ]
                 if _G.AutoWaterBoss then
-                    AddTargets(newWater, "Water", {"Map", "ElementZones", "Water", "Water"}, "Water Golem", "Water Boss")
-                    AddTargets(newWater, "Water", {"RegionsLoaded", "AdvancedWaterArea", "Important", "Water"}, "Water Golem", "Advanced Water Boss")
-                    AddTargets(newWater, "Water", {"RegionsLoaded", "MasterWaterArea", "Important", "Water"}, "Water Golem", "Master Water Boss")
-                    AddTargets(newWater, "Water", {"RegionsLoaded", "GrandmasterWaterArea", "Important", "Water"}, "Water Golem", "Grandmaster Water Boss")
+                    AddTargets(newWater, {"Map", "ElementZones", "Water", "Water"}, "Water Golem", "Water Boss")
+                    AddTargets(newWater, {"RegionsLoaded", "AdvancedWaterArea", "Important", "Water"}, "Water Golem", "Advanced Water Boss")
+                    AddTargets(newWater, {"RegionsLoaded", "MasterWaterArea", "Important", "Water"}, "Water Golem", "Master Water Boss")
+                    AddTargets(newWater, {"RegionsLoaded", "GrandmasterWaterArea", "Important", "Water"}, "Water Golem", "Grandmaster Water Boss")
                 end
 
-                -- [ อัปเดตเป้าหมาย ธาตุไฟ ]
                 if _G.AutoFireBoss then
-                    AddTargets(newFire, "Fire", {"Map", "ElementZones", "Fire", "Fire"}, "Fire Golem", "Fire Boss")
-                    AddTargets(newFire, "Fire", {"RegionsLoaded", "AdvancedFireArea", "Important", "Fire"}, "Fire Golem", "Advanced Fire Boss")
-                    AddTargets(newFire, "Fire", {"RegionsLoaded", "MasterFireArea", "Important", "Fire"}, "Fire Golem", "Master Fire Boss")
-                    AddTargets(newFire, "Fire", {"RegionsLoaded", "GrandmasterFireArea", "Important", "Fire"}, "Fire Golem", "Grandmaster Fire Boss")
+                    AddTargets(newFire, {"Map", "ElementZones", "Fire", "Fire"}, "Fire Golem", "Fire Boss")
+                    AddTargets(newFire, {"RegionsLoaded", "AdvancedFireArea", "Important", "Fire"}, "Fire Golem", "Advanced Fire Boss")
+                    AddTargets(newFire, {"RegionsLoaded", "MasterFireArea", "Important", "Fire"}, "Fire Golem", "Master Fire Boss")
+                    AddTargets(newFire, {"RegionsLoaded", "GrandmasterFireArea", "Important", "Fire"}, "Fire Golem", "Grandmaster Fire Boss")
                 end
             end)
         end
-        
-        -- อัปเดตเป้าหมายล่าสุด
         WaterTargets = newWater
         FireTargets = newFire
-        
-        task.wait(1) -- รีเฟรชตำแหน่งทุก 1 วินาที
     end
 end)
 
--- ==========================================
--- [ Attack Loop: สั่งโจมตีศัตรูทั้งหมดที่หาเจอ ]
--- ==========================================
 task.spawn(function()
-    while true do
+    while task.wait(0.05) do
         local sword = GetEquippedSword()
         local remote = sword and sword:FindFirstChild("RemoteClick")
         local char = LocalPlayer.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
 
         if remote and root then
-            
-            -- 🔵 Water
-            if _G.AutoWaterBoss then
+            -- โจมตีธาตุน้ำ
+            if _G.AutoWaterBoss and #WaterTargets > 0 then
                 for i = #WaterTargets, 1, -1 do
                     local mob = WaterTargets[i]
                     if mob and mob.Parent and mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
                         local targetRoot = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("Head")
-                        
                         if targetRoot then
-                            -- วาร์ปไปตี
                             root.CFrame = targetRoot.CFrame * CFrame.new(0,0,3)
-
-                            pcall(function()
-                                remote:FireServer({mob})
-                            end)
+                            pcall(function() remote:FireServer({mob}) end)
+                            break -- ป้องกันบั๊กวาร์ปทีเดียวหลายตัว
                         end
                     else
                         table.remove(WaterTargets, i)
@@ -677,19 +596,16 @@ task.spawn(function()
                 end
             end
 
-            -- 🔴 Fire
-            if _G.AutoFireBoss then
+            -- โจมตีธาตุไฟ
+            if _G.AutoFireBoss and #FireTargets > 0 then
                 for i = #FireTargets, 1, -1 do
                     local mob = FireTargets[i]
                     if mob and mob.Parent and mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
                         local targetRoot = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("Head")
-                        
                         if targetRoot then
                             root.CFrame = targetRoot.CFrame * CFrame.new(0,0,3)
-
-                            pcall(function()
-                                remote:FireServer({mob})
-                            end)
+                            pcall(function() remote:FireServer({mob}) end)
+                            break -- ป้องกันบั๊กวาร์ปทีเดียวหลายตัว
                         end
                     else
                         table.remove(FireTargets, i)
@@ -697,31 +613,20 @@ task.spawn(function()
                 end
             end
         end
-
-        -- แกว่งดาบเสริม
-        if _G.AutoClick and SwingRemote then
-            pcall(function()
-                SwingRemote:FireServer()
-            end)
-        end
-
-        task.wait(0.05)
     end
 end)
 
 ------------------------------------------
 -- [ 6. Protection & Anti-AFK ]
 ------------------------------------------
-
 task.spawn(function()
-    while true do
+    while task.wait(30) do
         if _G.AntiAFK then 
             pcall(function() 
                 VirtualUser:CaptureController()
                 VirtualUser:ClickButton2(Vector2.new(0, 0)) 
             end) 
         end
-        task.wait(30)
     end
 end)
 
