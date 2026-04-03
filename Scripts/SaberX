@@ -598,35 +598,31 @@ end)
 ------------------------------------------
 -- [ 5. Elements System ]
 ------------------------------------------
--- ฟังก์ชันดึงดาบที่ถืออยู่ (ไม่ล็อคว่าต้องเป็น Heaven Sacred Axe เท่านั้น จะถืออะไรก็ตีได้)
+local function getNode(...)
+    local node = workspace
+    for _, name in ipairs({...}) do
+        if not node then return nil end
+        node = node:FindFirstChild(name) -- ใช้ FindFirstChild จะไม่ทำให้ลูปค้าง
+    end
+    return node
+end
+
+-- ฟังก์ชันหาอาวุธที่กำลังถืออยู่
 local function GetEquippedSword()
-    local char = game.Players.LocalPlayer.Character
+    local char = Players.LocalPlayer.Character
     if not char then return nil end
     return char:FindFirstChildOfClass("Tool")
 end
 
--- ฟังก์ชันส่งค่าโจมตีตามที่คุณเขียนมาเป๊ะๆ
 local function Attack(targets)
     if not targets or #targets == 0 then return end
+    
     local sword = GetEquippedSword()
     local remote = sword and sword:FindFirstChild("RemoteClick")
     
     if remote then
-        pcall(function()
-            remote:FireServer(targets)
-        end)
+        remote:FireServer(targets) -- ส่ง targets ที่เป็น table เข้าไปตรงๆ ได้เลย
     end
-end
-
--- ฟังก์ชันช่วยหา Path แบบปลอดภัย ไม่ค้างเมื่อบอสตาย
-local function GetFromPath(parent, ...)
-    local current = parent
-    local paths = {...}
-    for _, name in ipairs(paths) do
-        if not current then return nil end
-        current = current:FindFirstChild(name)
-    end
-    return current
 end
 
 -- =============================================
