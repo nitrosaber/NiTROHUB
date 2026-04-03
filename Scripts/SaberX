@@ -577,99 +577,106 @@ end)
 ------------------------------------------
 -- [ 5. Elements System ]
 ------------------------------------------
--- [ Auto Click & Element Water Golem,Boss ]
-local WaterBossPath = nil
-local WaterbossArgs = {}
+-- ฟังก์ชันช่วยค้นหาโฟลเดอร์แบบปลอดภัย (ไม่ค้าง ไม่พังถ้าแมพยังไม่โหลด)
+local function SafeGet(parent, ...)
+    local current = parent
+    for _, name in ipairs({...}) do
+        if not current then return nil end
+        current = current:FindFirstChild(name)
+    end
+    return current
+end
 
+-- ตารางเก็บเป้าหมายที่พร้อมจะโจมตี
+local WaterTargets = {}
+local FireTargets = {}
+
+-- ==========================================
+-- [ Update Loop: สแกนหาบอสและโกเลมแบบไม่แลค ]
+-- ==========================================
 task.spawn(function()
     while true do
-        if _G.AutoClick then 
-            pcall(function() 
-                SwingRemote:FireServer() 
-            end) 
+        local newWater = {}
+        local newFire = {}
+        local w = workspace:FindFirstChild("Gameplay")
+        
+        if w then
+            pcall(function()
+                -- ฟังก์ชันช่วยเช็คและยัดมอนสเตอร์เข้าตารางเป้าหมาย
+                local function AddTargets(tableToUse, element, folderPath, golemName, bossName)
+                    local folder = SafeGet(w, unpack(folderPath))
+                    if folder then
+                        local golem = folder:FindFirstChild(golemName)
+                        local boss = folder:FindFirstChild(bossName)
+                        
+                        if golem and golem:FindFirstChild("Humanoid") and golem.Humanoid.Health > 0 then
+                            table.insert(tableToUse, golem)
+                        end
+                        if boss and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
+                            table.insert(tableToUse, boss)
+                        end
+                    end
+                end
+
+                -- [ อัปเดตเป้าหมาย ธาตุน้ำ ]
+                if _G.AutoWaterBoss then
+                    AddTargets(newWater, "Water", {"Map", "ElementZones", "Water", "Water"}, "Water Golem", "Water Boss")
+                    AddTargets(newWater, "Water", {"RegionsLoaded", "AdvancedWaterArea", "Important", "Water"}, "Water Golem", "Advanced Water Boss")
+                    AddTargets(newWater, "Water", {"RegionsLoaded", "MasterWaterArea", "Important", "Water"}, "Water Golem", "Master Water Boss")
+                    AddTargets(newWater, "Water", {"RegionsLoaded", "GrandmasterWaterArea", "Important", "Water"}, "Water Golem", "Grandmaster Water Boss")
+                end
+
+                -- [ อัปเดตเป้าหมาย ธาตุไฟ ]
+                if _G.AutoFireBoss then
+                    AddTargets(newFire, "Fire", {"Map", "ElementZones", "Fire", "Fire"}, "Fire Golem", "Fire Boss")
+                    AddTargets(newFire, "Fire", {"RegionsLoaded", "AdvancedFireArea", "Important", "Fire"}, "Fire Golem", "Advanced Fire Boss")
+                    AddTargets(newFire, "Fire", {"RegionsLoaded", "MasterFireArea", "Important", "Fire"}, "Fire Golem", "Master Fire Boss")
+                    AddTargets(newFire, "Fire", {"RegionsLoaded", "GrandmasterFireArea", "Important", "Fire"}, "Fire Golem", "Grandmaster Fire Boss")
+                end
+            end)
         end
         
-        if _G.AutoWaterBoss and WaterBossPath then
-            pcall(function()
-                local sword = GetEquippedSword()
-                if sword and sword:FindFirstChild("RemoteClick") then
-                    sword.RemoteClick:FireServer(unpack(WaterbossArgs))
-                    SwingRemote:FireServer()
-                end
-            end)
-        end
-        task.wait(0.01)
+        -- อัปเดตเป้าหมายล่าสุด
+        WaterTargets = newWater
+        FireTargets = newFire
+        
+        task.wait(1) -- รีเฟรชตำแหน่งทุก 1 วินาที
     end
 end)
 
--- [ Update Water Boss Path ]
+-- ==========================================
+-- [ Attack Loop: สั่งโจมตีศัตรูทั้งหมดที่หาเจอ ]
+-- ==========================================
 task.spawn(function()
     while true do
-        if _G.AutoWaterBoss then
-            pcall(function()
-                WaterBossPath = workspace.Gameplay.Map.ElementZones.Water.Water:WaitForChild("Water Golem", 3)
-                WaterBossPath = workspace.Gameplay.Map.ElementZones.Water.Water:WaitForChild("Water Boss", 3)
-                WaterBossPath = workspace.Gameplay.RegionsLoaded.AdvancedWaterArea.Important.Water:WaitForChild("Water Golem", 3)
-                WaterBossPath = workspace.Gameplay.RegionsLoaded.AdvancedWaterArea.Important.Water:WaitForChild("Advanced Water Boss", 3)
-                WaterBossPath = workspace.Gameplay.RegionsLoaded.MasterWaterArea.Important.Water:WaitForChild("Water Golem", 3)
-                WaterBossPath = workspace.Gameplay.RegionsLoaded.MasterWaterArea.Important.Water:WaitForChild("Master Water Boss", 3)
-                WaterBossPath = workspace.Gameplay.RegionsLoaded.GrandmasterWaterArea.Important.Water:WaitForChild("Water Golem", 3)
-                WaterBossPath = workspace.Gameplay.RegionsLoaded.GrandmasterWaterArea.Important.Water:WaitForChild("Grandmaster Water Boss", 3)
-                if WaterBossPath then 
-                    WaterbossArgs = {{ WaterBossPath }} 
-                end
-            end)
-        end
-        task.wait(2)
-    end
-end)
-
--- [ Auto Click & Element Fire Golem,Boss ]
-local FireBossPath = nil
-local FirebossArgs = {}
-
-task.spawn(function()
-    while true do
-        if _G.AutoClick then 
-            pcall(function() 
-                SwingRemote:FireServer() 
-            end) 
+        local sword = GetEquippedSword()
+        local remote = sword and sword:FindFirstChild("RemoteClick")
+        
+        if remote then
+            -- โจมตีธาตุน้ำ
+            if _G.AutoWaterBoss and #WaterTargets > 0 then
+                pcall(function()
+                    remote:FireServer(WaterTargets) -- ส่งเป้าหมายทั้งหมดไปทีเดียว
+                end)
+            end
+            
+            -- โจมตีธาตุไฟ
+            if _G.AutoFireBoss and #FireTargets > 0 then
+                pcall(function()
+                    remote:FireServer(FireTargets) -- ส่งเป้าหมายทั้งหมดไปทีเดียว
+                end)
+            end
         end
         
-        if _G.AutoFireBoss and FireBossPath then
-            pcall(function()
-                local sword = GetEquippedSword()
-                if sword and sword:FindFirstChild("RemoteClick") then
-                    sword.RemoteClick:FireServer(unpack(FirebossArgs))
-                    SwingRemote:FireServer()
-                end
-            end)
+        -- แกว่งดาบอัตโนมัติ (เอาไว้ลูปนี้เลย จะได้ไม่ซ้ำซ้อน)
+        if _G.AutoClick and SwingRemote then
+            pcall(function() SwingRemote:FireServer() end)
         end
-        task.wait(0.01)
+        
+        task.wait(0.05) -- ความเร็วในการตี
     end
 end)
 
--- [ Update Fire Boss Path ]
-task.spawn(function()
-    while true do
-        if _G.AutoFireBoss then
-            pcall(function()
-                FireBossPath = workspace.Gameplay.Map.ElementZones.Fire.Fire:WaitForChild("Fire Golem", 3)
-                FireBossPath = workspace.Gameplay.Map.ElementZones.Fire.Fire:WaitForChild("Fire Boss", 3)
-                FireBossPath = workspace.Gameplay.RegionsLoaded.AdvancedFireArea.Important.Fire:WaitForChild("Fire Golem", 3)
-                FireBossPath = workspace.Gameplay.RegionsLoaded.AdvancedFireArea.Important.Fire:WaitForChild("Advanced Fire Boss", 3)
-                FireBossPath = workspace.Gameplay.RegionsLoaded.MasterFireArea.Important.Fire:WaitForChild("Fire Golem", 3)
-                FireBossPath = workspace.Gameplay.RegionsLoaded.MasterFireArea.Important.Fire:WaitForChild("Master Fire Boss", 3)
-                FireBossPath = workspace.Gameplay.RegionsLoaded.GrandmasterFireArea.Important.Fire:WaitForChild("Fire Golem", 3)
-                FireBossPath = workspace.Gameplay.RegionsLoaded.GrandmasterFireArea.Important.Fire:WaitForChild("Grandmaster Fire Boss", 3)
-                if FireBossPath then 
-                    FirebossArgs = {{ FireBossPath }} 
-                end
-            end)
-        end
-        task.wait(2)
-    end
-end)
 
 ------------------------------------------
 -- [ 6. Protection & Anti-AFK ]
