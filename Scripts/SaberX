@@ -651,32 +651,64 @@ task.spawn(function()
     while true do
         local sword = GetEquippedSword()
         local remote = sword and sword:FindFirstChild("RemoteClick")
-        
-        if remote then
-            -- โจมตีธาตุน้ำ
-            if _G.AutoWaterBoss and #WaterTargets > 0 then
-                pcall(function()
-                    remote:FireServer(WaterTargets) -- ส่งเป้าหมายทั้งหมดไปทีเดียว
-                end)
-            end
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+
+        if remote and root then
             
-            -- โจมตีธาตุไฟ
-            if _G.AutoFireBoss and #FireTargets > 0 then
-                pcall(function()
-                    remote:FireServer(FireTargets) -- ส่งเป้าหมายทั้งหมดไปทีเดียว
-                end)
+            -- 🔵 Water
+            if _G.AutoWaterBoss then
+                for i = #WaterTargets, 1, -1 do
+                    local mob = WaterTargets[i]
+                    if mob and mob.Parent and mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
+                        local targetRoot = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("Head")
+                        
+                        if targetRoot then
+                            -- วาร์ปไปตี
+                            root.CFrame = targetRoot.CFrame * CFrame.new(0,0,3)
+
+                            pcall(function()
+                                remote:FireServer({mob})
+                            end)
+                        end
+                    else
+                        table.remove(WaterTargets, i)
+                    end
+                end
+            end
+
+            -- 🔴 Fire
+            if _G.AutoFireBoss then
+                for i = #FireTargets, 1, -1 do
+                    local mob = FireTargets[i]
+                    if mob and mob.Parent and mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
+                        local targetRoot = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("Head")
+                        
+                        if targetRoot then
+                            root.CFrame = targetRoot.CFrame * CFrame.new(0,0,3)
+
+                            pcall(function()
+                                remote:FireServer({mob})
+                            end)
+                        end
+                    else
+                        table.remove(FireTargets, i)
+                    end
+                end
             end
         end
-        
-        -- แกว่งดาบอัตโนมัติ (เอาไว้ลูปนี้เลย จะได้ไม่ซ้ำซ้อน)
+
+        -- แกว่งดาบเสริม
         if _G.AutoClick and SwingRemote then
-            pcall(function() SwingRemote:FireServer() end)
+            pcall(function()
+                SwingRemote:FireServer()
+            end)
         end
-        
-        task.wait(0.05) -- ความเร็วในการตี
+
+        task.wait(0.05)
     end
 end)
-
+ฝฝฝ
 
 ------------------------------------------
 -- [ 6. Protection & Anti-AFK ]
